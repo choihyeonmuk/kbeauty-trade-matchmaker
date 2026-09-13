@@ -1,0 +1,328 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tradewith.example/kbeauty-trade-matchmaker/v0.1.0/discovery-result.schema.json",
+  "title": "Discovery Result",
+  "description": "One Buyer Discovery or Seller Discovery run, as emitted by scripts/score_buyer.py and scripts/score_seller.py (BUILD-CONTRACT.md 7.4, 7.8). It exists so the PRD 12.1 Summary block and the \"Excluded / low fit\" block have a producer: `summary`, `as_of`, `score_version`, `partial` and `notes` are run-level facts that no single record can carry. `--records-only` emits the bare `records` array instead, for piping into another script.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "score_version",
+    "as_of",
+    "entity",
+    "summary",
+    "records",
+    "excluded",
+    "partial",
+    "notes"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Version of this schema contract, e.g. \"0.1.0\".",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "score_version": {
+      "$comment": "Deliberately narrower than the shared BUILD-CONTRACT 3.7 definition: a discovery RESULT envelope is always produced by a scorer, so \"unscored\" is invalid here even though the individual records it carried before scoring could hold it.",
+      "type": "string",
+      "description": "Identifier of the scoring rubric every record in this run was scored with. Identical on the envelope and on every record (INV-23).",
+      "maxLength": 64,
+      "pattern": "^kbtm-score-[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "skill_version": {
+      "type": "string",
+      "description": "Version of the skill package that produced this document.",
+      "maxLength": 64
+    },
+    "as_of": {
+      "type": "string",
+      "format": "date",
+      "description": "The resolved --as-of date (BUILD-CONTRACT.md 7.4 ladder). Every recency bucket in this run was measured against it; scripts never read the wall clock (INV-14).",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "entity": {
+      "type": "string",
+      "description": "Which discovery mode produced this run.",
+      "enum": [
+        "buyer",
+        "seller"
+      ]
+    },
+    "query": {
+      "type": "object",
+      "description": "The BUILD-CONTRACT.md 3.9 query surface this run scored against, echoed verbatim so the Summary line and every market_relevance / product_fit number are auditable. Shape is owned by 3.9 and deliberately open here.",
+      "additionalProperties": true
+    },
+    "summary": {
+      "$ref": "#/$defs/discovery_summary"
+    },
+    "records": {
+      "type": "array",
+      "$comment": "Items are full buyer or seller documents in the scored profile. They are NOT re-declared here: validate_output.py validates each one against buyer.schema.json / seller.schema.json (chosen by `entity`), because _common.validate resolves only local #/$defs references and cannot cross files.",
+      "description": "The scored, ranked candidates, ordered by (qualification_score desc, canonical_domain asc) with \"unknown\" last and the input order as the final stable tie-break (INV-30). Length is bounded by --top, which is a CEILING and never a target (R7.8.1).",
+      "items": {
+        "type": "object"
+      },
+      "maxItems": 500
+    },
+    "excluded": {
+      "type": "array",
+      "description": "Candidates that were seen but are not in `records`: a hard-requirement violation (R6.2.6) or a query-fit / evidence-bar exclusion (R7.8.1). Never silently dropped; rendered as the PRD 12.1 \"Excluded / low fit\" block.",
+      "items": {
+        "$ref": "#/$defs/discovery_excluded"
+      },
+      "maxItems": 500
+    },
+    "partial": {
+      "type": "boolean",
+      "description": "True when any candidate could not be fully evaluated (unreachable page, unparseable record, adapter error). The run still exits 0 and still emits every candidate it did score; the reason is appended to `notes` as \"<id>: <reason>\" (INV-35, PRD 14 Resilience).",
+      "default": false
+    },
+    "notes": {
+      "type": "array",
+      "description": "Run-level operator notes: partial-failure reasons, the DISC-06 short-count line, category-widening notes (PRD DISC-05). Per-candidate notes stay on the candidate.",
+      "items": {
+        "type": "string",
+        "maxLength": 1000
+      },
+      "maxItems": 200
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Escape hatch for runtime/tenant fields. Never scored, never rendered.",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "score_0_100": {
+      "type": "integer",
+      "description": "A deterministic score, integer 0..100, rounded half-up (scoring.config.json determinism.rounding).",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "canonical_domain": {
+      "description": "Registrable domain from _common.canonical_domain(). PRIMARY entity merge key (PRD 13.2, test T06) and the secondary sort key for deterministic ordering. \"unknown\" when the company has no discoverable website.",
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
+          "maxLength": 253
+        },
+        {
+          "const": "unknown"
+        }
+      ]
+    },
+    "evidence_id_list": {
+      "type": "array",
+      "description": "evidence_id values resolvable in the referenced record's `evidence` array (INV-22). Ids are never invented: an empty list means \"no source backs this statement\" and must be rendered as such.",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128
+      },
+      "uniqueItems": true,
+      "maxItems": 50
+    },
+    "threshold_mode": {
+      "type": "string",
+      "description": "\"fixed\" = a constant cut-off (default 70). \"percentile\" = the Nth percentile of this run's scored population. The default lives in scoring.config.json thresholds.mode.",
+      "enum": [
+        "fixed",
+        "percentile"
+      ]
+    },
+    "discovery_summary": {
+      "type": "object",
+      "description": "Counters for the PRD 12.1 Summary block. candidates_found >= scored_count >= returned MUST hold, and qualified_count == |{r in records : r.qualified}|.",
+      "additionalProperties": false,
+      "required": [
+        "candidates_found",
+        "scored_count",
+        "returned",
+        "qualified_count",
+        "excluded_count",
+        "threshold_used",
+        "threshold_mode"
+      ],
+      "properties": {
+        "candidates_found": {
+          "type": "integer",
+          "description": "Candidates fed into this run, after entity dedupe (PRD DISC-04, test T06).",
+          "minimum": 0
+        },
+        "scored_count": {
+          "type": "integer",
+          "description": "Candidates that survived the discovery hard filters (R6.2.6) and the evidence bar (R7.8.1) and were actually scored.",
+          "minimum": 0
+        },
+        "returned": {
+          "type": "integer",
+          "description": "Length of records, after --top truncation.",
+          "minimum": 0
+        },
+        "qualified_count": {
+          "type": "integer",
+          "description": "Records whose qualification_score >= threshold_used.",
+          "minimum": 0
+        },
+        "excluded_count": {
+          "type": "integer",
+          "description": "Length of excluded.",
+          "minimum": 0
+        },
+        "threshold_used": {
+          "description": "The effective numeric cut-off applied in this run (default 70). Rendered on the \"Qualified (>=N)\" line.",
+          "$ref": "#/$defs/score_0_100"
+        },
+        "threshold_mode": {
+          "$ref": "#/$defs/threshold_mode"
+        },
+        "top_n_requested": {
+          "type": "integer",
+          "description": "The --top argument the operator passed. A CEILING, never a target: returning fewer is the correct outcome when the evidence bar is not met (PRD DISC-06, R7.8.1).",
+          "minimum": 1,
+          "maximum": 500
+        },
+        "unknown_flagged_count": {
+          "type": "integer",
+          "description": "Records whose unknown_penalty_applied length exceeded unknown.max_unknown_dimensions_before_flag.",
+          "minimum": 0
+        },
+        "score_range": {
+          "type": "object",
+          "description": "min/max qualification_score across records, for percentile-mode transparency.",
+          "additionalProperties": false,
+          "required": [
+            "min",
+            "max"
+          ],
+          "properties": {
+            "min": {
+              "$ref": "#/$defs/score_0_100"
+            },
+            "max": {
+              "$ref": "#/$defs/score_0_100"
+            }
+          }
+        }
+      }
+    },
+    "discovery_excluded": {
+      "type": "object",
+      "description": "One candidate that was seen and deliberately kept out of `records`. Rendered as \"- {{company_name}}: {{exclusion_reason}}\" (BUILD-CONTRACT.md 10.1 / 10.2).",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "company_name",
+        "canonical_domain",
+        "reason_summary"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "buyer_id or seller_id of the excluded candidate.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "company_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "canonical_domain": {
+          "$ref": "#/$defs/canonical_domain"
+        },
+        "website": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://[^\\s]+$",
+          "maxLength": 2048
+        },
+        "reason_summary": {
+          "type": "string",
+          "description": "The single rendered line. A hard-requirement violation renders failed_rules[0].reason prefixed with its rule_id (\"HF-03 MOQ minimum 5,000 exceeds requested 3,000\"); a query-fit or evidence-bar exclusion renders the fit reason (\"no K-Beauty signal (T09)\", \"no evidenced material claim\").",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "failed_rules": {
+          "type": "array",
+          "description": "The discovery hard-filter rules this candidate failed (R6.2.6). Absent or empty for a query-fit or evidence-bar exclusion.",
+          "items": {
+            "$ref": "#/$defs/failed_rule"
+          },
+          "maxItems": 20
+        },
+        "qualification_score": {
+          "description": "Present only when the candidate was scored before being cut by --min-score. A candidate removed by a hard filter carries no score.",
+          "$ref": "#/$defs/score_0_100"
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "maxItems": 20
+        }
+      }
+    },
+    "failed_rule": {
+      "type": "object",
+      "description": "One hard-filter rule that rejected a candidate, with the numbers that caused it. Shape is shared with match-result.schema.json (BUILD-CONTRACT.md 6.2 R6.2.3, INV-06).",
+      "additionalProperties": false,
+      "required": [
+        "rule_id",
+        "rule_name",
+        "reason",
+        "observed_value",
+        "required_value"
+      ],
+      "properties": {
+        "rule_id": {
+          "type": "string",
+          "description": "Rule identifier from scoring.config.json hard_filters, e.g. \"HF-03\".",
+          "pattern": "^HF-[0-9]{2}$"
+        },
+        "rule_name": {
+          "type": "string",
+          "description": "Human-readable rule name, copied from scoring.config.json hard_filters[].name.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "reason": {
+          "type": "string",
+          "description": "Renderable one-line explanation, e.g. \"MOQ minimum 5,000 exceeds requested 3,000\".",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "observed_value": {
+          "description": "The value actually found on the record. An unknown value must never by itself produce a hard-filter failure (PRD 6.4.4, test T04).",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "array",
+            "object",
+            "null"
+          ]
+        },
+        "required_value": {
+          "description": "The value the query demanded, for side-by-side rendering.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "array",
+            "object",
+            "null"
+          ]
+        },
+        "evidence_ids": {
+          "$ref": "#/$defs/evidence_id_list"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,877 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tradewith.example/kbeauty-trade-matchmaker/v0.1.0/buyer.schema.json",
+  "title": "Buyer",
+  "description": "An overseas K-Beauty buyer candidate (distributor / importer / wholesaler / retailer / brand / marketplace). PRD 7.1 + 6.3 (Buyer Qualification Score) + 8 (state machine) + 13.2 (merge by canonical domain). Validated in two profiles: profile=raw (discovery output, score_version may be \"unscored\") and profile=scored (score_buyer.py output). See BUILD-CONTRACT.md sections 3, 5, 7.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "score_version",
+    "buyer_id",
+    "company_name",
+    "canonical_domain",
+    "country",
+    "company_type",
+    "status",
+    "qualification_score",
+    "confidence",
+    "evidence",
+    "notes"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Version of this schema contract, e.g. \"0.1.0\".",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "score_version": {
+      "$ref": "#/$defs/score_version"
+    },
+    "buyer_id": {
+      "type": "string",
+      "description": "Stable id for this buyer entity. Recommended form: BUY-<slug of canonical_domain> or the TradeWith lead id.",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "company_name": {
+      "type": "string",
+      "description": "Company name exactly as printed on the most authoritative source. Korean gloss: 회사명 (출처 표기 그대로).",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "normalized_name": {
+      "type": "string",
+      "description": "Output of _common.normalize_name(company_name): NFKC + casefold + legal-suffix stripped. Used as the fallback dedupe key. BUILD-CONTRACT.md 8.3.",
+      "maxLength": 300
+    },
+    "website": {
+      "type": "string",
+      "format": "uri",
+      "description": "Primary official website URL.",
+      "pattern": "^https?://[^\\s]+$",
+      "maxLength": 2048
+    },
+    "canonical_domain": {
+      "description": "Registrable domain derived from website by _common.canonical_domain() (scheme/www/port/path stripped, NFKC+casefold, multi-part TLD aware). PRIMARY merge key per PRD 13.2 and test T06. \"unknown\" only when the company has no discoverable website; such records can never be auto-merged by domain. Korean gloss: 정규화 도메인 (병합 기준 키).",
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
+          "maxLength": 253
+        },
+        {
+          "const": "unknown"
+        }
+      ]
+    },
+    "country": {
+      "$ref": "#/$defs/country_code"
+    },
+    "country_name": {
+      "type": "string",
+      "description": "Human display name for country, e.g. \"United Arab Emirates\". Never used for matching; matching always uses the ISO-3166-1 alpha-2 code in `country`.",
+      "maxLength": 100
+    },
+    "company_type": {
+      "type": "string",
+      "description": "PRD 7.1 company_type enum, plus \"unknown\" (BUILD-CONTRACT.md 3.4: \"other\" means \"classified, none of the above\"; \"unknown\" means \"not yet determined\" and triggers the unknown penalty). Korean gloss: 회사 유형.",
+      "enum": [
+        "distributor",
+        "importer",
+        "wholesaler",
+        "retailer",
+        "brand",
+        "marketplace",
+        "other",
+        "unknown"
+      ]
+    },
+    "product_categories": {
+      "description": "Canonical category slugs the buyer demonstrably handles (BUILD-CONTRACT.md 8.5 vocabulary). Absent = not yet determined (unknown). Present-and-empty = verified that no beauty category is handled (test T09).",
+      "$ref": "#/$defs/category_list"
+    },
+    "korean_products_signal": {
+      "description": "Does the buyer demonstrably carry Korean / K-Beauty products? PRD 7.1. true|false|\"unknown\". Never infer false from absence of mention; absence is \"unknown\" (PRD 19 Unknown values).",
+      "$ref": "#/$defs/tri_state"
+    },
+    "korean_brands_carried": {
+      "type": "array",
+      "description": "Named Korean brands evidenced on the buyer's own channels. Absent = unknown. Present-and-empty = checked, none found.",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 120
+      },
+      "uniqueItems": true,
+      "maxItems": 200
+    },
+    "wholesale_signal": {
+      "description": "Does the buyer sell B2B / wholesale (wholesale page, MOQ terms, trade account, reseller pricing)? true|false|\"unknown\".",
+      "$ref": "#/$defs/tri_state"
+    },
+    "partnership_signal": {
+      "description": "Does the buyer publicly invite brand partnerships / distribution proposals? true|false|\"unknown\". The bare boolean is never scored positively: no sourcing_intent criterion reads it, because an invitation that is real produces an observable page and is credited through the B-SI2 signals that page emits (partnership_page, brand_submission_form, become_a_distributor_page). It reaches the score in one direction only, through the sourcing_intent adjustment partnership_signal_false, which prices a publicly CLOSED partnership channel.",
+      "$ref": "#/$defs/tri_state"
+    },
+    "buyer_moq": {
+      "$comment": "The unit lives in the sibling `buyer_moq_unit` and the currency, when the minimum is stated as money rather than pieces, in `buyer_moq_currency`. numeric_range.unit MAY appear here (the shared $defs allows it), but `buyer_moq_unit` WINS when both are present and a note is recorded; when only buyer_moq.unit is present it is copied into buyer_moq_unit during normalization. This mirrors seller.moq / seller.moq_unit exactly (BUILD-CONTRACT.md 3.3) so the two sides of a trade are stored in one shape. Never compare on buyer_moq.unit directly, and never compare a buyer minimum against a seller minimum whose unit or currency differs.",
+      "description": "The buyer's OWN published minimum order for a purchase order it places or accepts. number | {min,max} | \"unknown\". Absent or \"unknown\" means not published and takes the unknown path; it never causes a rejection. Real B2B sites publish this constantly and it is the single most material term a Korean seller needs, in three shapes the field must hold: a per-PO money floor (\"10,000 AED per Purchase Order\", \"a minimum goods value of 5,000 USD\" - set buyer_moq_currency), a per-line piece count (\"12 pieces per line\" - set buyer_moq_unit) and a plain unit count. A vague \"low MOQs\" is marketing, not a number: leave the field unknown and put the phrase in notes[]. Evidence items supporting it carry claim \"buyer_moq\". Scored by B-CR2 (published_minimum_order) and, when the buyer publishes the term as a supplier-facing condition, by B-SI2 (published_trade_terms).",
+      "$ref": "#/$defs/quantity_value"
+    },
+    "buyer_moq_unit": {
+      "type": "string",
+      "description": "Unit for buyer_moq, default \"units\". Authoritative over a unit carried inside buyer_moq itself; when only buyer_moq.unit is present it is copied here during normalization and a note is recorded. Use the unit the buyer printed, e.g. \"units\", \"pieces_per_line\", \"skus\". When the minimum is stated as money the unit is the currency's minor concept and buyer_moq_currency carries the code.",
+      "maxLength": 32,
+      "default": "units"
+    },
+    "buyer_moq_currency": {
+      "type": "string",
+      "description": "ISO-4217 alpha-3 code, upper case, when buyer_moq is a MONEY floor rather than a piece count (AED, USD, EUR, KRW). Absent means buyer_moq is a quantity. A money minimum and a quantity minimum are never compared to each other and never converted between currencies: no exchange rate is available to this package and inventing one would be a fabricated term.",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "sourcing_intent": {
+      "type": "string",
+      "description": "PRD 7.1 sourcing_intent, plus \"unknown\". high = active, dated public sourcing action (open call, RFQ, \"now accepting new brands\"). medium = standing partnership/wholesale page with no dated activity. low = B2B capable but no sourcing invitation. unknown = not determined. Scoring rule BUILD-CONTRACT.md 5.2.C3.",
+      "enum": ["low", "medium", "high", "unknown"]
+    },
+    "sourcing_signals": {
+      "type": "array",
+      "description": "Distinct evidenced sourcing signals. Absent = unknown. Present-and-empty = checked, none found. Each entry must be backed by at least one evidence item (INV-01). Every value here is priced by criterion B-SI2 in scoring.config.json under the identical key, so the two lists are one vocabulary: a value added here without a B-SI2 entry is unscorable. published_trade_terms covers a buyer that publishes the commercial terms on which it takes supply - a stated minimum order (store the number in buyer_moq as well), a trade price list, or trade-only pricing behind an approval gate - which is the supplier-facing signal real B2B importers emit far more often than a brand-intake page.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "new_brand_inquiry",
+          "partnership_page",
+          "wholesale_inquiry_form",
+          "become_a_distributor_page",
+          "brand_submission_form",
+          "open_call_for_suppliers",
+          "active_sourcing_post",
+          "trade_show_attendance",
+          "published_trade_terms",
+          "rfq_posted"
+        ]
+      },
+      "uniqueItems": true,
+      "maxItems": 10
+    },
+    "channels": {
+      "type": "array",
+      "description": "Sales channels the buyer operates. Scored by criteria B-MR3 (channel match against query.channels, incl. channel_partial_match via scoring.config.json channel_adjacency) and B-CR3 (distributor_network_operated). Absent = unknown; present-and-empty = checked, none found.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "retail_store",
+          "ecommerce",
+          "marketplace",
+          "wholesale",
+          "salon_spa",
+          "pharmacy",
+          "department_store",
+          "distributor_network",
+          "duty_free",
+          "other"
+        ]
+      },
+      "uniqueItems": true,
+      "maxItems": 10
+    },
+    "contact_channels": {
+      "type": "array",
+      "description": "Official company-level contact channels only. PRD 11.1/11.3: never store inferred personal emails or phone numbers. Absent = unknown (reachability criterion takes the unknown penalty). Present-and-empty = verified that no public channel exists (scores 0).",
+      "items": {
+        "$ref": "#/$defs/contact_channel"
+      },
+      "maxItems": 20
+    },
+    "stale": {
+      "type": "boolean",
+      "description": "Site unreachable / archived / clearly outdated (PRD EVID-04, test T07). Applies the stale penalty to evidence_quality and multiplies confidence. Default false.",
+      "default": false
+    },
+    "operational_status": {
+      "type": "string",
+      "description": "Evidenced business status. \"closed\" or \"unreachable\" excludes the record from outreach but never fabricates other field values.",
+      "enum": ["active", "closed", "unreachable", "unknown"],
+      "default": "unknown"
+    },
+    "status": {
+      "$ref": "#/$defs/entity_status"
+    },
+    "qualification_score": {
+      "description": "PRD 6.3 Buyer Qualification Score, integer 0..100. BUILD-CONTRACT.md 5.2. When score_version == \"unscored\" this MUST be 0 and carries no meaning.",
+      "$ref": "#/$defs/score_0_100"
+    },
+    "dimension_scores": {
+      "type": "object",
+      "description": "The PRD 6.3 buyer dimensions, each an integer 0..100. Required in profile=scored, EXCEPT market_relevance: all three of its criteria carry an inapplicable_when condition, so a run whose query names no country, no product category and no channel drops the dimension entirely rather than scoring it 0. qualification_score == round_half_up(sum(weight_d * score_d for APPLICABLE d) / sum(weight_d for applicable d) * 100); with every dimension applicable that is the familiar (20*kbeauty_fit + 20*b2b_role + 25*sourcing_intent + 15*market_relevance + 10*reachability + 10*evidence_quality)/100. Renormalising over the applicable weights is what the config\u0027s INAPPLICABLE rule requires (a criterion - and by extension a wholly inapplicable dimension - leaves BOTH the numerator and the denominator); counting a dropped dimension as 0 in a fixed /100 denominator docked every candidate a flat 15 points on a no-query run.",
+      "additionalProperties": false,
+      "required": [
+        "kbeauty_fit",
+        "b2b_role",
+        "sourcing_intent",
+        "reachability",
+        "evidence_quality"
+      ],
+      "properties": {
+        "kbeauty_fit": { "$ref": "#/$defs/score_0_100" },
+        "b2b_role": { "$ref": "#/$defs/score_0_100" },
+        "sourcing_intent": { "$ref": "#/$defs/score_0_100" },
+        "market_relevance": { "$ref": "#/$defs/score_0_100" },
+        "reachability": { "$ref": "#/$defs/score_0_100" },
+        "evidence_quality": { "$ref": "#/$defs/score_0_100" }
+      }
+    },
+    "dimension_details": {
+      "type": "array",
+      "description": "Per-criterion audit trail, emitted by score_buyer.py so a human can reconstruct every point. PRD 6.3 (\"점수와 함께 계산 근거를 노출한다\").",
+      "items": { "$ref": "#/$defs/dimension_detail" },
+      "maxItems": 40
+    },
+    "unknown_penalty_applied": {
+      "type": "array",
+      "description": "Every criterion whose inputs were all unknown, with the neutral-base + penalty arithmetic that was applied instead of a zero. PRD 6.4.4 and test T04.",
+      "items": { "$ref": "#/$defs/unknown_penalty" },
+      "maxItems": 40
+    },
+    "confidence": {
+      "$ref": "#/$defs/confidence_value"
+    },
+    "qualified": {
+      "type": "boolean",
+      "description": "qualification_score >= the effective threshold resolved by scoring.config.json qualification_threshold. Emitted by score_buyer.py."
+    },
+    "evidence": {
+      "type": "array",
+      "description": "Evidence backing the material claims on this record. Embedded by value. Every non-\"unknown\" material field must be covered by at least one evidence item whose `claim` is that field's canonical claim key (INV-01).",
+      "items": { "$ref": "#/$defs/evidence" },
+      "maxItems": 200
+    },
+    "conflicts": {
+      "type": "array",
+      "description": "Fields where two sources disagreed, plus how the disagreement was resolved (PRD test T08: official/most-recent wins, conflict note is kept).",
+      "items": { "$ref": "#/$defs/conflict" },
+      "maxItems": 40
+    },
+    "missing": {
+      "type": "array",
+      "description": "Human-readable labels of the material facts still unknown, rendered on the \"Missing:\" line of PRD 12.1 output. Derived from unknown_penalty_applied; BUILD-CONTRACT.md 10.1.",
+      "items": { "type": "string", "maxLength": 200 },
+      "maxItems": 40
+    },
+    "merged_from": {
+      "type": "array",
+      "description": "buyer_id values folded into this record by dedupe_companies.py (PRD DISC-04, test T06).",
+      "items": { "type": "string", "maxLength": 128 },
+      "uniqueItems": true,
+      "maxItems": 100
+    },
+    "alias_domains": {
+      "type": "array",
+      "description": "Other domains observed for the same entity (www/non-www variants, local-language domains) that resolved to this canonical_domain.",
+      "items": { "type": "string", "maxLength": 253 },
+      "uniqueItems": true,
+      "maxItems": 50
+    },
+    "source_query": {
+      "type": "object",
+      "description": "Echo of the discovery query that produced this candidate, so market_relevance is auditable.",
+      "additionalProperties": false,
+      "properties": {
+        "country": { "type": "string", "maxLength": 100 },
+        "product_categories": { "$ref": "#/$defs/category_list" },
+        "keywords": { "type": "array", "items": { "type": "string", "maxLength": 200 }, "maxItems": 50 },
+        "category_drift": {
+          "type": "boolean",
+          "description": "True when the agent had to widen the query and the result may sit outside the requested category (PRD DISC-05).",
+          "default": false
+        }
+      }
+    },
+    "as_of": {
+      "type": "string",
+      "format": "date",
+      "description": "The --as-of date the score was computed against. Recency buckets are measured against this date only; scripts never read the wall clock (PRD 14 Determinism).",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "notes": {
+      "type": "array",
+      "description": "Operator-facing notes. Inference, caveats and \"확인 필요\" flags go here, never into evidence quotes.",
+      "items": { "type": "string", "maxLength": 1000 },
+      "maxItems": 50
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Escape hatch for runtime- or tenant-specific fields. Never read by any scoring script; never rendered in output.",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "evidence": {
+      "title": "Evidence",
+      "description": "A single atomic, source-backed claim about a company, RFQ or market fact. PRD 7.4 + 10.3 (source priority) + EVID-01..EVID-05. Evidence objects are embedded by value inside buyer/seller/rfq/match-result documents; evidence_id is unique within the enclosing document.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "evidence_id",
+        "claim",
+        "value",
+        "source_url",
+        "source_type",
+        "source_tier",
+        "is_official",
+        "observed_at",
+        "source_date",
+        "confidence",
+        "quote_or_summary"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "description": "Version of this schema contract, e.g. \"0.1.0\".",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "evidence_id": {
+          "type": "string",
+          "description": "Stable id, unique within the enclosing document. Recommended form: EV-<zero padded counter>, e.g. \"EV-001\".",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "claim": {
+          "type": "string",
+          "description": "Canonical claim key this evidence supports. Use a key from BUILD-CONTRACT.md section 4.6 (canonical claim keys) whenever one applies, e.g. \"korean_products_signal\", \"moq\", \"certifications\", \"oem_odm\". Free text is allowed only for claims that have no canonical key. Korean gloss: 이 근거가 뒷받침하는 주장 키.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "value": {
+          "description": "The observed value for the claim, exactly as normalized into the parent record. Arrays are allowed for list-valued claims such as certifications. \"unknown\" is allowed when the source explicitly states the value is undisclosed.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "$ref": "#/$defs/numeric_range"
+            }
+          ]
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Absolute http(s) URL that a human can click to re-verify the claim. No login-walled, CAPTCHA-bypassed or paywalled URLs (PRD 11.1).",
+          "pattern": "^https?://[^\\s]+$",
+          "maxLength": 2048
+        },
+        "source_domain": {
+          "type": "string",
+          "description": "Canonical registrable domain of source_url, derived by _common.canonical_domain(). Used for the independent-source count in the evidence-quality sub-score.",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
+          "maxLength": 253
+        },
+        "source_type": {
+          "type": "string",
+          "description": "PRD 7.4 source_type enum, plus \"internal_record\" for facts read out of TradeWith's own database via adapters/tradewith_adapter.py (BUILD-CONTRACT.md 4.7).",
+          "enum": [
+            "official_site",
+            "official_directory",
+            "trade_show",
+            "third_party",
+            "social",
+            "internal_record"
+          ]
+        },
+        "source_tier": {
+          "type": "integer",
+          "description": "PRD 10.3 source priority tier. 1 = company official site / official contact-wholesale-export-OEM page. 2 = official trade-show, association, government or trade-agency directory. 3 = official LinkedIn or company social profile. 4 = reputable third-party directory or press release. 5 = community, blog, forum (supporting signal only). Korean gloss: 출처 우선순위 등급. internal_record defaults to tier 2.",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "is_official": {
+          "type": "boolean",
+          "description": "True only when the claim was read on a channel the company itself controls (own domain, own verified social profile, own exhibitor entry). PRD EVID-02."
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "RFC3339 timestamp of when the agent read the page. This is OUR observation time, never the page's own date.",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+        },
+        "source_date": {
+          "description": "Date the source content itself was published or last updated. \"unknown\" when the page exposes no date. Never guess. Korean gloss: 출처 자체의 작성/갱신일.",
+          "oneOf": [
+            {
+              "type": "string",
+              "format": "date",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+            },
+            {
+              "const": "unknown"
+            }
+          ]
+        },
+        "confidence": {
+          "type": "number",
+          "description": "How strongly this single source supports the claim, 0..1, two decimal places.",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "quote_or_summary": {
+          "type": "string",
+          "description": "Verbatim quote (preferred, <= 300 chars) or a faithful one-sentence summary of the passage that supports the claim. Must not contain inference.",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "inferred": {
+          "type": "boolean",
+          "description": "True when the value was derived by reasoning rather than read literally. PRD EVID-03 requires fact and inference to be separated. Default false.",
+          "default": false
+        },
+        "stale": {
+          "type": "boolean",
+          "description": "True when the source is unreachable, archived, or clearly outdated (PRD EVID-04, test T07). Triggers the stale penalty in the evidence-quality sub-score.",
+          "default": false
+        },
+        "conflicts_with": {
+          "type": "array",
+          "description": "evidence_id values in the same document that assert a contradictory value for the same claim (PRD test T08). Non-empty triggers the conflict penalty and requires a conflict note on the parent record.",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "uniqueItems": true,
+          "default": []
+        },
+        "retrieval_method": {
+          "type": "string",
+          "description": "How the page was retrieved. Only non-bypassing methods are permitted (PRD 11.1).",
+          "enum": [
+            "web_search",
+            "page_fetch",
+            "sitemap",
+            "internal_api",
+            "manual_entry"
+          ]
+        },
+        "notes": {
+          "type": "array",
+          "description": "Free-form operator notes about this single evidence item.",
+          "items": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "default": []
+        }
+      },
+      "$defs": {
+        "numeric_range": {
+          "type": "object",
+          "description": "Inclusive numeric interval.",
+          "additionalProperties": false,
+          "required": [
+            "min",
+            "max"
+          ],
+          "properties": {
+            "min": {
+              "type": "number",
+              "minimum": 0
+            },
+            "max": {
+              "type": "number",
+              "minimum": 0
+            },
+            "unit": {
+              "type": "string",
+              "maxLength": 32
+            }
+          }
+        }
+      }
+    },
+    "numeric_range": {
+      "type": "object",
+      "description": "Inclusive numeric interval.",
+      "additionalProperties": false,
+      "required": [
+        "min",
+        "max"
+      ],
+      "properties": {
+        "min": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max": {
+          "type": "number",
+          "minimum": 0
+        },
+        "unit": {
+          "type": "string",
+          "maxLength": 32
+        }
+      }
+    },
+    "quantity_value": {
+      "description": "A quantity: a non-negative number, an inclusive {min,max} range, or the literal \"unknown\". BUILD-CONTRACT.md 3.3 normal form; _common.coerce_range() turns every non-unknown spelling into {\"min\": m, \"max\": M}.",
+      "oneOf": [
+        {
+          "type": "number",
+          "minimum": 0
+        },
+        {
+          "$ref": "#/$defs/numeric_range"
+        },
+        {
+          "const": "unknown"
+        }
+      ]
+    },
+    "tri_state": {
+      "description": "A tri-state fact: true, false, or the literal \"unknown\". BUILD-CONTRACT.md 3.2 - absence and \"unknown\" both mean \"not yet determined\" and take the neutral-base penalty; false means \"checked, demonstrably not the case\" and scores as a real negative. Never write false for absence.",
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "const": "unknown"
+        }
+      ]
+    },
+    "country_code": {
+      "description": "ISO-3166-1 alpha-2 country code, upper case, or the literal \"unknown\" (BUILD-CONTRACT.md 3.7, 8.7). \"unknown\" is a legal value and takes the unknown path; it never causes a hard-filter rejection.",
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$"
+        },
+        {
+          "const": "unknown"
+        }
+      ]
+    },
+    "category_list": {
+      "type": "array",
+      "description": "Canonical product-category slugs from the BUILD-CONTRACT.md 8.5 vocabulary. A well-formed but unmapped slug is preserved verbatim with a note and matches only exactly (INV-33). Absent = unknown; present-and-empty = checked, none found.",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]{1,39}$"
+      },
+      "uniqueItems": true,
+      "maxItems": 30
+    },
+    "score_0_100": {
+      "type": "integer",
+      "description": "A deterministic score, integer 0..100, rounded half-up (scoring.config.json determinism.rounding).",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "confidence_value": {
+      "type": "number",
+      "description": "How much the reviewer should trust this record, 0..1, two decimal places. Driven by evidence quality, coverage, staleness and unresolved conflicts; never by the score itself.",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "score_version": {
+      "type": "string",
+      "description": "Identifier of the scoring rubric that produced every number on this record, e.g. \"kbtm-score-0.1.0\" (scoring.config.json score_version). The literal \"unscored\" marks the raw discovery profile, in which qualification_score MUST be 0 and dimension_scores is absent (BUILD-CONTRACT.md 3.1, INV-23). A match-result document never carries \"unscored\".",
+      "maxLength": 64,
+      "anyOf": [
+        {
+          "pattern": "^kbtm-score-[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        {
+          "const": "unscored"
+        }
+      ]
+    },
+    "entity_status": {
+      "type": "string",
+      "description": "PRD 8 state machine. A seller inside a match run is normally MATCH_CANDIDATE, or READY_FOR_REVIEW once an outreach draft exists. The skill's own responsibility ends at READY_FOR_REVIEW; later states are owned by the TradeWith/CRM layer.",
+      "enum": [
+        "DISCOVERED",
+        "VERIFIED",
+        "QUALIFIED",
+        "MATCH_CANDIDATE",
+        "READY_FOR_REVIEW",
+        "APPROVED_FOR_OUTREACH",
+        "CONTACTED",
+        "REPLIED",
+        "RFQ_RECEIVED",
+        "PROPOSAL_RECEIVED",
+        "MATCHED",
+        "CLOSED"
+      ]
+    },
+    "contact_channel": {
+      "type": "object",
+      "description": "One official, company-level contact channel (BUILD-CONTRACT.md 3.6). Named individuals' addresses, direct-dial numbers, personal social handles and any pattern-guessed address MUST NOT be stored here or anywhere else (PRD 11.3, INV-11, INV-31).",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Channel type, aligned with the B-RE1 signal keys in scoring.config.json. Korean gloss: 연락 채널 유형.",
+          "enum": [
+            "partnership_form",
+            "wholesale_form",
+            "form",
+            "contact_page",
+            "corporate_email",
+            "phone",
+            "linkedin",
+            "messenger",
+            "other"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "description": "An absolute URL for the form/page/profile types, a role address on the company domain for corporate_email, or the company switchboard number as published for phone.",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "label": {
+          "type": "string",
+          "description": "Optional display label as printed by the company, e.g. \"Brand Partnership\". Never a person's name or job title.",
+          "maxLength": 200
+        },
+        "evidence_ids": {
+          "$ref": "#/$defs/evidence_id_list"
+        }
+      }
+    },
+    "unknown_penalty": {
+      "type": "object",
+      "description": "One criterion whose deciding inputs were all unknown. PRD 6.4.4 / test T04: unknown is neither a zero nor a rejection. The criterion receives round_half_up(criterion_max_points * (neutral_base / 100) * penalty_factor) instead of its full points, and the fact is surfaced to the reviewer as \"확인 필요\". Shape is shared with buyer.schema.json and seller.schema.json.",
+      "additionalProperties": false,
+      "required": [
+        "dimension",
+        "criterion_id",
+        "label",
+        "unknown_inputs",
+        "criterion_max_points",
+        "neutral_base",
+        "penalty_factor",
+        "applied_points"
+      ],
+      "properties": {
+        "dimension": {
+          "type": "string",
+          "description": "Dimension key the criterion belongs to, e.g. \"operation_fit\" on a match result or \"operational_fit\" on a seller record.",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "criterion_id": {
+          "type": "string",
+          "description": "Criterion identifier from scoring.config.json, e.g. \"S-OP1\".",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable criterion label, reused verbatim on the \"Missing:\" / \"확인 필요\" line.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "unknown_inputs": {
+          "type": "array",
+          "description": "Dotted field paths that were unknown or absent, e.g. [\"seller.moq\"].",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "uniqueItems": true,
+          "maxItems": 20
+        },
+        "criterion_max_points": {
+          "$ref": "#/$defs/points_0_100"
+        },
+        "neutral_base": {
+          "type": "number",
+          "description": "scoring.config.json unknown.neutral_base (50): the neutral midpoint an unknown criterion starts from instead of 0.",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "penalty_factor": {
+          "type": "number",
+          "description": "scoring.config.json unknown.penalty_factor (0.6): how much of the neutral base survives the penalty.",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "applied_points": {
+          "description": "round_half_up(criterion_max_points * (neutral_base / 100) * penalty_factor). Example: a 55-point criterion yields round_half_up(55 * 0.5 * 0.6) = round_half_up(16.5) = 17.",
+          "$ref": "#/$defs/points_0_100"
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional clarification, e.g. \"MOQ not published; hard filter HF-03 skipped.\"",
+          "maxLength": 500
+        }
+      }
+    },
+    "dimension_detail": {
+      "type": "object",
+      "description": "Per-criterion audit trail for one scored criterion, so a human can reconstruct every point (PRD 6.3). Shape is shared with buyer.schema.json and seller.schema.json.",
+      "additionalProperties": false,
+      "required": [
+        "dimension",
+        "criterion_id",
+        "label",
+        "max_points",
+        "earned_points"
+      ],
+      "properties": {
+        "dimension": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "criterion_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "max_points": {
+          "$ref": "#/$defs/points_0_100"
+        },
+        "earned_points": {
+          "type": "number",
+          "description": "Points actually credited, after the criterion's aggregation rule and after any unknown penalty. May be 0.",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "signals_fired": {
+          "type": "array",
+          "description": "Exact signal keys from scoring.config.json that fired for this criterion, e.g. [\"moq_at_or_below_max\"].",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "uniqueItems": true,
+          "maxItems": 30
+        },
+        "state": {
+          "type": "string",
+          "description": "\"scored\" = inputs known. \"unknown\" = all deciding inputs unknown, neutral-base penalty applied. \"inapplicable\" = the RFQ imposes no such constraint, so the criterion is dropped from the dimension denominator and renormalised.",
+          "enum": [
+            "scored",
+            "unknown",
+            "inapplicable"
+          ],
+          "default": "scored"
+        },
+        "evidence_ids": {
+          "$ref": "#/$defs/evidence_id_list"
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 500
+        }
+      }
+    },
+    "conflict": {
+      "type": "object",
+      "description": "One field where two sources disagreed, and how the disagreement was resolved (PRD test T08, BUILD-CONTRACT.md 4.8). Both evidence items are kept and cross-linked via evidence.conflicts_with; the losing value is preserved here and never silently dropped. A conflict recorded here is RESOLVED and costs no evidence-quality points.",
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "winning_value",
+        "losing_value",
+        "winning_evidence_ids",
+        "losing_evidence_ids",
+        "resolution"
+      ],
+      "properties": {
+        "field": {
+          "type": "string",
+          "description": "Canonical claim key / field name the two sources disagreed on, e.g. \"moq\".",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "winning_value": {
+          "description": "The value that was written into the record.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "array",
+            "object",
+            "null"
+          ]
+        },
+        "losing_value": {
+          "description": "The value that lost. Preserved so the operator can re-open the decision.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "array",
+            "object",
+            "null"
+          ]
+        },
+        "winning_evidence_ids": {
+          "$ref": "#/$defs/evidence_id_list"
+        },
+        "losing_evidence_ids": {
+          "$ref": "#/$defs/evidence_id_list"
+        },
+        "resolution": {
+          "type": "string",
+          "description": "Which BUILD-CONTRACT.md 4.8 tie-break decided it, in order: official_source, then more_recent, then higher_confidence; manual = an operator decided.",
+          "enum": [
+            "official_source",
+            "more_recent",
+            "higher_confidence",
+            "manual"
+          ]
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 500
+        }
+      }
+    },
+    "evidence_id_list": {
+      "type": "array",
+      "description": "evidence_id values resolvable in the enclosing document's `evidence` array (INV-22). Ids are never invented: an empty list means \"no source backs this statement\" and must be rendered as such.",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128
+      },
+      "uniqueItems": true,
+      "maxItems": 50
+    },
+    "points_0_100": {
+      "type": "number",
+      "description": "A point value on the 0..100 scale that may carry decimals (weighted contributions, criterion points). Rounded to determinism.decimal_places.weighted_contributions.",
+      "minimum": 0,
+      "maximum": 100
+    }
+  }
+}

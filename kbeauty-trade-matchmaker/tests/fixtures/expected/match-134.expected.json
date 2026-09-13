@@ -1,0 +1,566 @@
+{
+  "__note__": "Field-level expectation document derived from docs/SCORING-CONTRACT.md v0.1.0; see tests/cases.md for the derivation of each number.",
+  "run": {
+    "script": "score_match.py",
+    "rfq_id": "134",
+    "as_of": "2026-09-12",
+    "score_version": "kbtm-score-0.1.0",
+    "threshold": 70,
+    "threshold_mode": "fixed",
+    "top_n": 10,
+    "weights_used": {
+      "product_fit": 0.3,
+      "model_fit": 0.2,
+      "operation_fit": 0.15,
+      "compliance_fit": 0.15,
+      "market_fit": 0.1,
+      "evidence_quality": 0.1
+    }
+  },
+  "rfq_readiness": {
+    "qualification_score": 70,
+    "readiness_detail": {
+      "filled": 7,
+      "total": 10,
+      "missing_fields": [
+        "buyer_id",
+        "target_price",
+        "timeline"
+      ]
+    }
+  },
+  "summary": {
+    "candidates_considered": 20,
+    "passed_hard_filter": 11,
+    "returned": 10,
+    "excluded_count": 9,
+    "qualified_count": 11,
+    "threshold_used": 70,
+    "threshold_mode": "fixed",
+    "top_n_requested": 10,
+    "reranked_count": 1,
+    "score_range": {
+      "min": 75,
+      "max": 99
+    }
+  },
+  "order": [
+    "SEL-hanbitcos-example",
+    "SEL-hansolodm-example",
+    "SEL-hwadamglobal-example",
+    "SEL-nuriskinlab-example",
+    "SEL-pyeongwhacos-example",
+    "SEL-areumfactory-example",
+    "SEL-kkotgilcos-example",
+    "SEL-mirinaeoem-example",
+    "SEL-yeonhwalab-example",
+    "SEL-dalbitlabs-example"
+  ],
+  "results": {
+    "SEL-hanbitcos-example": {
+      "seller_name": "Hanbit Cosmetics Co., Ltd.",
+      "base_score": 97,
+      "match_score": 99,
+      "rerank_applied": true,
+      "rerank_delta": 2,
+      "component_scores": {
+        "product_fit": 100,
+        "model_fit": 100,
+        "operation_fit": 90,
+        "compliance_fit": 96,
+        "market_fit": 87,
+        "evidence_quality": 100
+      },
+      "weighted_contributions": {
+        "product_fit": 30.0,
+        "model_fit": 20.0,
+        "operation_fit": 13.5,
+        "compliance_fit": 14.4,
+        "market_fit": 8.7,
+        "evidence_quality": 10.0
+      },
+      "confidence": 1.0,
+      "hard_filter": {
+        "passed": true,
+        "rules_evaluated": [
+          "HF-01",
+          "HF-02",
+          "HF-03",
+          "HF-04",
+          "HF-06",
+          "HF-08"
+        ],
+        "rules_skipped_unknown": []
+      },
+      "unknown_criteria": [],
+      "missing": [],
+      "qualified": true
+    },
+    "SEL-yeonhwalab-example": {
+      "seller_name": "Yeonhwa Lab Co., Ltd.",
+      "base_score": 79,
+      "match_score": 79,
+      "rerank_applied": false,
+      "rerank_delta": 0,
+      "component_scores": {
+        "product_fit": 91,
+        "model_fit": 95,
+        "operation_fit": 43,
+        "compliance_fit": 64,
+        "market_fit": 77,
+        "evidence_quality": 86
+      },
+      "weighted_contributions": {
+        "product_fit": 27.3,
+        "model_fit": 19.0,
+        "operation_fit": 6.45,
+        "compliance_fit": 9.6,
+        "market_fit": 7.7,
+        "evidence_quality": 8.6
+      },
+      "confidence": 0.82,
+      "hard_filter": {
+        "passed": true,
+        "rules_evaluated": [
+          "HF-01",
+          "HF-02",
+          "HF-06",
+          "HF-08"
+        ],
+        "rules_skipped_unknown": [
+          "HF-03"
+        ]
+      },
+      "unknown_criteria": [
+        "S-CP3",
+        "S-OP1",
+        "S-OP3"
+      ],
+      "missing": [
+        "MOQ against the buyer ceiling",
+        "Capacity against the order quantity",
+        "Destination-market registration"
+      ],
+      "qualified": true
+    },
+    "SEL-mirinaeoem-example": {
+      "seller_name": "Mirinae OEM Co., Ltd.",
+      "base_score": 80,
+      "match_score": 80,
+      "rerank_applied": false,
+      "rerank_delta": 0,
+      "component_scores": {
+        "product_fit": 96,
+        "model_fit": 98,
+        "operation_fit": 87,
+        "compliance_fit": 12,
+        "market_fit": 77,
+        "evidence_quality": 95
+      },
+      "weighted_contributions": {
+        "product_fit": 28.8,
+        "model_fit": 19.6,
+        "operation_fit": 13.05,
+        "compliance_fit": 1.8,
+        "market_fit": 7.7,
+        "evidence_quality": 9.5
+      },
+      "confidence": 0.95,
+      "hard_filter": {
+        "passed": true,
+        "rules_evaluated": [
+          "HF-01",
+          "HF-02",
+          "HF-03",
+          "HF-06",
+          "HF-08"
+        ],
+        "rules_skipped_unknown": []
+      },
+      "unknown_criteria": [],
+      "missing": [],
+      "qualified": true
+    },
+    "SEL-hansolodm-example": {
+      "seller_name": "Hansol ODM Corp",
+      "base_score": 99,
+      "match_score": 99,
+      "rerank_applied": false,
+      "rerank_delta": 0,
+      "component_scores": {
+        "product_fit": 100,
+        "model_fit": 98,
+        "operation_fit": 95,
+        "compliance_fit": 100,
+        "market_fit": 100,
+        "evidence_quality": 100
+      },
+      "weighted_contributions": {
+        "product_fit": 30.0,
+        "model_fit": 19.6,
+        "operation_fit": 14.25,
+        "compliance_fit": 15.0,
+        "market_fit": 10.0,
+        "evidence_quality": 10.0
+      },
+      "confidence": 1.0,
+      "hard_filter": {
+        "passed": true,
+        "rules_evaluated": [
+          "HF-01",
+          "HF-02",
+          "HF-03",
+          "HF-04",
+          "HF-06",
+          "HF-08"
+        ],
+        "rules_skipped_unknown": []
+      },
+      "unknown_criteria": [],
+      "missing": [],
+      "qualified": true
+    },
+    "SEL-nuriskinlab-example": {
+      "seller_name": "Nuri Skin Lab Co., Ltd.",
+      "base_score": 91,
+      "match_score": 91,
+      "rerank_applied": false,
+      "rerank_delta": 0,
+      "component_scores": {
+        "product_fit": 91,
+        "model_fit": 98,
+        "operation_fit": 95,
+        "compliance_fit": 89,
+        "market_fit": 77,
+        "evidence_quality": 91
+      },
+      "weighted_contributions": {
+        "product_fit": 27.3,
+        "model_fit": 19.6,
+        "operation_fit": 14.25,
+        "compliance_fit": 13.35,
+        "market_fit": 7.7,
+        "evidence_quality": 9.1
+      },
+      "confidence": 0.91,
+      "hard_filter": {
+        "passed": true,
+        "rules_evaluated": [
+          "HF-01",
+          "HF-02",
+          "HF-03",
+          "HF-04",
+          "HF-06",
+          "HF-08"
+        ],
+        "rules_skipped_unknown": []
+      },
+      "unknown_criteria": [
+        "S-CP3"
+      ],
+      "missing": [
+        "Destination-market registration"
+      ],
+      "qualified": true
+    },
+    "SEL-pyeongwhacos-example": {
+      "seller_name": "Pyeongwha Cosmetics Co., Ltd.",
+      "base_score": 91,
+      "match_score": 91,
+      "rerank_applied": false,
+      "rerank_delta": 0,
+      "component_scores": {
+        "product_fit": 91,
+        "model_fit": 98,
+        "operation_fit": 95,
+        "compliance_fit": 89,
+        "market_fit": 77,
+        "evidence_quality": 91
+      },
+      "weighted_contributions": {
+        "product_fit": 27.3,
+        "model_fit": 19.6,
+        "operation_fit": 14.25,
+        "compliance_fit": 13.35,
+        "market_fit": 7.7,
+        "evidence_quality": 9.1
+      },
+      "confidence": 0.91,
+      "hard_filter": {
+        "passed": true,
+        "rules_evaluated": [
+          "HF-01",
+          "HF-02",
+          "HF-03",
+          "HF-04",
+          "HF-06",
+          "HF-08"
+        ],
+        "rules_skipped_unknown": []
+      },
+      "unknown_criteria": [
+        "S-CP3"
+      ],
+      "missing": [
+        "Destination-market registration"
+      ],
+      "qualified": true
+    },
+    "SEL-dalbitlabs-example": {
+      "seller_name": "Dalbit Labs Co., Ltd.",
+      "base_score": 75,
+      "match_score": 75,
+      "rerank_applied": false,
+      "rerank_delta": 0,
+      "component_scores": {
+        "product_fit": 91,
+        "model_fit": 98,
+        "operation_fit": 57,
+        "compliance_fit": 19,
+        "market_fit": 77,
+        "evidence_quality": 91
+      },
+      "weighted_contributions": {
+        "product_fit": 27.3,
+        "model_fit": 19.6,
+        "operation_fit": 8.55,
+        "compliance_fit": 2.85,
+        "market_fit": 7.7,
+        "evidence_quality": 9.1
+      },
+      "confidence": 0.86,
+      "hard_filter": {
+        "passed": true,
+        "rules_evaluated": [
+          "HF-01",
+          "HF-02",
+          "HF-06",
+          "HF-08"
+        ],
+        "rules_skipped_unknown": [
+          "HF-03"
+        ]
+      },
+      "unknown_criteria": [
+        "S-CP3",
+        "S-OP1"
+      ],
+      "missing": [
+        "MOQ against the buyer ceiling",
+        "Destination-market registration"
+      ],
+      "qualified": true
+    },
+    "SEL-kkotgilcos-example": {
+      "seller_name": "Kkotgil Cosmetic Co., Ltd.",
+      "base_score": 80,
+      "match_score": 80,
+      "rerank_applied": false,
+      "rerank_delta": 0,
+      "component_scores": {
+        "product_fit": 91,
+        "model_fit": 98,
+        "operation_fit": 47,
+        "compliance_fit": 64,
+        "market_fit": 77,
+        "evidence_quality": 91
+      },
+      "weighted_contributions": {
+        "product_fit": 27.3,
+        "model_fit": 19.6,
+        "operation_fit": 7.05,
+        "compliance_fit": 9.6,
+        "market_fit": 7.7,
+        "evidence_quality": 9.1
+      },
+      "confidence": 0.91,
+      "hard_filter": {
+        "passed": true,
+        "rules_evaluated": [
+          "HF-01",
+          "HF-02",
+          "HF-06",
+          "HF-08"
+        ],
+        "rules_skipped_unknown": [
+          "HF-03"
+        ]
+      },
+      "unknown_criteria": [
+        "S-CP3",
+        "S-OP1"
+      ],
+      "missing": [
+        "MOQ against the buyer ceiling",
+        "Destination-market registration"
+      ],
+      "qualified": true
+    },
+    "SEL-areumfactory-example": {
+      "seller_name": "Areum Factory Co., Ltd.",
+      "base_score": 82,
+      "match_score": 82,
+      "rerank_applied": false,
+      "rerank_delta": 0,
+      "component_scores": {
+        "product_fit": 91,
+        "model_fit": 98,
+        "operation_fit": 87,
+        "compliance_fit": 64,
+        "market_fit": 77,
+        "evidence_quality": 50
+      },
+      "weighted_contributions": {
+        "product_fit": 27.3,
+        "model_fit": 19.6,
+        "operation_fit": 13.05,
+        "compliance_fit": 9.6,
+        "market_fit": 7.7,
+        "evidence_quality": 5.0
+      },
+      "confidence": 0.3,
+      "hard_filter": {
+        "passed": true,
+        "rules_evaluated": [
+          "HF-01",
+          "HF-02",
+          "HF-03",
+          "HF-06",
+          "HF-08"
+        ],
+        "rules_skipped_unknown": []
+      },
+      "unknown_criteria": [
+        "S-CP3"
+      ],
+      "missing": [
+        "Destination-market registration"
+      ],
+      "qualified": true
+    },
+    "SEL-hwadamglobal-example": {
+      "seller_name": "Hwadam Global Co., Ltd.",
+      "base_score": 93,
+      "match_score": 93,
+      "rerank_applied": false,
+      "rerank_delta": 0,
+      "component_scores": {
+        "product_fit": 91,
+        "model_fit": 98,
+        "operation_fit": 87,
+        "compliance_fit": 89,
+        "market_fit": 100,
+        "evidence_quality": 95
+      },
+      "weighted_contributions": {
+        "product_fit": 27.3,
+        "model_fit": 19.6,
+        "operation_fit": 13.05,
+        "compliance_fit": 13.35,
+        "market_fit": 10.0,
+        "evidence_quality": 9.5
+      },
+      "confidence": 0.95,
+      "hard_filter": {
+        "passed": true,
+        "rules_evaluated": [
+          "HF-01",
+          "HF-02",
+          "HF-03",
+          "HF-04",
+          "HF-06"
+        ],
+        "rules_skipped_unknown": [
+          "HF-08"
+        ]
+      },
+      "unknown_criteria": [
+        "S-CP3"
+      ],
+      "missing": [
+        "Destination-market registration"
+      ],
+      "qualified": true,
+      "zero_weight_unknown_penalty_rule_ids": [
+        "HF-08"
+      ]
+    }
+  },
+  "excluded": {
+    "SEL-daehansuncare-example": {
+      "seller_name": "Daehan Sun Care Co., Ltd.",
+      "canonical_domain": "daehansuncare.example",
+      "reason_summary": "MOQ minimum 5,000 exceeds RFQ max 3,000",
+      "failed_rule_ids": [
+        "HF-03"
+      ]
+    },
+    "SEL-saebyeokbrand-example": {
+      "seller_name": "Saebyeok Brand Export Co., Ltd.",
+      "canonical_domain": "saebyeokbrand.example",
+      "reason_summary": "not offered",
+      "failed_rule_ids": [
+        "HF-02"
+      ]
+    },
+    "SEL-baekdutrading-example": {
+      "seller_name": "Baekdu Trading Co., Ltd.",
+      "canonical_domain": "baekdutrading.example",
+      "reason_summary": "not offered",
+      "failed_rule_ids": [
+        "HF-02"
+      ]
+    },
+    "SEL-haneulbio-example": {
+      "seller_name": "Haneul Bio Co., Ltd.",
+      "canonical_domain": "haneulbio.example",
+      "reason_summary": "not held",
+      "failed_rule_ids": [
+        "HF-04"
+      ]
+    },
+    "SEL-sopoongworks-example": {
+      "seller_name": "Sopoong Works Co., Ltd.",
+      "canonical_domain": "sopoongworks.example",
+      "reason_summary": "unreachable",
+      "failed_rule_ids": [
+        "HF-06"
+      ]
+    },
+    "SEL-jinheungcos-example": {
+      "seller_name": "Jinheung Cosmetics Co., Ltd.",
+      "canonical_domain": "jinheungcos.example",
+      "reason_summary": "market excluded by the seller",
+      "failed_rule_ids": [
+        "HF-05"
+      ]
+    },
+    "SEL-byeolbitlab-example": {
+      "seller_name": "Byeolbit Lab Co., Ltd.",
+      "canonical_domain": "byeolbitlab.example",
+      "reason_summary": "not covered",
+      "failed_rule_ids": [
+        "HF-01"
+      ]
+    },
+    "SEL-muljilcosmetic-example": {
+      "seller_name": "Muljil Cosmetic Co., Ltd.",
+      "canonical_domain": "muljilcosmetic.example",
+      "reason_summary": "not covered",
+      "failed_rule_ids": [
+        "HF-01"
+      ]
+    },
+    "SEL-saeromtrading-example": {
+      "seller_name": "Saerom Trading Co., Ltd.",
+      "canonical_domain": "saeromtrading.example",
+      "reason_summary": "fewer than two evidenced fit reasons (PRD 15.3)",
+      "failed_rule_ids": [
+        "HF-00"
+      ]
+    }
+  },
+  "no_match": {
+    "is_no_match": false
+  }
+}

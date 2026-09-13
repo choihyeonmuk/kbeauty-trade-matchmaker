@@ -1,0 +1,606 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tradewith.example/kbeauty-trade-matchmaker/v0.1.0/rfq.schema.json",
+  "title": "RFQ",
+  "description": "A buying request / sourcing requirement, normally loaded from TradeWith via GET /rfqs/:id (PRD 13.1) or authored by the operator. PRD 7.3. score_match.py projects this document onto the seller query surface (BUILD-CONTRACT.md 6.1) so that the six match components reuse the six seller dimensions verbatim. Note: PRD 7.3 defines the RFQ lifecycle in lowercase; that is preserved here, while buyer/seller use the uppercase PRD 8 state machine.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "score_version",
+    "rfq_id",
+    "buyer_id",
+    "destination_country",
+    "product_category",
+    "commercial_model",
+    "status",
+    "qualification_score",
+    "confidence",
+    "evidence",
+    "notes"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Version of this schema contract, e.g. \"0.1.0\"."
+    },
+    "score_version": { "$ref": "#/$defs/score_version" },
+    "rfq_id": {
+      "type": "string",
+      "description": "TradeWith RFQ id. The PRD renders it as \"RFQ #134\"; store the bare id (\"134\") or the prefixed form consistently.",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:#-]{0,127}$"
+    },
+    "buyer_id": {
+      "description": "buyer_id of the requesting buyer, or null when the RFQ is operator-authored and not yet linked to a buyer record. PRD 7.3.",
+      "oneOf": [
+        { "type": "string", "minLength": 1, "maxLength": 128 },
+        { "type": "null" }
+      ]
+    },
+    "destination_country": {
+      "description": "ISO-3166-1 alpha-2 destination market. Drives market_fit, compliance registration lookup and hard filter HF-05.",
+      "$ref": "#/$defs/country_code"
+    },
+    "product_category": {
+      "type": "string",
+      "description": "Primary canonical category slug (BUILD-CONTRACT.md 8.5), e.g. \"sunscreen\". Required; drives hard filter HF-01.",
+      "pattern": "^[a-z][a-z0-9_]{1,39}$"
+    },
+    "product_categories_extra": {
+      "description": "Additional acceptable category slugs. Union with product_category forms the query category set.",
+      "$ref": "#/$defs/category_list"
+    },
+    "product_description": {
+      "type": "string",
+      "description": "Free-text requirement used only by the semantic rerank step (PRD 6.4.3). Never used by the deterministic scorers.",
+      "maxLength": 4000
+    },
+    "product_forms": {
+      "type": "array",
+      "description": "Requested formulation slugs. Absent/empty => the product_fit form criterion is INAPPLICABLE (dropped from the denominator), not unknown.",
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,39}$" },
+      "uniqueItems": true,
+      "maxItems": 30
+    },
+    "quantity": {
+      "description": "Order quantity. number | {min,max} | \"unknown\". PRD 7.3. Ranges are compared on `max` for capacity checks.",
+      "$ref": "#/$defs/quantity_value"
+    },
+    "max_moq": {
+      "description": "Highest MOQ the buyer will accept. number | null (no constraint). PRD 7.3. Drives hard filter HF-03 and the operation_fit MOQ criterion.",
+      "oneOf": [
+        { "type": "number", "minimum": 0 },
+        { "type": "null" }
+      ]
+    },
+    "moq_unit": {
+      "type": "string",
+      "description": "Unit `max_moq` and `quantity` are denominated in, default \"units\". Projected onto the query surface as query.moq_unit (BUILD-CONTRACT.md 6.1) and compared against seller.moq_unit; a mismatch makes S-OP1 unknown, skips HF-03 and fires the moq_unit_mismatch adjustment, so an RFQ denominated in anything other than \"units\" MUST state it here. Absent means \"units\", except that a `quantity` range carrying its own `unit` supplies the value instead (BUILD-CONTRACT.md 6.1).",
+      "maxLength": 32,
+      "default": "units"
+    },
+    "target_price": {
+      "description": "Target unit price. {min,max,currency} | number+currency via price_range | null | \"unknown\". PRD 7.3. Informational in v0.1.0; not scored.",
+      "oneOf": [
+        { "$ref": "#/$defs/price_range" },
+        { "type": "null" },
+        { "const": "unknown" }
+      ]
+    },
+    "commercial_model": {
+      "type": "string",
+      "description": "PRD 7.3 enum. \"either\" means any of branded / private_label / oem_odm is acceptable. Drives model_fit and hard filter HF-02.",
+      "enum": ["branded", "private_label", "oem_odm", "either"]
+    },
+    "required_certifications": {
+      "type": "array",
+      "description": "Certifications that MUST be held. Canonical tokens (BUILD-CONTRACT.md 8.6). Drives hard filter HF-04 (which only fires when seller.certifications_verified == true).",
+      "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{1,39}$" },
+      "uniqueItems": true,
+      "maxItems": 30
+    },
+    "preferred_certifications": {
+      "type": "array",
+      "description": "Nice-to-have certifications. Scored proportionally, never hard-filtered.",
+      "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{1,39}$" },
+      "uniqueItems": true,
+      "maxItems": 30
+    },
+    "timeline": {
+      "description": "Delivery deadline. date | {start,end} | \"unknown\". PRD 7.3. max_lead_time_days is derived from it against --as-of (BUILD-CONTRACT.md 6.1).",
+      "$ref": "#/$defs/timeline_value"
+    },
+    "max_lead_time_days": {
+      "description": "Explicit lead-time ceiling in days. When present it OVERRIDES the value derived from timeline. null = no constraint.",
+      "oneOf": [
+        { "type": "number", "minimum": 0 },
+        { "type": "null" }
+      ]
+    },
+    "required_seller_countries": {
+      "type": "array",
+      "description": "If non-empty, sellers outside this set fail hard filter HF-08. For the K-Beauty vertical this is normally [\"KR\"].",
+      "items": { "type": "string", "pattern": "^[A-Z]{2}$" },
+      "uniqueItems": true,
+      "maxItems": 50
+    },
+    "excluded_seller_countries": {
+      "type": "array",
+      "description": "Sellers from these countries fail hard filter HF-08.",
+      "items": { "type": "string", "pattern": "^[A-Z]{2}$" },
+      "uniqueItems": true,
+      "maxItems": 50
+    },
+    "status": {
+      "type": "string",
+      "description": "PRD 7.3 RFQ lifecycle, lowercase and deliberately distinct from the uppercase PRD 8 entity state machine.",
+      "enum": ["draft", "qualified", "matching", "proposal_open", "matched", "closed"]
+    },
+    "qualification_score": {
+      "description": "RFQ readiness / completeness, integer 0..100 (BUILD-CONTRACT.md 5.4). Not a buyer-quality score. When score_version == \"unscored\" this MUST be 0.",
+      "$ref": "#/$defs/score_0_100"
+    },
+    "readiness_detail": {
+      "type": "object",
+      "description": "Which of the ten readiness fields were populated, emitted by score_match.py.",
+      "additionalProperties": false,
+      "required": ["filled", "total", "missing_fields"],
+      "properties": {
+        "filled": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "total": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "missing_fields": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 80 },
+          "uniqueItems": true,
+          "maxItems": 10
+        }
+      }
+    },
+    "confidence": { "$ref": "#/$defs/confidence_value" },
+    "unknown_penalty_applied": {
+      "type": "array",
+      "description": "Present for symmetry with the other entities; RFQ readiness does not apply unknown penalties, so this is normally empty.",
+      "items": { "$ref": "#/$defs/unknown_penalty" },
+      "maxItems": 40
+    },
+    "evidence": {
+      "type": "array",
+      "description": "Evidence for RFQ facts, typically one internal_record item pointing at the TradeWith RFQ (PRD 13.1 GET /rfqs/:id). May be empty for operator-authored RFQs.",
+      "items": { "$ref": "#/$defs/evidence" },
+      "maxItems": 200
+    },
+    "as_of": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "description": "The --as-of date used for timeline arithmetic (PRD 14 Determinism)."
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string", "maxLength": 1000 },
+      "maxItems": 50,
+      "description": "Operator-facing notes and clarifications."
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Escape hatch for runtime/tenant fields. Never scored, never rendered."
+    }
+  },
+  "$defs": {
+    "evidence": {
+      "title": "Evidence",
+      "description": "A single atomic, source-backed claim about a company, RFQ or market fact. PRD 7.4 + 10.3 (source priority) + EVID-01..EVID-05. Evidence objects are embedded by value inside buyer/seller/rfq/match-result documents; evidence_id is unique within the enclosing document.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "evidence_id",
+        "claim",
+        "value",
+        "source_url",
+        "source_type",
+        "source_tier",
+        "is_official",
+        "observed_at",
+        "source_date",
+        "confidence",
+        "quote_or_summary"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "description": "Version of this schema contract, e.g. \"0.1.0\".",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "evidence_id": {
+          "type": "string",
+          "description": "Stable id, unique within the enclosing document. Recommended form: EV-<zero padded counter>, e.g. \"EV-001\".",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "claim": {
+          "type": "string",
+          "description": "Canonical claim key this evidence supports. Use a key from BUILD-CONTRACT.md section 4.6 (canonical claim keys) whenever one applies, e.g. \"korean_products_signal\", \"moq\", \"certifications\", \"oem_odm\". Free text is allowed only for claims that have no canonical key. Korean gloss: 이 근거가 뒷받침하는 주장 키.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "value": {
+          "description": "The observed value for the claim, exactly as normalized into the parent record. Arrays are allowed for list-valued claims such as certifications. \"unknown\" is allowed when the source explicitly states the value is undisclosed.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "$ref": "#/$defs/numeric_range"
+            }
+          ]
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Absolute http(s) URL that a human can click to re-verify the claim. No login-walled, CAPTCHA-bypassed or paywalled URLs (PRD 11.1).",
+          "pattern": "^https?://[^\\s]+$",
+          "maxLength": 2048
+        },
+        "source_domain": {
+          "type": "string",
+          "description": "Canonical registrable domain of source_url, derived by _common.canonical_domain(). Used for the independent-source count in the evidence-quality sub-score.",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
+          "maxLength": 253
+        },
+        "source_type": {
+          "type": "string",
+          "description": "PRD 7.4 source_type enum, plus \"internal_record\" for facts read out of TradeWith's own database via adapters/tradewith_adapter.py (BUILD-CONTRACT.md 4.7).",
+          "enum": [
+            "official_site",
+            "official_directory",
+            "trade_show",
+            "third_party",
+            "social",
+            "internal_record"
+          ]
+        },
+        "source_tier": {
+          "type": "integer",
+          "description": "PRD 10.3 source priority tier. 1 = company official site / official contact-wholesale-export-OEM page. 2 = official trade-show, association, government or trade-agency directory. 3 = official LinkedIn or company social profile. 4 = reputable third-party directory or press release. 5 = community, blog, forum (supporting signal only). Korean gloss: 출처 우선순위 등급. internal_record defaults to tier 2.",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "is_official": {
+          "type": "boolean",
+          "description": "True only when the claim was read on a channel the company itself controls (own domain, own verified social profile, own exhibitor entry). PRD EVID-02."
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "RFC3339 timestamp of when the agent read the page. This is OUR observation time, never the page's own date.",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+        },
+        "source_date": {
+          "description": "Date the source content itself was published or last updated. \"unknown\" when the page exposes no date. Never guess. Korean gloss: 출처 자체의 작성/갱신일.",
+          "oneOf": [
+            {
+              "type": "string",
+              "format": "date",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+            },
+            {
+              "const": "unknown"
+            }
+          ]
+        },
+        "confidence": {
+          "type": "number",
+          "description": "How strongly this single source supports the claim, 0..1, two decimal places.",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "quote_or_summary": {
+          "type": "string",
+          "description": "Verbatim quote (preferred, <= 300 chars) or a faithful one-sentence summary of the passage that supports the claim. Must not contain inference.",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "inferred": {
+          "type": "boolean",
+          "description": "True when the value was derived by reasoning rather than read literally. PRD EVID-03 requires fact and inference to be separated. Default false.",
+          "default": false
+        },
+        "stale": {
+          "type": "boolean",
+          "description": "True when the source is unreachable, archived, or clearly outdated (PRD EVID-04, test T07). Triggers the stale penalty in the evidence-quality sub-score.",
+          "default": false
+        },
+        "conflicts_with": {
+          "type": "array",
+          "description": "evidence_id values in the same document that assert a contradictory value for the same claim (PRD test T08). Non-empty triggers the conflict penalty and requires a conflict note on the parent record.",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "uniqueItems": true,
+          "default": []
+        },
+        "retrieval_method": {
+          "type": "string",
+          "description": "How the page was retrieved. Only non-bypassing methods are permitted (PRD 11.1).",
+          "enum": [
+            "web_search",
+            "page_fetch",
+            "sitemap",
+            "internal_api",
+            "manual_entry"
+          ]
+        },
+        "notes": {
+          "type": "array",
+          "description": "Free-form operator notes about this single evidence item.",
+          "items": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "default": []
+        }
+      },
+      "$defs": {
+        "numeric_range": {
+          "type": "object",
+          "description": "Inclusive numeric interval.",
+          "additionalProperties": false,
+          "required": [
+            "min",
+            "max"
+          ],
+          "properties": {
+            "min": {
+              "type": "number",
+              "minimum": 0
+            },
+            "max": {
+              "type": "number",
+              "minimum": 0
+            },
+            "unit": {
+              "type": "string",
+              "maxLength": 32
+            }
+          }
+        }
+      }
+    },
+    "numeric_range": {
+      "type": "object",
+      "description": "Inclusive numeric interval.",
+      "additionalProperties": false,
+      "required": [
+        "min",
+        "max"
+      ],
+      "properties": {
+        "min": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max": {
+          "type": "number",
+          "minimum": 0
+        },
+        "unit": {
+          "type": "string",
+          "maxLength": 32
+        }
+      }
+    },
+    "quantity_value": {
+      "description": "A quantity: a non-negative number, an inclusive {min,max} range, or the literal \"unknown\". BUILD-CONTRACT.md 3.3 normal form; _common.coerce_range() turns every non-unknown spelling into {\"min\": m, \"max\": M}.",
+      "oneOf": [
+        {
+          "type": "number",
+          "minimum": 0
+        },
+        {
+          "$ref": "#/$defs/numeric_range"
+        },
+        {
+          "const": "unknown"
+        }
+      ]
+    },
+    "price_range": {
+      "type": "object",
+      "description": "A unit-price band with its currency. At least one of min/max is expected; the currency is always required so two prices are never compared across currencies.",
+      "additionalProperties": false,
+      "required": [
+        "currency"
+      ],
+      "properties": {
+        "min": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max": {
+          "type": "number",
+          "minimum": 0
+        },
+        "currency": {
+          "type": "string",
+          "description": "ISO-4217 alphabetic code, upper case, e.g. \"USD\", \"KRW\", \"AED\".",
+          "pattern": "^[A-Z]{3}$"
+        }
+      }
+    },
+    "timeline_value": {
+      "description": "A delivery deadline: a single date, a {start,end} window, or the literal \"unknown\". max_lead_time_days is derived from it against --as-of (BUILD-CONTRACT.md 6.1).",
+      "oneOf": [
+        {
+          "type": "string",
+          "format": "date",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "start",
+            "end"
+          ],
+          "properties": {
+            "start": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+            },
+            "end": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+            }
+          }
+        },
+        {
+          "const": "unknown"
+        }
+      ]
+    },
+    "country_code": {
+      "description": "ISO-3166-1 alpha-2 country code, upper case, or the literal \"unknown\" (BUILD-CONTRACT.md 3.7, 8.7). \"unknown\" is a legal value and takes the unknown path; it never causes a hard-filter rejection.",
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$"
+        },
+        {
+          "const": "unknown"
+        }
+      ]
+    },
+    "category_list": {
+      "type": "array",
+      "description": "Canonical product-category slugs from the BUILD-CONTRACT.md 8.5 vocabulary. A well-formed but unmapped slug is preserved verbatim with a note and matches only exactly (INV-33). Absent = unknown; present-and-empty = checked, none found.",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]{1,39}$"
+      },
+      "uniqueItems": true,
+      "maxItems": 30
+    },
+    "score_0_100": {
+      "type": "integer",
+      "description": "A deterministic score, integer 0..100, rounded half-up (scoring.config.json determinism.rounding).",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "confidence_value": {
+      "type": "number",
+      "description": "How much the reviewer should trust this record, 0..1, two decimal places. Driven by evidence quality, coverage, staleness and unresolved conflicts; never by the score itself.",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "score_version": {
+      "type": "string",
+      "description": "Identifier of the scoring rubric that produced every number on this record, e.g. \"kbtm-score-0.1.0\" (scoring.config.json score_version). The literal \"unscored\" marks the raw discovery profile, in which qualification_score MUST be 0 and dimension_scores is absent (BUILD-CONTRACT.md 3.1, INV-23). A match-result document never carries \"unscored\".",
+      "maxLength": 64,
+      "anyOf": [
+        {
+          "pattern": "^kbtm-score-[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        {
+          "const": "unscored"
+        }
+      ]
+    },
+    "unknown_penalty": {
+      "type": "object",
+      "description": "One criterion whose deciding inputs were all unknown. PRD 6.4.4 / test T04: unknown is neither a zero nor a rejection. The criterion receives round_half_up(criterion_max_points * (neutral_base / 100) * penalty_factor) instead of its full points, and the fact is surfaced to the reviewer as \"확인 필요\". Shape is shared with buyer.schema.json and seller.schema.json.",
+      "additionalProperties": false,
+      "required": [
+        "dimension",
+        "criterion_id",
+        "label",
+        "unknown_inputs",
+        "criterion_max_points",
+        "neutral_base",
+        "penalty_factor",
+        "applied_points"
+      ],
+      "properties": {
+        "dimension": {
+          "type": "string",
+          "description": "Dimension key the criterion belongs to, e.g. \"operation_fit\" on a match result or \"operational_fit\" on a seller record.",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "criterion_id": {
+          "type": "string",
+          "description": "Criterion identifier from scoring.config.json, e.g. \"S-OP1\".",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable criterion label, reused verbatim on the \"Missing:\" / \"확인 필요\" line.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "unknown_inputs": {
+          "type": "array",
+          "description": "Dotted field paths that were unknown or absent, e.g. [\"seller.moq\"].",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "uniqueItems": true,
+          "maxItems": 20
+        },
+        "criterion_max_points": {
+          "$ref": "#/$defs/points_0_100"
+        },
+        "neutral_base": {
+          "type": "number",
+          "description": "scoring.config.json unknown.neutral_base (50): the neutral midpoint an unknown criterion starts from instead of 0.",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "penalty_factor": {
+          "type": "number",
+          "description": "scoring.config.json unknown.penalty_factor (0.6): how much of the neutral base survives the penalty.",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "applied_points": {
+          "description": "round_half_up(criterion_max_points * (neutral_base / 100) * penalty_factor). Example: a 55-point criterion yields round_half_up(55 * 0.5 * 0.6) = round_half_up(16.5) = 17.",
+          "$ref": "#/$defs/points_0_100"
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional clarification, e.g. \"MOQ not published; hard filter HF-03 skipped.\"",
+          "maxLength": 500
+        }
+      }
+    },
+    "points_0_100": {
+      "type": "number",
+      "description": "A point value on the 0..100 scale that may carry decimals (weighted contributions, criterion points). Rounded to determinism.decimal_places.weighted_contributions.",
+      "minimum": 0,
+      "maximum": 100
+    }
+  }
+}

@@ -1,0 +1,237 @@
+{
+  "__note__": "Field-level expectation document derived from docs/SCORING-CONTRACT.md v0.1.0; see tests/cases.md for the derivation of each number.",
+  "run": {
+    "script": "score_match.py",
+    "rfq_id": "901",
+    "as_of": "2026-09-12",
+    "score_version": "kbtm-score-0.1.0",
+    "threshold": 70,
+    "threshold_mode": "fixed",
+    "top_n": 10,
+    "weights_used": {
+      "product_fit": 0.3,
+      "model_fit": 0.2,
+      "operation_fit": 0.15,
+      "compliance_fit": 0.15,
+      "market_fit": 0.1,
+      "evidence_quality": 0.1
+    }
+  },
+  "rfq_readiness": {
+    "qualification_score": 70,
+    "readiness_detail": {
+      "filled": 7,
+      "total": 10,
+      "missing_fields": [
+        "buyer_id",
+        "target_price",
+        "timeline"
+      ]
+    }
+  },
+  "summary": {
+    "candidates_considered": 20,
+    "passed_hard_filter": 0,
+    "returned": 0,
+    "excluded_count": 20,
+    "qualified_count": 0,
+    "threshold_used": 70,
+    "threshold_mode": "fixed",
+    "top_n_requested": 10,
+    "reranked_count": 0
+  },
+  "order": [],
+  "results": {},
+  "excluded": {
+    "SEL-hanbitcos-example": {
+      "seller_name": "Hanbit Cosmetics Co., Ltd.",
+      "canonical_domain": "hanbitcos.example",
+      "reason_summary": "not held",
+      "failed_rule_ids": [
+        "HF-04"
+      ]
+    },
+    "SEL-daehansuncare-example": {
+      "seller_name": "Daehan Sun Care Co., Ltd.",
+      "canonical_domain": "daehansuncare.example",
+      "reason_summary": "MOQ minimum 5,000 exceeds RFQ max 3,000",
+      "failed_rule_ids": [
+        "HF-03",
+        "HF-04"
+      ]
+    },
+    "SEL-yeonhwalab-example": {
+      "seller_name": "Yeonhwa Lab Co., Ltd.",
+      "canonical_domain": "yeonhwalab.example",
+      "reason_summary": "exceeds the",
+      "failed_rule_ids": [
+        "HF-07"
+      ]
+    },
+    "SEL-mirinaeoem-example": {
+      "seller_name": "Mirinae OEM Co., Ltd.",
+      "canonical_domain": "mirinaeoem.example",
+      "reason_summary": "exceeds the",
+      "failed_rule_ids": [
+        "HF-07"
+      ]
+    },
+    "SEL-saebyeokbrand-example": {
+      "seller_name": "Saebyeok Brand Export Co., Ltd.",
+      "canonical_domain": "saebyeokbrand.example",
+      "reason_summary": "not offered",
+      "failed_rule_ids": [
+        "HF-02",
+        "HF-04"
+      ]
+    },
+    "SEL-hansolodm-example": {
+      "seller_name": "Hansol ODM Corp",
+      "canonical_domain": "hansolodm.example",
+      "reason_summary": "not held",
+      "failed_rule_ids": [
+        "HF-04"
+      ]
+    },
+    "SEL-baekdutrading-example": {
+      "seller_name": "Baekdu Trading Co., Ltd.",
+      "canonical_domain": "baekdutrading.example",
+      "reason_summary": "not offered",
+      "failed_rule_ids": [
+        "HF-02"
+      ]
+    },
+    "SEL-chorokfactory-example": {
+      "seller_name": "Chorok Cosmetic Factory Co., Ltd.",
+      "canonical_domain": "chorokfactory.example",
+      "reason_summary": "exceeds the",
+      "failed_rule_ids": [
+        "HF-07"
+      ]
+    },
+    "SEL-nuriskinlab-example": {
+      "seller_name": "Nuri Skin Lab Co., Ltd.",
+      "canonical_domain": "nuriskinlab.example",
+      "reason_summary": "not held",
+      "failed_rule_ids": [
+        "HF-04"
+      ]
+    },
+    "SEL-pyeongwhacos-example": {
+      "seller_name": "Pyeongwha Cosmetics Co., Ltd.",
+      "canonical_domain": "pyeongwhacos.example",
+      "reason_summary": "not held",
+      "failed_rule_ids": [
+        "HF-04"
+      ]
+    },
+    "SEL-dalbitlabs-example": {
+      "seller_name": "Dalbit Labs Co., Ltd.",
+      "canonical_domain": "dalbitlabs.example",
+      "reason_summary": "exceeds the",
+      "failed_rule_ids": [
+        "HF-07"
+      ]
+    },
+    "SEL-kkotgilcos-example": {
+      "seller_name": "Kkotgil Cosmetic Co., Ltd.",
+      "canonical_domain": "kkotgilcos.example",
+      "reason_summary": "exceeds the",
+      "failed_rule_ids": [
+        "HF-07"
+      ]
+    },
+    "SEL-haneulbio-example": {
+      "seller_name": "Haneul Bio Co., Ltd.",
+      "canonical_domain": "haneulbio.example",
+      "reason_summary": "not held",
+      "failed_rule_ids": [
+        "HF-04"
+      ]
+    },
+    "SEL-sopoongworks-example": {
+      "seller_name": "Sopoong Works Co., Ltd.",
+      "canonical_domain": "sopoongworks.example",
+      "reason_summary": "not held",
+      "failed_rule_ids": [
+        "HF-04",
+        "HF-06"
+      ]
+    },
+    "SEL-areumfactory-example": {
+      "seller_name": "Areum Factory Co., Ltd.",
+      "canonical_domain": "areumfactory.example",
+      "reason_summary": "exceeds the",
+      "failed_rule_ids": [
+        "HF-07"
+      ]
+    },
+    "SEL-jinheungcos-example": {
+      "seller_name": "Jinheung Cosmetics Co., Ltd.",
+      "canonical_domain": "jinheungcos.example",
+      "reason_summary": "not held",
+      "failed_rule_ids": [
+        "HF-04",
+        "HF-05"
+      ]
+    },
+    "SEL-byeolbitlab-example": {
+      "seller_name": "Byeolbit Lab Co., Ltd.",
+      "canonical_domain": "byeolbitlab.example",
+      "reason_summary": "not covered",
+      "failed_rule_ids": [
+        "HF-01",
+        "HF-04"
+      ]
+    },
+    "SEL-muljilcosmetic-example": {
+      "seller_name": "Muljil Cosmetic Co., Ltd.",
+      "canonical_domain": "muljilcosmetic.example",
+      "reason_summary": "not covered",
+      "failed_rule_ids": [
+        "HF-01",
+        "HF-04"
+      ]
+    },
+    "SEL-hwadamglobal-example": {
+      "seller_name": "Hwadam Global Co., Ltd.",
+      "canonical_domain": "hwadamglobal.example",
+      "reason_summary": "not held",
+      "failed_rule_ids": [
+        "HF-04"
+      ]
+    },
+    "SEL-saeromtrading-example": {
+      "seller_name": "Saerom Trading Co., Ltd.",
+      "canonical_domain": "saeromtrading.example",
+      "reason_summary": "fewer than two evidenced fit reasons (PRD 15.3)",
+      "failed_rule_ids": [
+        "HF-00"
+      ]
+    }
+  },
+  "no_match": {
+    "is_no_match": true,
+    "reason_kind": "hard_filter_bound",
+    "binding_rule_ids_by_frequency": [
+      "HF-04",
+      "HF-07",
+      "HF-01",
+      "HF-02",
+      "HF-00",
+      "HF-03",
+      "HF-05",
+      "HF-06"
+    ],
+    "rejection_counts": {
+      "HF-00": 1,
+      "HF-01": 2,
+      "HF-02": 2,
+      "HF-03": 1,
+      "HF-04": 12,
+      "HF-05": 1,
+      "HF-06": 1,
+      "HF-07": 6
+    }
+  }
+}

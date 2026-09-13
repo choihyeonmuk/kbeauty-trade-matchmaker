@@ -1,0 +1,990 @@
+{
+  "$id": "https://schemas.tradewith.example/kbeauty-trade-matchmaker/v0.1.0/scoring.config.json",
+  "title": "K-Beauty Trade Matchmaker scoring configuration",
+  "description": "The single place every tunable scoring number lives. score_buyer.py, score_seller.py, score_match.py and validate_output.py READ this file and MUST NOT hardcode any weight, point value, threshold or penalty. This is data, not a JSON Schema. PRD 6.3 (qualification rubrics), 6.4 (matching engine), 14 (determinism, versioning), Open Question 3 (threshold mode). Korean gloss: 모든 점수 상수의 단일 출처.",
+  "schema_version": "0.1.0",
+  "score_version": "kbtm-score-0.1.0",
+  "as_of_default": "2026-09-12",
+  "config_notes": [
+    "COMPUTATION ORDER for a buyer or seller dimension: (1) evaluate each criterion; (2) a criterion whose deciding inputs are ALL unknown takes unknown points instead of its signal points; (3) a criterion marked inapplicable for this query is dropped from BOTH the numerator and the denominator; (4) dimension_raw = 100 * sum(earned_points) / sum(applicable max_points); (5) dimension_score = clamp(round_half_up(dimension_raw) + sum(fired adjustments), 0, 100).",
+    "CRITERION AGGREGATION: aggregation \"max\" means the signals are mutually exclusive and the highest fired signal wins. aggregation \"sum_capped\" means every fired signal adds, then the criterion is clamped to its own max_points. A criterion never goes below 0.",
+    "UNKNOWN RULE (PRD 6.4.4, test T04): unknown is neither 0 nor a rejection. unknown_points = round_half_up(criterion_max_points * (unknown.neutral_base / 100) * unknown.penalty_factor) = round_half_up(criterion_max_points * 0.30). Every application emits one unknown_penalty entry (see match-result.schema.json $defs/unknown_penalty) and one human-readable label in the record's `missing` array.",
+    "INAPPLICABLE vs UNKNOWN: inapplicable means the QUERY imposes no such constraint (e.g. the RFQ lists no product_forms). Unknown means the RECORD does not disclose the value. Inapplicable renormalises the denominator; unknown does not.",
+    "QUALIFICATION SCORE: buyer.qualification_score = round_half_up(sum(dimension_score * buyer.weights[dimension]) / 100). Same shape for the seller with seller.weights. Both weight sets sum to 100.",
+    "MATCH SCORE (PRD 6.4.2): base_score = round_half_up(sum(component_scores[k] * match.weights[k])) over the six components; match.weights sum to 1.0. match_score = clamp(base_score + rerank.delta, 0, 100) with |delta| <= match.rerank.max_delta.",
+    "MATCH COMPONENTS ARE SELLER DIMENSIONS: the six match components are the six seller dimensions re-scored against the RFQ instead of against the discovery query. See match.component_sources for the exact key mapping; no separate signal tables exist for matching.",
+    "EVIDENCE QUALITY is computed by the shared function described under `evidence`, not by a signal table. It is dimension 6 for both buyer and seller and component 6 for matching.",
+    "DETERMINISM (PRD 14): all recency arithmetic is measured against the run's --as-of date, never the wall clock. All rounding is half-up. Ordering uses determinism.tie_break.",
+    "NEVER infer a value to avoid an unknown penalty (PRD EVID-05). A penalised unknown is the correct output; a fabricated certification, MOQ or export market is a defect.",
+    "PRD 12.2 ARITHMETIC NOTE: the PRD's illustrative match (product 100, model 100, MOQ 90, compliance 100, market 80, evidence 85) prints \"Match 94/100\", but the PRD 6.4.2 formula yields 30 + 20 + 13.5 + 15 + 8 + 8.5 = 95. The FORMULA is authoritative; the printed 94 is an illustration artifact. Fixtures and tests must expect 95 for that component set.",
+    "Canonical product-category slugs and certification tokens are NOT duplicated here; they live in BUILD-CONTRACT.md sections 8.5 and 8.6. Signal keys below reference them by role, not by enumerating the vocabulary."
+  ],
+  "determinism": {
+    "rounding": "half_up",
+    "rounding_note": "Python's round() is banker's rounding and MUST NOT be used. Use decimal.Decimal(value).quantize(Decimal('1'), rounding=ROUND_HALF_UP) or an equivalent helper in scripts/_common.py.",
+    "decimal_places": {
+      "component_scores": 0,
+      "dimension_scores": 0,
+      "qualification_score": 0,
+      "match_score": 0,
+      "weighted_contributions": 2,
+      "confidence": 2,
+      "earned_points": 2
+    },
+    "tie_break": ["match_score desc", "canonical_domain asc"],
+    "tie_break_note": "canonical_domain is compared as a plain ASCII string after normalisation; the literal \"unknown\" sorts last. The same tie-break, with qualification_score in place of match_score, orders buyer and seller discovery output.",
+    "sort_stability": "stable",
+    "locale_independent": true,
+    "as_of_required": true
+  },
+  "unknown": {
+    "neutral_base": 50,
+    "penalty_factor": 0.6,
+    "unknown_points_multiplier": 0.3,
+    "unknown_points_multiplier_note": "Derived value, cached here so implementers do not re-derive it: neutral_base / 100 * penalty_factor = 0.30. Example: a 55-point criterion with an unknown input earns round_half_up(55 * 0.30) = round_half_up(16.5) = 17.",
+    "max_unknown_dimensions_before_flag": 2,
+    "max_unknown_dimensions_before_flag_by_entity": {
+      "buyer": 2,
+      "seller": 4,
+      "match": 4
+    },
+    "max_unknown_dimensions_before_flag_by_entity_note": "Per-entity override of the line above; the scorers read their own entity key and fall back to max_unknown_dimensions_before_flag when it is absent. The seller and match limits are 4 because the vertical\u0027s BASELINE is that Korean makers do not publish commercial terms: over 12 tier-1-verified companies, lead_time_days and monthly_capacity_units were unknown on 100%, moq on 92%, export_markets and certifications_verified on 83%. At a limit of 2 the flag fired on 11 of 11 records and carried no information to a reviewer at all. The flag must separate an unusually thin record from the normal case, or it is noise.",
+    "flag_behaviour": "When a record's unknown_penalty_applied count exceeds the entity's limit, the record must also carry a risk/note of category \"evidence_gap\" and be rendered with a \"확인 필요 / needs verification\" marker. It is never auto-rejected. The note MUST NAME the claims that are unknown, taken from the labels of the unknown_penalty_applied entries that triggered it (for example \"확인 필요 / needs verification: MOQ, lead time, export markets\"), and MUST NOT assert a generic evidence gap: in this vertical a handful of unpublished commercial terms is the baseline, so \"this record has gaps\" tells a reviewer nothing while \"these three terms are unpublished\" tells them what to ask for.",
+    "partial_unknown_behaviour": "omit_signal_and_record_missing",
+    "partial_unknown_note": "When only SOME inputs of a criterion are unknown, the criterion is still scored from the known inputs, the signals that depend on the unknown input simply do not fire, and the unknown field is appended to the record's `notes` array. It does NOT enter `missing`, which is derived solely from unknown_penalty_applied (BUILD-CONTRACT.md 5.1, INV-03). No unknown_penalty entry is emitted for a partial unknown.",
+    "never_hard_reject_on_unknown": true
+  },
+  "evidence": {
+    "no_evidence_score": 0,
+    "no_evidence_note": "Two different states, often confused. (1) UNVERIFIED - the record HAS evidence but no item with is_official true on a material claim (third-party or directory sourcing only). It is scored, ranked and rendered with the literal \" - unverified\" appended to its header line (references/output-format.md unverified_marker). It is NOT rejected: that is PRD 15.1 criterion 3. (2) NO EVIDENCED MATERIAL CLAIM - the record carries no evidence item on any material claim at all, usually because no page could be opened. It scores 0 on evidence quality, and the discovery scorers route it to excluded[] BEFORE scoring under the DISC-06 evidence bar (evidence quality outranks result count), with a reason that says which sub-case it was. Padding the ranked list with a record that evidences nothing is the failure DISC-06 exists to prevent.",
+    "source_tier_points": {
+      "1": 100,
+      "2": 82,
+      "3": 64,
+      "4": 46,
+      "5": 20
+    },
+    "source_tier_note": "Tiers follow PRD 10.3 source priority and evidence.schema.json source_tier. 1 = company official site/page, 2 = official trade-show/association/government directory (and internal_record), 3 = official LinkedIn or company social profile, 4 = reputable third-party directory or press release, 5 = community/blog/forum.",
+    "official_bonus": 10,
+    "official_bonus_condition": "At least one evidence item with is_official true AND source_tier 1.",
+    "multi_source_bonus": {
+      "per_additional_independent_domain": 7,
+      "max": 15,
+      "note": "Independence is counted on canonical_domain(evidence.source_domain or evidence.source_url), deduplicated, so www.example.com and example.com are one domain (test T06). The first domain earns nothing; each further distinct domain earns per_additional_independent_domain up to max. The term is min(max, max(0, per_additional_independent_domain * (domain_count - 1))) and is never negative when no domain can be derived."
+    },
+    "recency_buckets": [
+      { "max_age_days": 90, "multiplier": 1.0, "label": "fresh" },
+      { "max_age_days": 365, "multiplier": 0.92, "label": "current" },
+      { "max_age_days": 730, "multiplier": 0.8, "label": "aging" },
+      { "max_age_days": null, "multiplier": 0.6, "label": "stale" }
+    ],
+    "recency_note": "age_days = as_of - evidence.source_date, in days. Buckets are evaluated in order and the FIRST bucket whose max_age_days is null or >= age_days wins. A negative age (source_date after as_of) is treated as 0.",
+    "unknown_source_date_multiplier": 0.92,
+    "unknown_source_date_note": "Applies to an evidence item whose source_date is \"unknown\". Raised from 0.85 to 0.92 - the \"current\" bucket - because an undated page is NOT a stale page, and treating it as one penalised almost the whole population identically instead of discriminating. Korean company pages (회사소개 / 사업분야 / 인증현황 / 제품 / 문의) essentially never print a date: over 12 tier-1-verified Korean makers, 1 record carried any dated evidence and the other 11 records' 68 evidence items all took \"unknown\", so the four recency buckets separated no two candidates in the run. 0.92 keeps an undated item BELOW a verifiably fresh one (1.00) and ABOVE a verifiably aging (0.80) or stale (0.60) one, which is the correct ordering: absence of a date is weaker evidence than a fresh date and stronger than a proven old one. The stale_penalty never fires on an unknown source_date - unknown is not \"older than stale_threshold_days\".",
+    "source_date_fallback": {
+      "allowed": ["http_last_modified_header", "sitemap_lastmod", "page_metadata_date"],
+      "allowed_note": "When the page body prints no date, source_date MAY be taken from one of these, in this order, because each is a machine-published date FOR THAT PAGE and carrying it onto the evidence item is a reading, not an inference: the HTTP Last-Modified response header, the <lastmod> entry for that URL in the site's sitemap.xml, or a dateModified / datePublished value in the page's own metadata (JSON-LD, OpenGraph article:modified_time, or a <time datetime> element). The item keeps inferred false and records which fallback was used.",
+      "forbidden": ["copyright_year_in_footer", "date_of_a_different_page", "newest_news_or_notice_entry_carried_onto_another_page", "wall_clock_or_run_date"],
+      "forbidden_note": "A footer \"Copyright(c) 2021\" dates the template, not the claim. The date of a company's newest 공지사항 / 뉴스 entry dates THAT entry: it may be the source_date of an evidence item whose source_url IS that entry - which is exactly why the discovery playbooks send the agent to the notice board for dated activity - and it may never be carried onto an undated 회사소개 or 인증현황 page. Nothing on the scoring path may read the wall clock (PRD 14, INV-14). When no allowed fallback exists the value stays \"unknown\" and takes unknown_source_date_multiplier; inventing a date to dodge that is the defect EVID-05 forbids."
+    },
+    "stale_threshold_days": 730,
+    "stale_penalty": -25,
+    "stale_penalty_condition": "The record carries stale true, OR the covered material-claim set is NON-EMPTY and every covered material claim's best evidence is older than stale_threshold_days (PRD EVID-04, test T07). The non-empty guard is required: over an empty covered set the \"every\" clause is vacuously true and would penalise a fresh record whose evidence happens to carry no material claim. Applied once, not per item.",
+    "conflict_penalty": -10,
+    "conflict_penalty_max": -20,
+    "conflict_penalty_condition": "Per unresolved conflict on the record (PRD test T08). A conflict resolved in favour of the official/most recent source still costs nothing but must keep its conflict note.",
+    "inferred_penalty": -8,
+    "inferred_penalty_condition": "At least one material claim rests only on evidence with inferred true (PRD EVID-03).",
+    "components": {
+      "source_strength": {
+        "weight": 0.5,
+        "formula": "mean over COVERED material claims of round_half_up(source_tier_points[best item tier] * recency_multiplier(best item)). 0 when nothing is covered."
+      },
+      "coverage": {
+        "weight": 0.35,
+        "formula": "100 * covered_material_claims / total_material_claims, where a claim is covered when at least one evidence item carries that claim key."
+      },
+      "corroboration": {
+        "weight": 0.15,
+        "formula": "min(100, max(0, 50 * (distinct independent source_domain count - 1))); 0 with zero or one domain. The max(0, ...) guard matters because an evidence item whose domain cannot be derived contributes no domain, so a record can legitimately reach a domain count of 0."
+      }
+    },
+    "formula": "evidence_quality = clamp(round_half_up(0.5*source_strength + 0.35*coverage + 0.15*corroboration + official_bonus + multi_source_bonus + stale_penalty + conflict_penalty_total + inferred_penalty), 0, 100)",
+    "material_claims": {
+      "buyer": [
+        "company_type",
+        "product_categories",
+        "korean_products_signal",
+        "wholesale_signal",
+        "partnership_signal",
+        "sourcing_intent",
+        "country",
+        "contact_channels"
+      ],
+      "seller": [
+        "company_type",
+        "product_categories",
+        "oem_odm",
+        "private_label",
+        "moq",
+        "certifications",
+        "export_markets",
+        "overseas_partner_signal"
+      ],
+      "rfq": [
+        "product_category",
+        "commercial_model",
+        "destination_country",
+        "max_moq",
+        "required_certifications"
+      ]
+    },
+    "material_claims_note": "These claim keys are the coverage denominator and the INV-01 contract referenced by buyer.schema.json and seller.schema.json: every non-unknown material field must be backed by at least one evidence item whose `claim` equals the field's key."
+  },
+  "buyer": {
+    "weights": {
+      "kbeauty_korea_fit": 20,
+      "b2b_commercial_role": 20,
+      "sourcing_intent": 25,
+      "market_relevance": 15,
+      "reachability": 10,
+      "evidence_quality": 10
+    },
+    "weights_note": "PRD 6.3 Buyer Qualification Score. Sums to 100. Dimension keys map to buyer.schema.json dimension_scores as: kbeauty_korea_fit->kbeauty_fit, b2b_commercial_role->b2b_role, sourcing_intent->sourcing_intent, market_relevance->market_relevance, reachability->reachability, evidence_quality->evidence_quality.",
+    "dimension_score_key_map": {
+      "kbeauty_korea_fit": "kbeauty_fit",
+      "b2b_commercial_role": "b2b_role",
+      "sourcing_intent": "sourcing_intent",
+      "market_relevance": "market_relevance",
+      "reachability": "reachability",
+      "evidence_quality": "evidence_quality"
+    },
+    "dimensions": {
+      "kbeauty_korea_fit": {
+        "max_points": 100,
+        "criteria": [
+          {
+            "criterion_id": "B-KF1",
+            "label": "Korean product carriage",
+            "inputs": ["buyer.korean_products_signal", "buyer.korean_brands_carried"],
+            "max_points": 55,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "signals_note": "aggregation is max, so these are ordered by evidential strength: three or more NAMED Korean brands is the strongest carriage evidence, then one or two named brands, then a first-party sourcing statement, then a bare boolean with no portfolio behind it. Pricing korean_products_signal_true equal to korean_brands_named_3_plus made a named 27-brand portfolio worth exactly what an unqualified true was worth, which is why they now differ.",
+            "signals": {
+              "korean_brands_named_3_plus": 55,
+              "korean_brands_named_1_2": 48,
+              "korea_sourcing_statement": 45,
+              "korean_products_signal_true": 40,
+              "korean_products_signal_false": 0
+            }
+          },
+          {
+            "criterion_id": "B-KF2",
+            "label": "K-Beauty positioning",
+            "inputs": ["buyer.product_categories", "buyer.korean_products_signal", "evidence:kbeauty_positioning"],
+            "max_points": 30,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "signals_note": "The first three are agent signals (an evidence item whose claim IS the signal key); korean_carriage_with_beauty_categories is the FIELD-DERIVED fallback that makes the criterion reachable without one. It fires when korean_products_signal is true AND product_categories overlap the core beauty vocabulary. Without it this criterion fired for 0 of 20 real candidates and scored 0 whenever product_categories was KNOWN, while an all-unknown record took the 9-point neutral - so knowing less scored higher. The unknown state is now keyed to the same inputs the criterion can score.",
+            "signals": {
+              "kbeauty_specialist_positioning": 30,
+              "korean_category_page": 22,
+              "korean_carriage_with_beauty_categories": 20,
+              "korean_beauty_marketing_mention": 12
+            }
+          },
+          {
+            "criterion_id": "B-KF3",
+            "label": "Beauty category alignment",
+            "inputs": ["buyer.product_categories"],
+            "max_points": 15,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "signals": {
+              "beauty_categories_present": 15,
+              "beauty_adjacent_categories_present": 8
+            }
+          }
+        ],
+        "adjustments": {
+          "non_beauty_business": -60,
+          "korean_products_signal_false": -25,
+          "korean_products_signal_unknown": -20
+        },
+        "adjustments_note": "non_beauty_business implements PRD test T09: a wholesaler with no beauty business must fall out of the K-Beauty fit dimension, not merely score mid. It fires only on a PRESENT, non-empty product_categories that excludes beauty - an absent list is unknown, not a verified negative, so it could never reach a candidate nobody had checked. korean_products_signal_unknown closes that gap from the other side: in a live run a candidate with korean_products_signal and product_categories BOTH unknown - no Korean or K-Beauty reference on any page read - scored 70, qualified, and outranked seven companies with evidenced named Korean portfolios, because the unknown neutral floors kbeauty_fit at 31 rather than gating. -20 keeps unknown penalised rather than rejected (never_hard_reject_on_unknown still holds) while making it cost more than a verified small portfolio."
+      },
+      "b2b_commercial_role": {
+        "max_points": 100,
+        "criteria": [
+          {
+            "criterion_id": "B-CR1",
+            "label": "Company type",
+            "inputs": ["buyer.company_type"],
+            "max_points": 60,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "signals": {
+              "company_type_distributor": 60,
+              "company_type_importer": 60,
+              "company_type_wholesaler": 57,
+              "company_type_marketplace": 36,
+              "company_type_brand": 27,
+              "company_type_retailer": 24,
+              "company_type_other": 15
+            }
+          },
+          {
+            "criterion_id": "B-CR2",
+            "label": "Wholesale capability",
+            "inputs": ["buyer.wholesale_signal", "buyer.buyer_moq"],
+            "max_points": 25,
+            "aggregation": "max",
+            "signals_note": "published_minimum_order reads the buyer.schema.json buyer_moq field - a known quantity or a known currency amount, never an absent or \"unknown\" one. It ties with wholesale_signal_true at the criterion ceiling rather than outranking it, because its value is REACHABILITY of the criterion, not seniority within it: a company that prints \"Minimum Order: 10,000 AED per Purchase Order\" and never uses the word wholesale previously took the unknown path here (8 of 25) even though it had published the most material B2B term a Korean seller needs. The criterion is unknown only when wholesale_signal is unknown AND buyer_moq is unknown AND no B-CR2 page evidence exists. In a live UAE run five of 32 companies published a concrete minimum order (a per-PO currency floor, a per-line piece count, or a goods-value floor) and every one of them survived only as free text in notes[].",
+            "signals": {
+              "published_minimum_order": 25,
+              "wholesale_signal_true": 25,
+              "b2b_pricing_or_trade_account": 20,
+              "reseller_program_page": 18,
+              "wholesale_signal_false": 0
+            }
+          },
+          {
+            "criterion_id": "B-CR3",
+            "label": "Procurement / buying function",
+            "inputs": ["buyer.sourcing_signals", "buyer.channels"],
+            "max_points": 15,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "signals": {
+              "procurement_or_buying_page": 15,
+              "retail_chain_supplier_page": 12,
+              "distributor_network_operated": 10
+            }
+          }
+        ],
+        "adjustments": {
+          "retail_chain_procurement": 20,
+          "retail_only_consumer_store": -25,
+          "wholesale_signal_false": -15
+        },
+        "adjustments_note": "retail_only_consumer_store implements PRD test T01: retail-only companies must score low on B2B role. retail_chain_procurement is its counterweight and fires only when company_type is retailer AND channels name a multi-store buying format (pharmacy, department_store or marketplace) AND wholesale_signal is not an explicit false - i.e. a chain that buys centrally rather than a single consumer storefront. Without it the 20-weight company-type table (retailer = 24 of 60) outvoted the 25-weight sourcing_intent dimension: in a live run the one company with a dated, signed public commitment to onboard K-Beauty brands scored the run\u0027s highest sourcing_intent (83) and market_relevance (100) and still ranked 12th, below wholesalers carrying no Korean brand at all. The two adjustments are mutually exclusive by construction, because retail_only_consumer_store requires wholesale_signal false."
+      },
+      "sourcing_intent": {
+        "max_points": 100,
+        "criteria": [
+          {
+            "criterion_id": "B-SI1",
+            "label": "Declared sourcing intent",
+            "inputs": ["buyer.sourcing_intent"],
+            "max_points": 45,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "signals_note": "max_points dropped from 55 to 45 and the three signals were rescaled by the same factor so their ordering and spacing are preserved (55/35/15 -> 45/29/12). sourcing_intent is a SELF-DECLARED field that real importers almost never publish: over a live 20-company UAE cohort 15 of 20 carried no value at all. At 55 of 100 this one criterion held the heaviest dimension in the rubric at its unknown neutral for three quarters of the population, the dimension resolved to three distinct values, and the ranking was decided instead by the 10-weight reachability dimension. The 10 points moved to B-SI2, which is decided by published pages the agent can actually observe. The all-unknown arithmetic is unchanged: 45/45/10 still gives 14 + 14 + 3 = 31.",
+            "signals": {
+              "sourcing_intent_high": 45,
+              "sourcing_intent_medium": 29,
+              "sourcing_intent_low": 12
+            }
+          },
+          {
+            "criterion_id": "B-SI2",
+            "label": "Public sourcing signals",
+            "inputs": ["buyer.sourcing_signals"],
+            "max_points": 45,
+            "aggregation": "sum_capped",
+            "unknown_behavior": "neutral_penalty",
+            "signals_note": "Keys are the buyer.schema.json sourcing_signals enum values VERBATIM, so an implementer can look each entry up directly with no mapping table, and a new enum value is priced here or it is unscorable. max_points rose from 35 to 45 with the 10 points released by B-SI1, and every value was rescaled by the same factor so the ordering is unchanged (35/25/22/22/18/15/12/10/8 -> 45/32/28/28/23/19/15/13/10). The point is not the ceiling but the SLOPE: this is the only criterion in the dimension decided by pages an agent can observe rather than by a self-declaration nobody publishes, and a wider band lets two or three real signals separate candidates instead of clipping at a low cap. published_trade_terms is the new enum value: a buyer that publishes the terms on which it takes supply - a stated minimum order (also stored structurally in buyer.buyer_moq), a trade price list, or trade-only pricing behind an approval gate - has emitted a supplier-facing signal, and it is priced level with partnership_page and above the criterion's own unknown neutral (14) so that disclosing it can never score below never having looked.",
+            "signals": {
+              "rfq_posted": 45,
+              "open_call_for_suppliers": 32,
+              "new_brand_inquiry": 28,
+              "active_sourcing_post": 28,
+              "brand_submission_form": 23,
+              "become_a_distributor_page": 19,
+              "partnership_page": 15,
+              "published_trade_terms": 15,
+              "wholesale_inquiry_form": 13,
+              "trade_show_attendance": 10
+            }
+          },
+          {
+            "criterion_id": "B-SI3",
+            "label": "Recency of the sourcing action",
+            "inputs": ["evidence:sourcing_intent.source_date"],
+            "max_points": 10,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "signals_note": "The three dated bands are decided by the NEWEST known source_date among evidence items whose claim is sourcing_intent or a B-SI2 signal key. standing_sourcing_page_undated is the fallback for the ordinary case: a live supplier-facing page that carries no machine-readable date at all. It fires when such an evidence item exists, its source_date is unknown, and no dated item is available; it is then decided by the item's observed_at, which is bounded by the run's as_of, so it can never reach past the run. It is priced at 5 - BELOW sourcing_signal_within_365d (6) because a dated action strictly dominates an undated standing page, and ABOVE the criterion's own unknown neutral (3) so that recording the page cannot score less than never looking. Without it the criterion was unknown for 18 of 20 live candidates and \"Recency of the sourcing action\" sat on the Missing: line of every top candidate, telling the reviewer nothing.",
+            "signals": {
+              "sourcing_signal_within_90d": 10,
+              "sourcing_signal_within_365d": 6,
+              "standing_sourcing_page_undated": 5,
+              "sourcing_signal_older_than_365d": 2
+            }
+          }
+        ],
+        "adjustments": {
+          "sourcing_closed_statement": -40,
+          "partnership_signal_false": -10
+        },
+        "adjustments_note": "sourcing_closed_statement fires only on an explicit public statement such as \"we are not accepting new brands\"; silence is unknown, never a closed statement. partnership_signal_false is the only place buyer.partnership_signal reaches this dimension, so a company that has publicly closed its partnership channel is priced while a company that publicly invites proposals is credited through the B-SI2 signals its invitation produces (partnership_page, brand_submission_form, become_a_distributor_page), never through the bare boolean."
+      },
+      "market_relevance": {
+        "max_points": 100,
+        "criteria": [
+          {
+            "criterion_id": "B-MR1",
+            "label": "Country match against the request",
+            "inputs": ["buyer.country", "query.country"],
+            "max_points": 55,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "inapplicable_when": ["query.country_absent"],
+            "signals": {
+              "country_exact_match": 55,
+              "country_in_requested_region": 35,
+              "country_adjacent_market": 20
+            }
+          },
+          {
+            "criterion_id": "B-MR2",
+            "label": "Category match against the request",
+            "inputs": ["buyer.product_categories", "query.product_categories"],
+            "max_points": 35,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "inapplicable_when": ["query.product_categories_absent"],
+            "signals": {
+              "category_exact_match": 35,
+              "category_parent_match": 25,
+              "category_adjacent_match": 15
+            }
+          },
+          {
+            "criterion_id": "B-MR3",
+            "label": "Channel match against the request",
+            "inputs": ["buyer.channels", "query.channels"],
+            "max_points": 10,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "inapplicable_when": ["query.channels_absent"],
+            "signals": {
+              "channel_match": 10,
+              "channel_partial_match": 6
+            }
+          }
+        ],
+        "adjustments": {
+          "country_mismatch": -40,
+          "category_no_overlap": -20,
+          "category_drift_flagged": -10
+        },
+        "adjustments_note": "category_drift_flagged implements PRD DISC-05: a candidate found only after the query was widened is recorded and mildly discounted, never silently promoted."
+      },
+      "reachability": {
+        "max_points": 100,
+        "criteria": [
+          {
+            "criterion_id": "B-RE1",
+            "label": "Best official contact channel",
+            "inputs": ["buyer.contact_channels"],
+            "max_points": 70,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "signals_note": "One signal per contact_channel type: this table MUST carry a contact_channel_<type> key for EVERY value of the buyer.schema.json contact_channel.type enum, and tests/run_tests.py asserts that parity. Any type still unlisted maps to contact_channel_other. wholesale_form sits just under partnership_form because a live wholesale application form is a stronger buying signal than a generic contact page; messenger sits above linkedin because an official messenger channel is a reachable inbound route. Before these two keys existed both fell through to contact_channel_other (20 of 70), so a distributor whose only channels were a wholesale application form and an official messenger scored reachability 30 and missed the threshold at 69. Personal emails and personal phone numbers are never stored or scored (PRD 11.1, 11.3).",
+            "signals": {
+              "contact_channel_partnership_form": 70,
+              "contact_channel_wholesale_form": 68,
+              "contact_channel_corporate_email": 65,
+              "contact_channel_form": 55,
+              "contact_channel_contact_page": 45,
+              "contact_channel_messenger": 35,
+              "contact_channel_linkedin": 30,
+              "contact_channel_phone": 25,
+              "contact_channel_other": 20
+            }
+          },
+          {
+            "criterion_id": "B-RE2",
+            "label": "Channel breadth",
+            "inputs": ["buyer.contact_channels"],
+            "max_points": 15,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "signals": {
+              "channels_3_plus": 15,
+              "channels_2": 10,
+              "channels_1": 5
+            }
+          },
+          {
+            "criterion_id": "B-RE3",
+            "label": "Corporate-domain email",
+            "inputs": ["buyer.contact_channels", "buyer.canonical_domain"],
+            "max_points": 15,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "signals_note": "other_corporate_domain_email fires when a role address sits on a domain that is neither the canonical/alias domain nor a free-mail domain - a sibling company domain, a group domain, or a near-identical spelling. Without it a genuine corporate address scored 0 while a gmail.com address scored 6, which is backwards; it hit 3 of 20 candidates in a live run.",
+            "signals": {
+              "corporate_domain_email": 15,
+              "other_corporate_domain_email": 10,
+              "free_mail_domain_email": 6
+            }
+          }
+        ],
+        "adjustments": {
+          "stale_contact_page": -20,
+          "contact_channels_verified_empty": -15
+        },
+        "adjustments_note": "contact_channels_verified_empty fires only when contact_channels is present and empty, i.e. the agent checked and found no public channel. An ABSENT contact_channels array is unknown and takes the neutral penalty instead."
+      },
+      "evidence_quality": {
+        "max_points": 100,
+        "computed_by": "evidence_quality_function",
+        "criteria": [],
+        "adjustments": {},
+        "note": "See the top-level `evidence` block. No signal table; the function is shared with the seller and with the matching component of the same name."
+      }
+    }
+  },
+  "seller": {
+    "weights": {
+      "product_fit": 25,
+      "commercial_model": 20,
+      "operational_fit": 20,
+      "compliance_readiness": 15,
+      "export_readiness": 10,
+      "evidence_quality": 10
+    },
+    "weights_note": "PRD 6.3 Seller Qualification Score. Sums to 100. Keys equal seller.schema.json dimension_scores keys exactly.",
+    "weights_calibration_note": "These six values are FIXED BY PRD 6.3 and are not tunable here. A field finding proposed compliance_readiness 15 -> 10 and evidence_quality 10 -> 15 so a well-evidenced maker with unpublished commercial terms could clear the bar on product fit, commercial model and evidence alone. That is a PRD weight change, so it is ROUTED TO CALIBRATION and not applied; every remedy in this file works through the point tables, the signal vocabularies, the unknown parameters and the evidence multipliers instead.",
+    "dimension_score_key_map": {
+      "product_fit": "product_fit",
+      "commercial_model": "commercial_model",
+      "operational_fit": "operational_fit",
+      "compliance_readiness": "compliance_readiness",
+      "export_readiness": "export_readiness",
+      "evidence_quality": "evidence_quality"
+    },
+    "query_surface_note": "During seller DISCOVERY the query is the operator's filter set (scripts receive it as --query). During MATCHING the same criteria are evaluated with the RFQ projected onto that surface: rfq.product_category + product_categories_extra -> query.product_categories, rfq.product_forms -> query.product_forms, rfq.commercial_model -> query.commercial_model, rfq.max_moq -> query.max_moq, rfq.max_lead_time_days -> query.max_lead_time_days, rfq.quantity -> query.quantity, rfq.required_certifications / preferred_certifications -> query certifications, rfq.destination_country -> query.destination_country.",
+    "dimensions": {
+      "product_fit": {
+        "max_points": 100,
+        "criteria": [
+          {
+            "criterion_id": "S-PF1",
+            "label": "Category coverage",
+            "inputs": ["seller.product_categories", "query.product_categories"],
+            "max_points": 60,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "signals": {
+              "category_exact_match": 60,
+              "category_parent_match": 42,
+              "category_adjacent_match": 24,
+              "category_no_match": 0
+            }
+          },
+          {
+            "criterion_id": "S-PF2",
+            "label": "Form / formulation match",
+            "inputs": ["seller.product_forms", "query.product_forms"],
+            "max_points": 25,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "inapplicable_when": ["query.product_forms_absent"],
+            "signals": {
+              "form_exact_match": 25,
+              "form_partial_match": 15
+            }
+          },
+          {
+            "criterion_id": "S-PF3",
+            "label": "Product evidence depth",
+            "inputs": ["seller.evidence:product_categories"],
+            "max_points": 15,
+            "aggregation": "sum_capped",
+            "unknown_behavior": "neutral_penalty",
+            "signals": {
+              "named_product_page": 8,
+              "catalog_or_pdf_published": 5,
+              "multi_category_coverage": 4
+            }
+          }
+        ],
+        "adjustments": {
+          "category_no_match_verified": -40
+        },
+        "adjustments_note": "category_no_match_verified fires only when product_categories is present, non-empty and demonstrably excludes the requested category. An absent list is unknown."
+      },
+      "commercial_model": {
+        "max_points": 100,
+        "criteria": [
+          {
+            "criterion_id": "S-CM1",
+            "label": "Requested commercial model supported",
+            "inputs": [
+              "seller.oem_odm",
+              "seller.private_label",
+              "seller.brand_export",
+              "query.commercial_model"
+            ],
+            "max_points": 60,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "signals_note": "required_model_supported fires when the model named by query.commercial_model is true on the seller. either_model_any_supported covers query.commercial_model == \"either\" with any of the three true. related_model_supported covers a near miss, e.g. the RFQ wants private_label and the seller confirms oem_odm while private_label is unknown. max_points dropped from 75 to 60 to make room for S-CM4; the four criteria still sum to 100 so the dimension normalisation is unchanged.",
+            "signals": {
+              "required_model_supported": 60,
+              "either_model_any_supported": 56,
+              "related_model_supported": 36
+            }
+          },
+          {
+            "criterion_id": "S-CM2",
+            "label": "Commercial model breadth",
+            "inputs": ["seller.oem_odm", "seller.private_label", "seller.brand_export"],
+            "max_points": 12,
+            "aggregation": "sum_capped",
+            "unknown_behavior": "neutral_penalty",
+            "signals": {
+              "oem_odm_true": 5,
+              "private_label_true": 5,
+              "brand_export_true": 2
+            }
+          },
+          {
+            "criterion_id": "S-CM3",
+            "label": "Commercial terms published",
+            "inputs": ["seller.evidence:oem_odm", "seller.evidence:moq"],
+            "max_points": 8,
+            "aggregation": "sum_capped",
+            "unknown_behavior": "neutral_penalty",
+            "signals": {
+              "published_oem_odm_page": 5,
+              "published_moq_or_pricing_terms": 3
+            }
+          },
+          {
+            "criterion_id": "S-CM4",
+            "label": "Manufacturer role",
+            "inputs": ["seller.company_type"],
+            "max_points": 20,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "signals_note": "references/seller-discovery.md section 6 is devoted to separating a factory from a broker or a brand-only marketer (\"the most common discovery error is promoting a trading company or a brand-only marketer as a factory\"), yet before this criterion existed NO seller dimension and NO hard filter read company_type at all - the playbook\u0027s central discrimination had zero effect on the ranking. In a live run a self-described supply-chain matching partner, typed \"other\" on its own page language and publishing no manufacturing registration, scored 63 and ranked ABOVE the two tier-1 houses that actually manufacture most Korean sunscreen. distributor and other are not rejected, only priced: a trading company can still rank on evidence quality and product fit.",
+            "signals": {
+              "company_type_oem_odm": 20,
+              "company_type_manufacturer": 20,
+              "company_type_brand": 8,
+              "company_type_distributor": 4,
+              "company_type_other": 2
+            }
+          }
+        ],
+        "adjustments": {
+          "required_model_false": -75
+        },
+        "adjustments_note": "required_model_false fires when the requested model is explicitly false on the seller. Hard filter HF-02 normally removes such a seller first; the adjustment exists for discovery runs where no hard filter is applied."
+      },
+      "operational_fit": {
+        "max_points": 100,
+        "criteria": [
+          {
+            "criterion_id": "S-OP1",
+            "label": "MOQ against the buyer ceiling",
+            "inputs": ["seller.moq", "query.max_moq"],
+            "max_points": 55,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "signals_note": "Ranges are compared on min (seller.moq.min). moq_within_tolerance_of_max uses hard_filter_tolerances.moq_overshoot_ratio. moq_no_constraint_known fires when the seller's MOQ is known and the query sets no ceiling. Unknown MOQ takes round_half_up(55*0.30)=17 and NEVER a rejection (PRD test T04).",
+            "signals": {
+              "moq_at_or_below_half_of_max": 55,
+              "moq_at_or_below_max": 47,
+              "moq_no_constraint_known": 44,
+              "moq_within_tolerance_of_max": 25,
+              "moq_above_max": 0
+            }
+          },
+          {
+            "criterion_id": "S-OP2",
+            "label": "Lead time against the deadline",
+            "inputs": ["seller.lead_time_days", "query.max_lead_time_days"],
+            "max_points": 25,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "signals_note": "Ranges are compared on max (worst case).",
+            "signals": {
+              "lead_time_within_requirement": 25,
+              "lead_time_no_constraint_known": 20,
+              "lead_time_within_tolerance": 12,
+              "lead_time_exceeds_requirement": 0
+            }
+          },
+          {
+            "criterion_id": "S-OP3",
+            "label": "Capacity against the order quantity",
+            "inputs": ["seller.monthly_capacity_units", "query.quantity"],
+            "max_points": 20,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "signals": {
+              "capacity_covers_quantity_2x": 20,
+              "capacity_covers_quantity": 16,
+              "capacity_no_constraint_known": 16,
+              "capacity_below_quantity": 0
+            }
+          }
+        ],
+        "adjustments": {
+          "moq_negotiable_statement": 5,
+          "sample_or_trial_order_accepted": 3,
+          "moq_unit_mismatch": -10
+        },
+        "adjustments_note": "moq_unit_mismatch fires when seller.moq_unit and the query unit differ, so the comparison could not be made; the criterion is then treated as unknown as well (seller.schema.json moq_unit)."
+      },
+      "compliance_readiness": {
+        "max_points": 100,
+        "criteria": [
+          {
+            "criterion_id": "S-CP1",
+            "label": "Required certifications held",
+            "inputs": ["seller.certifications", "query.required_certifications"],
+            "max_points": 55,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "inapplicable_when": ["query.required_certifications_absent"],
+            "signals_note": "most_ = at least half of the required tokens held; some_ = at least one but under half. The _verified / _unverified split on the top signal reads seller.certifications_verified (an official source presenting the list as the company\u0027s complete set - a dedicated certificate page or a certifier registry). Before the split, certifications_verified had NO effect on the score at all: the +5 certifications_verified_official adjustment was clamped away at the 100 ceiling and certification_claim_unverified was conditioned on tier 4-5 sourcing rather than on verification, so a dedicated certificate page with CGMP certificate images scored exactly what a non-exhaustive marketing bullet list with no certificate number scored.",
+            "signals": {
+              "all_required_certifications_held_verified": 55,
+              "all_required_certifications_held_unverified": 38,
+              "most_required_certifications_held": 35,
+              "some_required_certifications_held": 20,
+              "no_required_certifications_held": 0
+            }
+          },
+          {
+            "criterion_id": "S-CP2",
+            "label": "Preferred certifications held",
+            "inputs": ["seller.certifications", "query.preferred_certifications"],
+            "max_points": 15,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "inapplicable_when": ["query.preferred_certifications_absent"],
+            "signals": {
+              "all_preferred_certifications_held": 15,
+              "some_preferred_certifications_held": 8
+            }
+          },
+          {
+            "criterion_id": "S-CP3",
+            "label": "Destination-market registration",
+            "inputs": ["seller.regulatory_registrations", "query.destination_country"],
+            "max_points": 20,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "inapplicable_when": ["query.destination_country_absent"],
+            "signals": {
+              "registered_in_destination_market": 20,
+              "registration_in_progress": 12,
+              "not_registered_in_destination_market": 0
+            }
+          },
+          {
+            "criterion_id": "S-CP4",
+            "label": "Baseline quality certification",
+            "inputs": ["seller.certifications"],
+            "max_points": 10,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "signals": {
+              "iso22716_or_cgmp_held": 10,
+              "other_quality_certification_held": 6
+            }
+          }
+        ],
+        "adjustments": {
+          "certifications_verified_official": 5,
+          "certification_claim_unverified": -10
+        },
+        "adjustments_note": "certifications_verified_official maps to seller.certifications_verified == true (an official, exhaustive certification page); at the dimension ceiling it is clamped away, which is why S-CP1 now prices verification directly rather than leaving it to this adjustment. certification_claim_unverified fires when a HELD token's best supporting evidence sits on a tier 4-5 source, i.e. the claim is credible only as far as a directory, a press release or a forum post carries it. DECISION, recorded so it is not re-opened: this adjustment keeps that SOURCE-QUALITY condition and is deliberately NOT re-keyed to \"certifications_verified is not true\". Three reasons. (1) Verification is now priced exactly once, inside S-CP1 (55 verified against 38 unverified), where the criterion's own renormalisation contains it; a further -10 on the same input would price the same fact twice. (2) \"is not true\" is true of UNKNOWN as well as of false, and certifications_verified was unknown on 83% of a 12-company tier-1-verified Korean population, so the adjustment would fire on most of the field and separate nobody - the same failure that made the unknown flag useless at a limit of 2 (see unknown.max_unknown_dimensions_before_flag_by_entity_note). (3) It would also reach a record whose certifications are absent entirely, which has already paid the S-CP1 unknown neutral, so unknown would be penalised twice; the UNKNOWN RULE and never_hard_reject_on_unknown forbid that. The two conditions price different things and both are kept: S-CP1 prices whether the LIST is exhaustive, this adjustment prices whether the SOURCE is credible. Never infer a certification (PRD EVID-05, test acceptance 15.2).",
+        "adjustments_residual_note": "Recorded for calibration, not fixed here: S-CP1 carries inapplicable_when query.required_certifications_absent, so in a discovery run that names no required certification the verified / unverified split never applies and verification reaches the dimension only through certifications_verified_official (+5), which the ceiling usually clamps. Closing it means making S-CP4 verification-aware, which is a scorer change as well as a table change and therefore a calibration decision rather than a config edit."
+      },
+      "export_readiness": {
+        "max_points": 100,
+        "criteria": [
+          {
+            "criterion_id": "S-EX1",
+            "label": "Export track record",
+            "inputs": ["seller.export_markets", "seller.export_regions", "query.destination_country"],
+            "max_points": 45,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "signals_note": "The _region signals read seller.export_regions, the region tokens a maker actually prints (\ub3d9\ub0a8\uc544, \uc720\ub7fd, \uc911\ub3d9, or \"Asia, Europe, North America\") when it names no country. export_markets is alpha-2 only, so without them a clearly evidenced export track record was thrown away and the seller took the S-EX1 unknown penalty as if it had never exported: one 70-year-old exporter scored export_readiness 69 with \"Export track record\" on its Missing line. A region token is weaker evidence than a named country, so each _region signal sits below its country-level equivalent. Scripts NEVER expand a region token into countries (BUILD-CONTRACT 8.7); the destination match is decided by the region token\u0027s own membership table in scripts/_common.py.",
+            "signals": {
+              "exports_to_destination_market": 45,
+              "exports_to_same_region": 32,
+              "exports_to_destination_region": 28,
+              "exports_to_any_overseas_market": 22,
+              "exports_to_stated_region": 18,
+              "no_export_evidence": 0
+            }
+          },
+          {
+            "criterion_id": "S-EX2",
+            "label": "English or destination-language presence",
+            "inputs": ["seller.english_site"],
+            "max_points": 30,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "signals": {
+              "english_site_true": 30,
+              "partial_english_materials": 18,
+              "english_site_false": 0
+            }
+          },
+          {
+            "criterion_id": "S-EX3",
+            "label": "Overseas partner recruitment",
+            "inputs": ["seller.overseas_partner_signal"],
+            "max_points": 25,
+            "aggregation": "max",
+            "unknown_behavior": "neutral_penalty",
+            "signals": {
+              "overseas_partner_signal_true": 25,
+              "trade_show_exhibitor": 18,
+              "export_inquiry_channel": 12
+            }
+          }
+        ],
+        "adjustments": {
+          "excluded_market_includes_destination": -45
+        },
+        "adjustments_note": "excluded_market_includes_destination duplicates hard filter HF-05 as a score-level guard for discovery runs that skip hard filtering."
+      },
+      "evidence_quality": {
+        "max_points": 100,
+        "computed_by": "evidence_quality_function",
+        "criteria": [],
+        "adjustments": {},
+        "note": "See the top-level `evidence` block."
+      }
+    }
+  },
+  "match": {
+    "weights": {
+      "product_fit": 0.3,
+      "model_fit": 0.2,
+      "operation_fit": 0.15,
+      "compliance_fit": 0.15,
+      "market_fit": 0.1,
+      "evidence_quality": 0.1
+    },
+    "weights_note": "PRD 6.4.2: match_score = product_fit*0.30 + model_fit*0.20 + operation_fit*0.15 + compliance_fit*0.15 + market_fit*0.10 + evidence_quality*0.10. Sums to 1.0.",
+    "component_sources": {
+      "product_fit": "seller.dimensions.product_fit",
+      "model_fit": "seller.dimensions.commercial_model",
+      "operation_fit": "seller.dimensions.operational_fit",
+      "compliance_fit": "seller.dimensions.compliance_readiness",
+      "market_fit": "seller.dimensions.export_readiness",
+      "evidence_quality": "seller.dimensions.evidence_quality"
+    },
+    "component_sources_note": "The six match components ARE the six seller dimensions, re-scored with the RFQ projected onto the query surface (see seller.query_surface_note). There is no second signal table for matching, so a seller can never be scored by two different rubrics.",
+    "stages": [
+      "hard_filter",
+      "weighted_score",
+      "semantic_rerank",
+      "unknown_handling"
+    ],
+    "rerank": {
+      "max_delta": 5,
+      "require_rationale": true,
+      "require_evidence_ids": true,
+      "applies_to_top_n": 20,
+      "allowed_inputs": [
+        "product_description",
+        "formulation_and_texture_language",
+        "brand_positioning",
+        "distribution_channel_language",
+        "case_studies_and_references"
+      ],
+      "forbidden_inputs": [
+        "moq",
+        "certifications",
+        "export_markets",
+        "lead_time_days",
+        "monthly_capacity_units"
+      ],
+      "forbidden_inputs_note": "Hard, verifiable facts are owned by the deterministic stage. The rerank may not move a score on the basis of a fact that has its own criterion, and may never manufacture one (PRD 11.1).",
+      "rounding_after_rerank": "clamp(base_score + delta, 0, 100)"
+    },
+    "no_match": {
+      "emit_when": "results is empty after the threshold is applied",
+      "require_reason": true,
+      "max_relaxation_suggestions": 5,
+      "note": "PRD test T10: an empty result set is returned as an explicit no_match object with a reason and relaxation suggestions, never as a silent empty list."
+    }
+  },
+  "vertical_fit_gate": {
+    "entity": "buyer",
+    "applies_when_query_vertical_matches": [
+      "kbeauty",
+      "k beauty",
+      "korean beauty",
+      "korean cosmetics",
+      "케이뷰티",
+      "k뷰티",
+      "한국화장품"
+    ],
+    "match_rule": "Casefold query.vertical, strip every character that is not a letter or a digit, and compare against the same normalisation of each token above. An absent or unmatched vertical disables the gate entirely.",
+    "requires_any_positive_signal_from": [
+      "kbeauty_korea_fit.B-KF1",
+      "kbeauty_korea_fit.B-KF2"
+    ],
+    "positive_signal_rule": "Every signal key of those two criteria whose point value is greater than 0. Derived, never listed: korean_products_signal_false is priced 0 and is therefore NOT positive evidence, which is the whole point.",
+    "effect": "qualified_false_with_note",
+    "effect_rule": "The record is STILL scored, STILL ranked and STILL returned in records[] with its full breakdown - this is not a rejection and unknown.never_hard_reject_on_unknown is untouched. Only the qualified flag is forced to false, and a note naming the gate is appended so a reviewer sees why a high score did not become a lead.",
+    "note": "PRD test T09 and PRD 6.2 DISC-02: a K-Beauty run must not report a company as a qualified K-Beauty lead when nothing on any page it read evidences Korean carriage or K-Beauty positioning. Live trial (FD-35): a UAE trading company with korean_products_signal AND product_categories both unknown - no Korean or K-Beauty reference on either page read - scored 70, qualified:true, rank 6, and outranked seven companies with evidenced named Korean portfolios, one of them carrying 150+ brands. The kbeauty_korea_fit.adjustments.korean_products_signal_unknown penalty (-20) prices that record but cannot gate it: kbeauty_korea_fit is 20 of 100 weight, so even floored at 0 an otherwise-maximal record still reaches 80. Closing the gap by re-weighting is NOT available - PRD 6.3 fixes the six weights at 20/20/25/15/10/10 - so the gate is applied where the PRD leaves the decision open, on the qualified flag. See references/calibration-notes.md."
+  },
+  "thresholds": {
+    "mode": "fixed",
+    "fixed": 70,
+    "percentile": 75,
+    "percentile_min_population": 8,
+    "percentile_floor": 50,
+    "percentile_method": "nearest_rank",
+    "applies_to": [
+      "buyer.qualification_score",
+      "seller.qualification_score",
+      "match.match_score"
+    ],
+    "note": "PRD Open Question 3. Both modes are implemented; fixed 70 is the v0.1.0 default and matches PRD 12.1 (\"Qualified (>=70)\"). In percentile mode the cut-off is the nearest-rank Nth percentile of the run's scored population, clamped up to percentile_floor, and the run falls back to `fixed` when the population is smaller than percentile_min_population. The resolved value and the mode are always written to match-result summary.threshold_used / summary.threshold_mode.",
+    "calibration_note": "ROUTED TO CALIBRATION, deliberately not changed here. A live 11-record Korean seller population scored 41-79 and the five records at or above 70 were EXACTLY the five holding a verifiable ISO22716 / CGMP token, so passing 70 meant one thing only. Switching mode to `percentile` would spread that population, and no machinery is missing: percentile 75 / percentile_floor 50 / percentile_min_population 8 are already implemented and that 11-record population already meets the minimum, so the switch is a one-token edit. It is withheld because PRD Open Question 3 leaves the threshold mode undecided and PRD 12.1 prints \"Qualified (>=70)\", making the shipped default a product decision rather than a defect. The underlying complaint - compliance_readiness was the only seller dimension with real variance - is already partly answered inside this file without touching a threshold or a weight: S-CM4 now scores company_type, S-CP1 splits verified from unverified, S-EX1 reads export_regions, and the undated-evidence multiplier no longer flattens the whole population. Re-measure on a fresh population before flipping the mode."
+  },
+  "hard_filters": [
+    {
+      "rule_id": "HF-01",
+      "name": "Product category",
+      "applies_when": "rfq.product_category is set",
+      "predicate": "seller.product_categories intersects {rfq.product_category} + rfq.product_categories_extra, after parent/child expansion",
+      "inputs": ["seller.product_categories", "rfq.product_category", "rfq.product_categories_extra"],
+      "unknown_behavior": "pass_with_unknown_penalty",
+      "failure_message_template": "Product category {required_value} not covered (handles {observed_value})"
+    },
+    {
+      "rule_id": "HF-02",
+      "name": "Commercial model",
+      "applies_when": "rfq.commercial_model != \"either\"",
+      "predicate": "the seller flag named by rfq.commercial_model (oem_odm / private_label / brand_export) is not false",
+      "inputs": ["seller.oem_odm", "seller.private_label", "seller.brand_export", "rfq.commercial_model"],
+      "unknown_behavior": "pass_with_unknown_penalty",
+      "failure_message_template": "{required_value} not offered (confirmed unavailable)"
+    },
+    {
+      "rule_id": "HF-03",
+      "name": "Maximum MOQ",
+      "applies_when": "rfq.max_moq is a number",
+      "predicate": "seller.moq (or seller.moq.min for a range) <= rfq.max_moq * (1 + hard_filter_tolerances.moq_overshoot_ratio)",
+      "inputs": ["seller.moq", "seller.moq_unit", "rfq.max_moq"],
+      "unknown_behavior": "pass_with_unknown_penalty",
+      "unknown_note": "PRD test T04 and T03 together: a seller with a CONFIRMED MOQ of 5,000 against a 3,000 ceiling is hard-rejected; a seller with no published MOQ is kept and penalised.",
+      "failure_message_template": "MOQ minimum {observed_value} exceeds RFQ max {required_value}"
+    },
+    {
+      "rule_id": "HF-04",
+      "name": "Required certifications",
+      "applies_when": "rfq.required_certifications is non-empty AND seller.certifications_verified == true",
+      "predicate": "seller.certifications is a superset of rfq.required_certifications",
+      "inputs": ["seller.certifications", "seller.certifications_verified", "rfq.required_certifications"],
+      "unknown_behavior": "pass_with_unknown_penalty",
+      "unknown_note": "The rule fires ONLY against an exhaustive, officially sourced certification list. An unverified list can never prove absence, so the seller is kept and penalised instead (PRD EVID-05).",
+      "failure_message_template": "Required certification {required_value} not held (verified list: {observed_value})"
+    },
+    {
+      "rule_id": "HF-05",
+      "name": "Excluded destination market",
+      "applies_when": "rfq.destination_country is set AND seller.excluded_markets is non-empty",
+      "predicate": "rfq.destination_country is not in seller.excluded_markets",
+      "inputs": ["seller.excluded_markets", "rfq.destination_country"],
+      "unknown_behavior": "pass",
+      "failure_message_template": "Does not supply {required_value} (market excluded by the seller)"
+    },
+    {
+      "rule_id": "HF-06",
+      "name": "Operational status",
+      "applies_when": "always",
+      "predicate": "seller.operational_status is not \"closed\" and not \"unreachable\"",
+      "inputs": ["seller.operational_status", "seller.stale"],
+      "unknown_behavior": "pass",
+      "unknown_note": "\"unknown\" never rejects (PRD test T07 keeps stale records with a flag and a low confidence).",
+      "failure_message_template": "Business {observed_value}"
+    },
+    {
+      "rule_id": "HF-07",
+      "name": "Hard lead-time deadline",
+      "applies_when": "rfq.max_lead_time_days is a number (explicit, or derived from rfq.timeline against --as-of)",
+      "predicate": "seller.lead_time_days (or seller.lead_time_days.max for a range) <= rfq.max_lead_time_days * (1 + hard_filter_tolerances.lead_time_overshoot_ratio)",
+      "inputs": ["seller.lead_time_days", "rfq.max_lead_time_days", "rfq.timeline"],
+      "unknown_behavior": "pass_with_unknown_penalty",
+      "failure_message_template": "Lead time {observed_value} days exceeds the {required_value} day deadline"
+    },
+    {
+      "rule_id": "HF-08",
+      "name": "Seller country",
+      "applies_when": "rfq.required_seller_countries or rfq.excluded_seller_countries is non-empty",
+      "predicate": "seller.country is in required_seller_countries (when set) and not in excluded_seller_countries",
+      "inputs": ["seller.country", "rfq.required_seller_countries", "rfq.excluded_seller_countries"],
+      "unknown_behavior": "pass_with_unknown_penalty",
+      "failure_message_template": "Seller country {observed_value} is outside {required_value}"
+    }
+  ],
+  "hard_filters_note": "Evaluated in this order; every failure is recorded so the PRD 12.2 \"Excluded\" block can list them all. The predicates themselves live in scripts/score_match.py and are specified in SCORING-CONTRACT.md; this block owns the ids, names, applicability and unknown behaviour. unknown_behavior \"pass\" = skip silently; \"pass_with_unknown_penalty\" = skip the rule, record the rule_id in hard_filter.rules_skipped_unknown and emit the matching unknown_penalty entry.",
+  "hard_filter_tolerances": {
+    "moq_overshoot_ratio": 0.0,
+    "lead_time_overshoot_ratio": 0.0,
+    "note": "0.0 means the ceiling is strict, which is what PRD test T03 expects (a confirmed MOQ of 5,000 against a 3,000 ceiling is a hard reject). Raise a ratio only for an operator who explicitly accepts negotiation room; the scoring signals moq_within_tolerance_of_max and lead_time_within_tolerance read the same ratios."
+  },
+  "confidence": {
+    "formula": "clamp(round_half_2(evidence_quality / 100 * coverage_factor * stale_multiplier * conflict_multiplier), min, 1.0)",
+    "coverage_factor": {
+      "base": 1.0,
+      "per_unknown_material_claim": -0.05,
+      "floor": 0.5
+    },
+    "stale_multiplier": 0.6,
+    "unresolved_conflict_multiplier": 0.85,
+    "min": 0.05,
+    "note": "confidence answers \"how much should the reviewer trust this record\", never \"how good is this company\". It is driven by evidence quality, claim coverage, staleness and unresolved conflicts only, and never by the qualification or match score. PRD test T07 requires a stale record to carry a low confidence even when its score is high. coverage_factor counts RECORD FIELDS, not evidence coverage: n_unknown = count(c in evidence.material_claims[<kind>] such that _common.is_unknown(record[field of c])) - a field that is absent or \"unknown\" counts; a present-and-empty array or an explicit false is a KNOWN value and does not count (BUILD-CONTRACT.md 3.2); a field that is not in material_claims (monthly_capacity_units, regulatory_registrations, lead_time_days, ...) never counts, however it is scored."
+  },
+  "channel_adjacency": {
+    "note": "Adjacent sales-channel pairs for the buyer.channels enum, consumed ONLY by criterion B-MR3 signal channel_partial_match (6 pts). BUILD-CONTRACT.md 8.5 owns CATEGORY adjacency; channel adjacency has no other owner and lives here. Symmetric: a pair is adjacent in both directions. A channel that appears in no pair can only fire channel_match.",
+    "pairs": [
+      ["retail_store", "department_store"],
+      ["ecommerce", "marketplace"],
+      ["pharmacy", "salon_spa"]
+    ]
+  },
+  "condition_keys": {
+    "query.country_absent": "The discovery query set no country filter.",
+    "query.product_categories_absent": "The query (or RFQ) named no product category.",
+    "query.product_forms_absent": "rfq.product_forms is absent or empty, so no formulation was requested.",
+    "query.channels_absent": "The query named no sales channel.",
+    "query.required_certifications_absent": "rfq.required_certifications is absent or empty.",
+    "query.preferred_certifications_absent": "rfq.preferred_certifications is absent or empty.",
+    "query.destination_country_absent": "rfq.destination_country is absent.",
+    "query.company_types_absent": "The discovery query named no buyer company_type (BUILD-CONTRACT.md 3.9 query.company_types). RESERVED: v0.1.0 lists it in no criterion's inapplicable_when, because B-CR1 scores company_type on an absolute table rather than against a requested type. It is the key the requested-type signal pair of SCORING-CONTRACT.md section 8 ledger item 16 will consume.",
+    "note": "These are the only condition keys an `inapplicable_when` entry may use. A criterion listed as inapplicable is removed from both the numerator and the denominator, and its dimension is renormalised over the remaining applicable max_points."
+  },
+  "output": {
+    "buyer_discovery_default_count": 30,
+    "seller_discovery_default_count": 30,
+    "match_default_top_n": 10,
+    "max_top_n": 50,
+    "max_outreach_drafts_per_run": 20,
+    "max_outreach_drafts_per_run_note": "PRD 11.1 bulk guardrail. Hard cap on how many outreach drafts one run may produce, and the per-call cap on adapters/tradewith_adapter.py post_outreach_drafts (BUILD-CONTRACT.md 13.3 rule c). Drafts are review-queue writes with auto_send false; this package has no send capability at all (INV-10).",
+    "render_score_as": "integer out of 100",
+    "render_confidence_as": "HIGH >= 0.75, MEDIUM >= 0.5, LOW below 0.5",
+    "count_semantics_note": "buyer_discovery_default_count, seller_discovery_default_count and match_default_top_n are CEILINGS, never targets (PRD DISC-06, BUILD-CONTRACT.md R7.8.1). Returning fewer because the evidence bar was not met is the correct outcome; topping the list up with unevidenced candidates is a contract violation.",
+    "note": "PRD 12.1 renders confidence as a word (HIGH/MEDIUM/LOW) while the stored value stays numeric."
+  }
+}

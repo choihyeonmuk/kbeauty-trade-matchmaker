@@ -1,0 +1,3507 @@
+{
+  "schema_version": "0.1.0",
+  "as_of": "2026-09-12",
+  "entity": "buyer",
+  "records": [
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "buyer_id": "BUY-gulfglow-example",
+      "company_name": "Gulf Glow Trading FZ-LLC",
+      "website": "https://gulfglow.example/",
+      "canonical_domain": "gulfglow.example",
+      "country": "AE",
+      "company_type": "distributor",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-001",
+          "claim": "company_type",
+          "value": "distributor",
+          "source_url": "https://gulfglow.example/about",
+          "source_domain": "gulfglow.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-01",
+          "confidence": 0.9,
+          "quote_or_summary": "Gulf Glow Trading FZ-LLC is a UAE distributor of imported beauty brands.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-002",
+          "claim": "product_categories",
+          "value": [
+            "skincare",
+            "sunscreen",
+            "cleanser",
+            "mask_sheet"
+          ],
+          "source_url": "https://gulfglow.example/catalogue",
+          "source_domain": "gulfglow.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-01",
+          "confidence": 0.9,
+          "quote_or_summary": "Our catalogue covers skincare, sunscreen, cleansers and sheet masks.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-003",
+          "claim": "korean_products_signal",
+          "value": true,
+          "source_url": "https://gulfglow.example/korean-beauty",
+          "source_domain": "gulfglow.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-01",
+          "confidence": 0.9,
+          "quote_or_summary": "We import directly from Korean manufacturers and carry six Korean brands.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-004",
+          "claim": "wholesale_signal",
+          "value": true,
+          "source_url": "https://gulfglow.example/wholesale",
+          "source_domain": "gulfglow.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2025-11-04",
+          "confidence": 0.9,
+          "quote_or_summary": "Wholesale trade accounts are available to licensed retailers.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-005",
+          "claim": "sourcing_intent",
+          "value": "high",
+          "source_url": "https://gulfglow.example/news/open-call-2026",
+          "source_domain": "gulfglow.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-15",
+          "confidence": 0.9,
+          "quote_or_summary": "Open call for suppliers: we are accepting new Korean beauty brands this season.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-006",
+          "claim": "partnership_signal",
+          "value": true,
+          "source_url": "https://gulfglow.example/brand-partnership",
+          "source_domain": "gulfglow.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-15",
+          "confidence": 0.9,
+          "quote_or_summary": "Brand partnership enquiries are reviewed by our sourcing team.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-007",
+          "claim": "country",
+          "value": "AE",
+          "source_url": "https://gulfglow.example/contact",
+          "source_domain": "gulfglow.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-01",
+          "confidence": 0.9,
+          "quote_or_summary": "Head office: Dubai, United Arab Emirates.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-008",
+          "claim": "contact_channels",
+          "value": [
+            "partnership_form",
+            "corporate_email"
+          ],
+          "source_url": "https://gulfglow.example/brand-partnership",
+          "source_domain": "gulfglow.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "unknown",
+          "confidence": 0.9,
+          "quote_or_summary": "Brand partnership form and sourcing@ address published on the partnership page.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-009",
+          "claim": "korean_category_page",
+          "value": "kbeauty_positioning",
+          "source_url": "https://gulfglow.example/korean-beauty",
+          "source_domain": "gulfglow.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-01",
+          "confidence": 0.9,
+          "quote_or_summary": "Korean Beauty collection page in the site navigation.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [],
+      "country_name": "United Arab Emirates",
+      "product_categories": [
+        "skincare",
+        "sunscreen",
+        "cleanser",
+        "mask_sheet"
+      ],
+      "korean_products_signal": true,
+      "korean_brands_carried": [
+        "Brand A",
+        "Brand B",
+        "Brand C",
+        "Brand D",
+        "Brand E",
+        "Brand F"
+      ],
+      "wholesale_signal": true,
+      "partnership_signal": true,
+      "sourcing_intent": "high",
+      "sourcing_signals": [
+        "open_call_for_suppliers",
+        "partnership_page",
+        "trade_show_attendance"
+      ],
+      "channels": [
+        "wholesale",
+        "distributor_network",
+        "ecommerce"
+      ],
+      "contact_channels": [
+        {
+          "type": "partnership_form",
+          "value": "https://gulfglow.example/brand-partnership",
+          "label": "Brand partnership form",
+          "evidence_ids": [
+            "EV-008"
+          ]
+        },
+        {
+          "type": "corporate_email",
+          "value": "sourcing@gulfglow.example",
+          "label": "Sourcing team",
+          "evidence_ids": [
+            "EV-008"
+          ]
+        }
+      ],
+      "stale": false,
+      "operational_status": "active",
+      "source_query": {
+        "country": "AE",
+        "product_categories": [
+          "sunscreen"
+        ],
+        "keywords": [
+          "uae k-beauty distributor"
+        ],
+        "category_drift": false
+      }
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "buyer_id": "BUY-dunesourcing-example",
+      "company_name": "Dune Sourcing Partners LLC",
+      "website": "https://dunesourcing.example/",
+      "canonical_domain": "dunesourcing.example",
+      "country": "AE",
+      "company_type": "importer",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-001",
+          "claim": "company_type",
+          "value": "importer",
+          "source_url": "https://dunesourcing.example/about",
+          "source_domain": "dunesourcing.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-10",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-002",
+          "claim": "product_categories",
+          "value": [
+            "skincare",
+            "serum",
+            "mask_sheet",
+            "sunscreen"
+          ],
+          "source_url": "https://dunesourcing.example/brands",
+          "source_domain": "dunesourcing.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-10",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-003",
+          "claim": "korean_products_signal",
+          "value": true,
+          "source_url": "https://dunesourcing.example/brands",
+          "source_domain": "dunesourcing.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-10",
+          "confidence": 0.9,
+          "quote_or_summary": "We import two Korean skincare brands under exclusive agreements.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-004",
+          "claim": "wholesale_signal",
+          "value": true,
+          "source_url": "https://dunesourcing.example/trade-enquiry",
+          "source_domain": "dunesourcing.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-10",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-005",
+          "claim": "partnership_signal",
+          "value": true,
+          "source_url": "https://dunesourcing.example/partners",
+          "source_domain": "dunesourcing.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-006",
+          "claim": "sourcing_intent",
+          "value": "medium",
+          "source_url": "https://dunesourcing.example/partners",
+          "source_domain": "dunesourcing.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Standing partnership page inviting brand enquiries; no dated call.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-007",
+          "claim": "country",
+          "value": "AE",
+          "source_url": "https://dunesourcing.example/contact",
+          "source_domain": "dunesourcing.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-10",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-008",
+          "claim": "contact_channels",
+          "value": [
+            "wholesale_form",
+            "corporate_email",
+            "phone"
+          ],
+          "source_url": "https://dunesourcing.example/contact",
+          "source_domain": "dunesourcing.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-10",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-009",
+          "claim": "company_type",
+          "value": "importer",
+          "source_url": "https://gulfbeautydirectory.example/dune-sourcing",
+          "source_domain": "gulfbeautydirectory.example",
+          "source_type": "third_party",
+          "source_tier": 4,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2025-09-01",
+          "confidence": 0.9,
+          "quote_or_summary": "Directory listing: Dune Sourcing Partners LLC, importer, Dubai.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [],
+      "country_name": "United Arab Emirates",
+      "product_categories": [
+        "skincare",
+        "serum",
+        "mask_sheet",
+        "sunscreen"
+      ],
+      "korean_products_signal": true,
+      "korean_brands_carried": [
+        "Brand G",
+        "Brand H"
+      ],
+      "wholesale_signal": true,
+      "partnership_signal": true,
+      "sourcing_intent": "medium",
+      "sourcing_signals": [
+        "partnership_page",
+        "wholesale_inquiry_form"
+      ],
+      "channels": [
+        "wholesale",
+        "ecommerce"
+      ],
+      "contact_channels": [
+        {
+          "type": "wholesale_form",
+          "value": "https://dunesourcing.example/trade-enquiry"
+        },
+        {
+          "type": "corporate_email",
+          "value": "trade@dunesourcing.example"
+        },
+        {
+          "type": "phone",
+          "value": "+971 4 555 0111"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active",
+      "source_query": {
+        "country": "AE",
+        "product_categories": [
+          "sunscreen"
+        ],
+        "category_drift": false
+      }
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "buyer_id": "BUY-marinaretail-example",
+      "company_name": "Marina Retail Boutique LLC",
+      "website": "https://marinaretail.example/",
+      "canonical_domain": "marinaretail.example",
+      "country": "AE",
+      "company_type": "retailer",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-001",
+          "claim": "company_type",
+          "value": "retailer",
+          "source_url": "https://marinaretail.example/about",
+          "source_domain": "marinaretail.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-20",
+          "confidence": 0.9,
+          "quote_or_summary": "Marina Retail Boutique is a single-store consumer beauty boutique in Dubai.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-002",
+          "claim": "product_categories",
+          "value": [
+            "skincare",
+            "lip_makeup"
+          ],
+          "source_url": "https://marinaretail.example/shop",
+          "source_domain": "marinaretail.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-20",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-003",
+          "claim": "korean_products_signal",
+          "value": true,
+          "source_url": "https://marinaretail.example/shop/korean",
+          "source_domain": "marinaretail.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-20",
+          "confidence": 0.9,
+          "quote_or_summary": "We stock one Korean skincare brand in store.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-004",
+          "claim": "wholesale_signal",
+          "value": false,
+          "source_url": "https://marinaretail.example/faq",
+          "source_domain": "marinaretail.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-20",
+          "confidence": 0.9,
+          "quote_or_summary": "We sell at retail prices only and do not offer wholesale or trade accounts.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-005",
+          "claim": "partnership_signal",
+          "value": false,
+          "source_url": "https://marinaretail.example/faq",
+          "source_domain": "marinaretail.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-20",
+          "confidence": 0.9,
+          "quote_or_summary": "We are not accepting brand partnership enquiries.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-006",
+          "claim": "sourcing_intent",
+          "value": "low",
+          "source_url": "https://marinaretail.example/faq",
+          "source_domain": "marinaretail.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-20",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-007",
+          "claim": "country",
+          "value": "AE",
+          "source_url": "https://marinaretail.example/contact",
+          "source_domain": "marinaretail.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-20",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-008",
+          "claim": "contact_channels",
+          "value": [
+            "contact_page"
+          ],
+          "source_url": "https://marinaretail.example/contact",
+          "source_domain": "marinaretail.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-20",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [],
+      "country_name": "United Arab Emirates",
+      "product_categories": [
+        "skincare",
+        "lip_makeup"
+      ],
+      "korean_products_signal": true,
+      "korean_brands_carried": [
+        "Brand J"
+      ],
+      "wholesale_signal": false,
+      "partnership_signal": false,
+      "sourcing_intent": "low",
+      "contact_channels": [
+        {
+          "type": "contact_page",
+          "value": "https://marinaretail.example/contact"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active",
+      "source_query": {
+        "country": "AE",
+        "product_categories": [
+          "sunscreen"
+        ],
+        "category_drift": false
+      }
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "buyer_id": "BUY-desertbulk-example",
+      "company_name": "Desert Bulk Supplies LLC",
+      "website": "https://desertbulk.example/",
+      "canonical_domain": "desertbulk.example",
+      "country": "AE",
+      "company_type": "wholesaler",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-001",
+          "claim": "company_type",
+          "value": "wholesaler",
+          "source_url": "https://desertbulk.example/about",
+          "source_domain": "desertbulk.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-15",
+          "confidence": 0.9,
+          "quote_or_summary": "Bulk supplier of industrial cleaning chemicals and packaging materials.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-002",
+          "claim": "product_categories",
+          "value": [
+            "industrial_cleaning",
+            "packaging_materials"
+          ],
+          "source_url": "https://desertbulk.example/products",
+          "source_domain": "desertbulk.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-15",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-003",
+          "claim": "korean_products_signal",
+          "value": false,
+          "source_url": "https://desertbulk.example/products",
+          "source_domain": "desertbulk.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-15",
+          "confidence": 0.9,
+          "quote_or_summary": "Our catalogue lists no Korean products and no cosmetics.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-004",
+          "claim": "wholesale_signal",
+          "value": true,
+          "source_url": "https://desertbulk.example/trade",
+          "source_domain": "desertbulk.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-15",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-005",
+          "claim": "sourcing_intent",
+          "value": "low",
+          "source_url": "https://desertbulk.example/about",
+          "source_domain": "desertbulk.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-15",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-006",
+          "claim": "country",
+          "value": "AE",
+          "source_url": "https://desertbulk.example/contact",
+          "source_domain": "desertbulk.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-15",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-007",
+          "claim": "contact_channels",
+          "value": [
+            "contact_page"
+          ],
+          "source_url": "https://desertbulk.example/contact",
+          "source_domain": "desertbulk.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-15",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "product_categories contains the unmapped slugs industrial_cleaning and packaging_materials; both are preserved verbatim and match only exactly (INV-33)"
+      ],
+      "country_name": "United Arab Emirates",
+      "product_categories": [
+        "industrial_cleaning",
+        "packaging_materials"
+      ],
+      "korean_products_signal": false,
+      "wholesale_signal": true,
+      "sourcing_intent": "low",
+      "channels": [
+        "wholesale"
+      ],
+      "contact_channels": [
+        {
+          "type": "contact_page",
+          "value": "https://desertbulk.example/contact"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active",
+      "source_query": {
+        "country": "AE",
+        "product_categories": [
+          "sunscreen"
+        ],
+        "category_drift": false
+      }
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "buyer_id": "BUY-luminaglow-example",
+      "company_name": "Lumina Glow Distribution Ltd",
+      "website": "https://luminaglow.example/",
+      "canonical_domain": "luminaglow.example",
+      "country": "GB",
+      "company_type": "distributor",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-001",
+          "claim": "company_type",
+          "value": "distributor",
+          "source_url": "https://luminaglow.example/about",
+          "source_domain": "luminaglow.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-002",
+          "claim": "product_categories",
+          "value": [
+            "skincare",
+            "sunscreen"
+          ],
+          "source_url": "https://luminaglow.example/brands",
+          "source_domain": "luminaglow.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-003",
+          "claim": "korean_products_signal",
+          "value": true,
+          "source_url": "https://luminaglow.example/brands",
+          "source_domain": "luminaglow.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-05",
+          "confidence": 0.9,
+          "quote_or_summary": "We distribute three Korean skincare brands across the UK and Ireland.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-004",
+          "claim": "wholesale_signal",
+          "value": true,
+          "source_url": "https://luminaglow.example/wholesale",
+          "source_domain": "luminaglow.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-005",
+          "claim": "partnership_signal",
+          "value": true,
+          "source_url": "https://luminaglow.example/become-a-partner",
+          "source_domain": "luminaglow.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-006",
+          "claim": "sourcing_intent",
+          "value": "medium",
+          "source_url": "https://luminaglow.example/become-a-partner",
+          "source_domain": "luminaglow.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-007",
+          "claim": "country",
+          "value": "GB",
+          "source_url": "https://luminaglow.example/contact",
+          "source_domain": "luminaglow.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-008",
+          "claim": "contact_channels",
+          "value": [
+            "partnership_form",
+            "corporate_email"
+          ],
+          "source_url": "https://luminaglow.example/become-a-partner",
+          "source_domain": "luminaglow.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [],
+      "country_name": "United Kingdom",
+      "product_categories": [
+        "skincare",
+        "sunscreen"
+      ],
+      "korean_products_signal": true,
+      "korean_brands_carried": [
+        "Brand K",
+        "Brand L",
+        "Brand M"
+      ],
+      "wholesale_signal": true,
+      "partnership_signal": true,
+      "sourcing_intent": "medium",
+      "sourcing_signals": [
+        "partnership_page",
+        "become_a_distributor_page"
+      ],
+      "channels": [
+        "wholesale",
+        "ecommerce"
+      ],
+      "contact_channels": [
+        {
+          "type": "partnership_form",
+          "value": "https://luminaglow.example/become-a-partner"
+        },
+        {
+          "type": "corporate_email",
+          "value": "partners@luminaglow.example"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active",
+      "source_query": {
+        "country": "GB",
+        "product_categories": [
+          "sunscreen"
+        ],
+        "category_drift": false
+      }
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "buyer_id": "BUY-www-luminaglow-example",
+      "company_name": "Lumina Glow Distribution Limited",
+      "website": "https://www.luminaglow.example/",
+      "canonical_domain": "www.luminaglow.example",
+      "country": "GB",
+      "company_type": "distributor",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-001",
+          "claim": "company_type",
+          "value": "distributor",
+          "source_url": "https://www.luminaglow.example/about-us",
+          "source_domain": "luminaglow.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-002",
+          "claim": "product_categories",
+          "value": [
+            "skincare",
+            "sunscreen",
+            "serum"
+          ],
+          "source_url": "https://www.luminaglow.example/our-brands",
+          "source_domain": "luminaglow.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-003",
+          "claim": "korean_products_signal",
+          "value": true,
+          "source_url": "https://www.luminaglow.example/our-brands",
+          "source_domain": "luminaglow.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-004",
+          "claim": "wholesale_signal",
+          "value": true,
+          "source_url": "https://www.luminaglow.example/wholesale",
+          "source_domain": "luminaglow.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-005",
+          "claim": "country",
+          "value": "GB",
+          "source_url": "https://www.luminaglow.example/contact",
+          "source_domain": "luminaglow.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-006",
+          "claim": "contact_channels",
+          "value": [
+            "contact_page"
+          ],
+          "source_url": "https://www.luminaglow.example/contact",
+          "source_domain": "luminaglow.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "second crawl of the same site reached through the www host; expected to merge with BUY-luminaglow-example on canonical_domain (T06)"
+      ],
+      "country_name": "United Kingdom",
+      "product_categories": [
+        "skincare",
+        "sunscreen",
+        "serum"
+      ],
+      "korean_products_signal": true,
+      "wholesale_signal": true,
+      "channels": [
+        "wholesale"
+      ],
+      "contact_channels": [
+        {
+          "type": "contact_page",
+          "value": "https://www.luminaglow.example/contact"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active",
+      "source_query": {
+        "country": "GB",
+        "product_categories": [
+          "sunscreen"
+        ],
+        "category_drift": false
+      }
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "buyer_id": "BUY-britsun-example",
+      "company_name": "Britannia Sun Collective Ltd",
+      "website": "https://britsun.example/",
+      "canonical_domain": "britsun.example",
+      "country": "GB",
+      "company_type": "wholesaler",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-001",
+          "claim": "company_type",
+          "value": "wholesaler",
+          "source_url": "https://britsun.example/about",
+          "source_domain": "britsun.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-002",
+          "claim": "product_categories",
+          "value": [
+            "sunscreen",
+            "suncare",
+            "after_sun",
+            "skincare"
+          ],
+          "source_url": "https://britsun.example/range",
+          "source_domain": "britsun.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-003",
+          "claim": "korean_products_signal",
+          "value": true,
+          "source_url": "https://britsun.example/range/korean-suncare",
+          "source_domain": "britsun.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Four Korean sun care brands are listed in our trade range.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-004",
+          "claim": "wholesale_signal",
+          "value": true,
+          "source_url": "https://britsun.example/trade-pricing",
+          "source_domain": "britsun.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-005",
+          "claim": "partnership_signal",
+          "value": true,
+          "source_url": "https://britsun.example/brand-submission",
+          "source_domain": "britsun.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-28",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-006",
+          "claim": "sourcing_intent",
+          "value": "high",
+          "source_url": "https://britsun.example/news/sun-2027-open-call",
+          "source_domain": "britsun.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-28",
+          "confidence": 0.9,
+          "quote_or_summary": "Open call for suppliers for the 2027 sun season, dated June 2026.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-007",
+          "claim": "country",
+          "value": "GB",
+          "source_url": "https://britsun.example/contact",
+          "source_domain": "britsun.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-008",
+          "claim": "contact_channels",
+          "value": [
+            "partnership_form",
+            "corporate_email",
+            "phone"
+          ],
+          "source_url": "https://britsun.example/contact",
+          "source_domain": "britsun.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-009",
+          "claim": "sourcing_intent",
+          "value": "high",
+          "source_url": "https://ukbeautyexpo.example/exhibitors/britsun",
+          "source_domain": "ukbeautyexpo.example",
+          "source_type": "trade_show",
+          "source_tier": 2,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-11",
+          "confidence": 0.9,
+          "quote_or_summary": "Exhibitor entry for Britannia Sun Collective at a UK beauty trade show.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [],
+      "country_name": "United Kingdom",
+      "product_categories": [
+        "sunscreen",
+        "suncare",
+        "after_sun",
+        "skincare"
+      ],
+      "korean_products_signal": true,
+      "korean_brands_carried": [
+        "Brand N",
+        "Brand O",
+        "Brand P",
+        "Brand Q"
+      ],
+      "wholesale_signal": true,
+      "partnership_signal": true,
+      "sourcing_intent": "high",
+      "sourcing_signals": [
+        "open_call_for_suppliers",
+        "brand_submission_form",
+        "trade_show_attendance"
+      ],
+      "channels": [
+        "wholesale",
+        "distributor_network"
+      ],
+      "contact_channels": [
+        {
+          "type": "partnership_form",
+          "value": "https://britsun.example/brand-submission"
+        },
+        {
+          "type": "corporate_email",
+          "value": "buying@britsun.example"
+        },
+        {
+          "type": "phone",
+          "value": "+44 20 7946 0100"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active",
+      "source_query": {
+        "country": "GB",
+        "product_categories": [
+          "sunscreen"
+        ],
+        "category_drift": false
+      }
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "buyer_id": "BUY-albionbeautyhall-example",
+      "company_name": "Albion Beauty Hall Ltd",
+      "website": "https://albionbeautyhall.example/",
+      "canonical_domain": "albionbeautyhall.example",
+      "country": "GB",
+      "company_type": "retailer",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-001",
+          "claim": "company_type",
+          "value": "retailer",
+          "source_url": "https://albionbeautyhall.example/about",
+          "source_domain": "albionbeautyhall.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-30",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-002",
+          "claim": "product_categories",
+          "value": [
+            "makeup",
+            "skincare",
+            "fragrance"
+          ],
+          "source_url": "https://albionbeautyhall.example/departments",
+          "source_domain": "albionbeautyhall.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-30",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-003",
+          "claim": "wholesale_signal",
+          "value": true,
+          "source_url": "https://albionbeautyhall.example/enquiries",
+          "source_domain": "albionbeautyhall.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-30",
+          "confidence": 0.9,
+          "quote_or_summary": "Trade and wholesale enquiries are handled through our enquiry form.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-004",
+          "claim": "sourcing_intent",
+          "value": "medium",
+          "source_url": "https://albionbeautyhall.example/enquiries",
+          "source_domain": "albionbeautyhall.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-30",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-005",
+          "claim": "country",
+          "value": "GB",
+          "source_url": "https://albionbeautyhall.example/contact",
+          "source_domain": "albionbeautyhall.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-30",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-006",
+          "claim": "contact_channels",
+          "value": [
+            "form",
+            "phone"
+          ],
+          "source_url": "https://albionbeautyhall.example/contact",
+          "source_domain": "albionbeautyhall.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-30",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "korean_products_signal left unknown: the site names no Korean brand and makes no Korea sourcing statement"
+      ],
+      "country_name": "United Kingdom",
+      "product_categories": [
+        "makeup",
+        "skincare",
+        "fragrance"
+      ],
+      "wholesale_signal": true,
+      "sourcing_intent": "medium",
+      "sourcing_signals": [
+        "wholesale_inquiry_form"
+      ],
+      "channels": [
+        "retail_store",
+        "department_store",
+        "ecommerce"
+      ],
+      "contact_channels": [
+        {
+          "type": "form",
+          "value": "https://albionbeautyhall.example/enquiries"
+        },
+        {
+          "type": "phone",
+          "value": "+44 161 496 0200"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active",
+      "source_query": {
+        "country": "GB",
+        "product_categories": [
+          "sunscreen"
+        ],
+        "category_drift": false
+      }
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "buyer_id": "BUY-palefade-example",
+      "company_name": "Pale Fade Trading Ltd",
+      "website": "https://palefade.example/",
+      "canonical_domain": "palefade.example",
+      "country": "GB",
+      "company_type": "importer",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-001",
+          "claim": "company_type",
+          "value": "importer",
+          "source_url": "https://palefade.example/about",
+          "source_domain": "palefade.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2023-01-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "stale": true
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-002",
+          "claim": "product_categories",
+          "value": [
+            "skincare",
+            "sunscreen"
+          ],
+          "source_url": "https://palefade.example/brands",
+          "source_domain": "palefade.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2023-01-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "stale": true
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-003",
+          "claim": "korean_products_signal",
+          "value": true,
+          "source_url": "https://palefade.example/brands",
+          "source_domain": "palefade.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2023-01-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "stale": true
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-004",
+          "claim": "wholesale_signal",
+          "value": true,
+          "source_url": "https://palefade.example/wholesale",
+          "source_domain": "palefade.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2023-01-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "stale": true
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-005",
+          "claim": "sourcing_intent",
+          "value": "medium",
+          "source_url": "https://palefade.example/partners",
+          "source_domain": "palefade.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2023-01-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "stale": true
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-006",
+          "claim": "country",
+          "value": "GB",
+          "source_url": "https://palefade.example/contact",
+          "source_domain": "palefade.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2023-01-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "stale": true
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-007",
+          "claim": "contact_channels",
+          "value": [
+            "contact_page",
+            "corporate_email"
+          ],
+          "source_url": "https://palefade.example/contact",
+          "source_domain": "palefade.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2023-01-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "stale": true
+        }
+      ],
+      "notes": [
+        "site last updated in 2023; content is reachable but demonstrably outdated (T07 a)"
+      ],
+      "country_name": "United Kingdom",
+      "product_categories": [
+        "skincare",
+        "sunscreen"
+      ],
+      "korean_products_signal": true,
+      "korean_brands_carried": [
+        "Brand R",
+        "Brand S"
+      ],
+      "wholesale_signal": true,
+      "sourcing_intent": "medium",
+      "sourcing_signals": [
+        "partnership_page"
+      ],
+      "channels": [
+        "wholesale"
+      ],
+      "contact_channels": [
+        {
+          "type": "contact_page",
+          "value": "https://palefade.example/contact"
+        },
+        {
+          "type": "corporate_email",
+          "value": "info@palefade.example"
+        }
+      ],
+      "stale": true,
+      "operational_status": "active",
+      "source_query": {
+        "country": "GB",
+        "product_categories": [
+          "sunscreen"
+        ],
+        "category_drift": false
+      }
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "buyer_id": "BUY-northgateimport-example",
+      "company_name": "Northgate Import Co Ltd",
+      "website": "https://northgateimport.example/",
+      "canonical_domain": "northgateimport.example",
+      "country": "GB",
+      "company_type": "importer",
+      "status": "DISCOVERED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-001",
+          "claim": "company_type",
+          "value": "importer",
+          "source_url": "https://ukbeautydirectory.example/northgate-import",
+          "source_domain": "ukbeautydirectory.example",
+          "source_type": "third_party",
+          "source_tier": 4,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2024-08-14",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-002",
+          "claim": "product_categories",
+          "value": [
+            "skincare"
+          ],
+          "source_url": "https://ukbeautydirectory.example/northgate-import",
+          "source_domain": "ukbeautydirectory.example",
+          "source_type": "third_party",
+          "source_tier": 4,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2024-08-14",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-003",
+          "claim": "korean_products_signal",
+          "value": true,
+          "source_url": "https://ukbeautydirectory.example/northgate-import",
+          "source_domain": "ukbeautydirectory.example",
+          "source_type": "third_party",
+          "source_tier": 4,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2024-08-14",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-004",
+          "claim": "wholesale_signal",
+          "value": true,
+          "source_url": "https://ukbeautydirectory.example/northgate-import",
+          "source_domain": "ukbeautydirectory.example",
+          "source_type": "third_party",
+          "source_tier": 4,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2024-08-14",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-005",
+          "claim": "country",
+          "value": "GB",
+          "source_url": "https://ukbeautydirectory.example/northgate-import",
+          "source_domain": "ukbeautydirectory.example",
+          "source_type": "third_party",
+          "source_tier": 4,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2024-08-14",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-006",
+          "claim": "operational_status",
+          "value": "unreachable",
+          "source_url": "https://ukbeautydirectory.example/northgate-import",
+          "source_domain": "ukbeautydirectory.example",
+          "source_type": "third_party",
+          "source_tier": 4,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2024-08-14",
+          "confidence": 0.9,
+          "quote_or_summary": "Directory entry marks the company website as no longer resolving.",
+          "retrieval_method": "page_fetch",
+          "stale": true
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-007",
+          "claim": "contact_channels",
+          "value": [
+            "corporate_email"
+          ],
+          "source_url": "https://ukbeautydirectory.example/northgate-import",
+          "source_domain": "ukbeautydirectory.example",
+          "source_type": "third_party",
+          "source_tier": 4,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2024-08-14",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-008",
+          "claim": "sourcing_intent",
+          "value": "low",
+          "source_url": "https://ukbeautydirectory.example/northgate-import",
+          "source_domain": "ukbeautydirectory.example",
+          "source_type": "third_party",
+          "source_tier": 4,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2024-08-14",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "website returned a connection error on the observation date; the company record is kept, flagged and rendered LOW rather than dropped (T07 b)"
+      ],
+      "country_name": "United Kingdom",
+      "product_categories": [
+        "skincare"
+      ],
+      "korean_products_signal": true,
+      "wholesale_signal": true,
+      "sourcing_intent": "low",
+      "channels": [
+        "wholesale"
+      ],
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "sales@northgateimport.example"
+        }
+      ],
+      "stale": false,
+      "operational_status": "unreachable",
+      "source_query": {
+        "country": "GB",
+        "product_categories": [
+          "sunscreen"
+        ],
+        "category_drift": false
+      }
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "buyer_id": "BUY-pacificglowdist-example",
+      "company_name": "Pacific Glow Distributors Inc",
+      "website": "https://pacificglowdist.example/",
+      "canonical_domain": "pacificglowdist.example",
+      "country": "US",
+      "company_type": "distributor",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-001",
+          "claim": "company_type",
+          "value": "distributor",
+          "source_url": "https://pacificglowdist.example/about",
+          "source_domain": "pacificglowdist.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-12",
+          "confidence": 0.9,
+          "quote_or_summary": "Pacific Glow Distributors is a wholesale distributor serving US retailers.",
+          "retrieval_method": "page_fetch",
+          "conflicts_with": [
+            "EV-009"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-002",
+          "claim": "product_categories",
+          "value": [
+            "skincare",
+            "sunscreen",
+            "mask_sheet"
+          ],
+          "source_url": "https://pacificglowdist.example/brands",
+          "source_domain": "pacificglowdist.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-12",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-003",
+          "claim": "korean_products_signal",
+          "value": true,
+          "source_url": "https://pacificglowdist.example/brands",
+          "source_domain": "pacificglowdist.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-12",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-004",
+          "claim": "wholesale_signal",
+          "value": true,
+          "source_url": "https://pacificglowdist.example/wholesale",
+          "source_domain": "pacificglowdist.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-12",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-005",
+          "claim": "partnership_signal",
+          "value": true,
+          "source_url": "https://pacificglowdist.example/new-brands",
+          "source_domain": "pacificglowdist.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-12",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-006",
+          "claim": "sourcing_intent",
+          "value": "high",
+          "source_url": "https://pacificglowdist.example/new-brands",
+          "source_domain": "pacificglowdist.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-12",
+          "confidence": 0.9,
+          "quote_or_summary": "New brand inquiry form, updated June 2026, invites Korean suncare submissions.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-007",
+          "claim": "country",
+          "value": "US",
+          "source_url": "https://pacificglowdist.example/contact",
+          "source_domain": "pacificglowdist.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-12",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-008",
+          "claim": "contact_channels",
+          "value": [
+            "partnership_form",
+            "corporate_email"
+          ],
+          "source_url": "https://pacificglowdist.example/contact",
+          "source_domain": "pacificglowdist.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-12",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-009",
+          "claim": "company_type",
+          "value": "retailer",
+          "source_url": "https://usbeautydirectory.example/pacific-glow",
+          "source_domain": "usbeautydirectory.example",
+          "source_type": "third_party",
+          "source_tier": 4,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2025-02-20",
+          "confidence": 0.9,
+          "quote_or_summary": "Directory listing categorises Pacific Glow Distributors as a retailer.",
+          "retrieval_method": "page_fetch",
+          "conflicts_with": [
+            "EV-001"
+          ]
+        }
+      ],
+      "notes": [],
+      "country_name": "United States",
+      "product_categories": [
+        "skincare",
+        "sunscreen",
+        "mask_sheet"
+      ],
+      "korean_products_signal": true,
+      "korean_brands_carried": [
+        "Brand T",
+        "Brand U",
+        "Brand V"
+      ],
+      "wholesale_signal": true,
+      "partnership_signal": true,
+      "sourcing_intent": "high",
+      "sourcing_signals": [
+        "new_brand_inquiry",
+        "partnership_page"
+      ],
+      "channels": [
+        "wholesale",
+        "distributor_network"
+      ],
+      "contact_channels": [
+        {
+          "type": "partnership_form",
+          "value": "https://pacificglowdist.example/new-brands"
+        },
+        {
+          "type": "corporate_email",
+          "value": "brands@pacificglowdist.example"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active",
+      "source_query": {
+        "country": "US",
+        "product_categories": [
+          "sunscreen"
+        ],
+        "category_drift": false
+      },
+      "conflicts": [
+        {
+          "field": "company_type",
+          "winning_value": "distributor",
+          "losing_value": "retailer",
+          "winning_evidence_ids": [
+            "EV-001"
+          ],
+          "losing_evidence_ids": [
+            "EV-009"
+          ],
+          "resolution": "official_source",
+          "note": "The company's own About page states it is a wholesale distributor; a third-party directory classifies it as a retailer. Official source wins (T08)."
+        }
+      ]
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "buyer_id": "BUY-libertybeautysupply-example",
+      "company_name": "Liberty Beauty Supply LLC",
+      "website": "https://libertybeautysupply.example/",
+      "canonical_domain": "libertybeautysupply.example",
+      "country": "US",
+      "company_type": "wholesaler",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-001",
+          "claim": "company_type",
+          "value": "wholesaler",
+          "source_url": "https://libertybeautysupply.example/about",
+          "source_domain": "libertybeautysupply.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-09",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-002",
+          "claim": "product_categories",
+          "value": [
+            "skincare",
+            "haircare",
+            "bodycare"
+          ],
+          "source_url": "https://libertybeautysupply.example/catalog",
+          "source_domain": "libertybeautysupply.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-09",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-003",
+          "claim": "korean_products_signal",
+          "value": true,
+          "source_url": "https://libertybeautysupply.example/catalog",
+          "source_domain": "libertybeautysupply.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-09",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-004",
+          "claim": "wholesale_signal",
+          "value": true,
+          "source_url": "https://libertybeautysupply.example/open-account",
+          "source_domain": "libertybeautysupply.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-09",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-005",
+          "claim": "partnership_signal",
+          "value": true,
+          "source_url": "https://libertybeautysupply.example/become-a-distributor",
+          "source_domain": "libertybeautysupply.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-22",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-006",
+          "claim": "sourcing_intent",
+          "value": "medium",
+          "source_url": "https://libertybeautysupply.example/become-a-distributor",
+          "source_domain": "libertybeautysupply.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-22",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-007",
+          "claim": "country",
+          "value": "US",
+          "source_url": "https://libertybeautysupply.example/contact",
+          "source_domain": "libertybeautysupply.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-09",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-008",
+          "claim": "contact_channels",
+          "value": [
+            "wholesale_form",
+            "phone"
+          ],
+          "source_url": "https://libertybeautysupply.example/contact",
+          "source_domain": "libertybeautysupply.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-09",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [],
+      "country_name": "United States",
+      "product_categories": [
+        "skincare",
+        "haircare",
+        "bodycare"
+      ],
+      "korean_products_signal": true,
+      "korean_brands_carried": [
+        "Brand W"
+      ],
+      "wholesale_signal": true,
+      "partnership_signal": true,
+      "sourcing_intent": "medium",
+      "sourcing_signals": [
+        "become_a_distributor_page",
+        "trade_show_attendance"
+      ],
+      "channels": [
+        "wholesale",
+        "salon_spa"
+      ],
+      "contact_channels": [
+        {
+          "type": "wholesale_form",
+          "value": "https://libertybeautysupply.example/open-account"
+        },
+        {
+          "type": "phone",
+          "value": "+1 312 555 0134"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active",
+      "source_query": {
+        "country": "US",
+        "product_categories": [
+          "sunscreen"
+        ],
+        "category_drift": false
+      }
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "buyer_id": "BUY-cascademarket-example",
+      "company_name": "Cascade Marketplace Inc",
+      "website": "https://cascademarket.example/",
+      "canonical_domain": "cascademarket.example",
+      "country": "US",
+      "company_type": "marketplace",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-001",
+          "claim": "company_type",
+          "value": "marketplace",
+          "source_url": "https://cascademarket.example/about",
+          "source_domain": "cascademarket.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-01",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-002",
+          "claim": "product_categories",
+          "value": [
+            "skincare",
+            "makeup",
+            "haircare",
+            "fragrance"
+          ],
+          "source_url": "https://cascademarket.example/categories",
+          "source_domain": "cascademarket.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-01",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-003",
+          "claim": "wholesale_signal",
+          "value": false,
+          "source_url": "https://cascademarket.example/seller-support",
+          "source_domain": "cascademarket.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-01",
+          "confidence": 0.9,
+          "quote_or_summary": "The marketplace does not buy stock; sellers transact directly with buyers.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-004",
+          "claim": "sourcing_intent",
+          "value": "low",
+          "source_url": "https://cascademarket.example/seller-support",
+          "source_domain": "cascademarket.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-01",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-005",
+          "claim": "country",
+          "value": "US",
+          "source_url": "https://cascademarket.example/contact",
+          "source_domain": "cascademarket.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-01",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-006",
+          "claim": "contact_channels",
+          "value": [
+            "form",
+            "corporate_email"
+          ],
+          "source_url": "https://cascademarket.example/contact",
+          "source_domain": "cascademarket.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-01",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "korean_products_signal left unknown: third-party sellers list Korean products, but the marketplace operator does not carry them itself"
+      ],
+      "country_name": "United States",
+      "product_categories": [
+        "skincare",
+        "makeup",
+        "haircare",
+        "fragrance"
+      ],
+      "wholesale_signal": false,
+      "sourcing_intent": "low",
+      "channels": [
+        "marketplace",
+        "ecommerce"
+      ],
+      "contact_channels": [
+        {
+          "type": "form",
+          "value": "https://cascademarket.example/seller-support"
+        },
+        {
+          "type": "corporate_email",
+          "value": "sellers@cascademarket.example"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active",
+      "source_query": {
+        "country": "US",
+        "product_categories": [
+          "sunscreen"
+        ],
+        "category_drift": false
+      }
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "buyer_id": "BUY-sakurabeautytrading-example",
+      "company_name": "Sakura Beauty Trading KK",
+      "website": "https://sakurabeautytrading.example/",
+      "canonical_domain": "sakurabeautytrading.example",
+      "country": "JP",
+      "company_type": "distributor",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-001",
+          "claim": "company_type",
+          "value": "distributor",
+          "source_url": "https://sakurabeautytrading.example/company",
+          "source_domain": "sakurabeautytrading.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-002",
+          "claim": "product_categories",
+          "value": [
+            "skincare",
+            "sunscreen",
+            "mask_sheet",
+            "cushion"
+          ],
+          "source_url": "https://sakurabeautytrading.example/brands",
+          "source_domain": "sakurabeautytrading.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-003",
+          "claim": "korean_products_signal",
+          "value": true,
+          "source_url": "https://sakurabeautytrading.example/brands",
+          "source_domain": "sakurabeautytrading.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-004",
+          "claim": "wholesale_signal",
+          "value": true,
+          "source_url": "https://sakurabeautytrading.example/wholesale",
+          "source_domain": "sakurabeautytrading.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-005",
+          "claim": "partnership_signal",
+          "value": true,
+          "source_url": "https://sakurabeautytrading.example/partner",
+          "source_domain": "sakurabeautytrading.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-30",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-006",
+          "claim": "sourcing_intent",
+          "value": "high",
+          "source_url": "https://sakurabeautytrading.example/partner/rfq-2026-08",
+          "source_domain": "sakurabeautytrading.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-30",
+          "confidence": 0.9,
+          "quote_or_summary": "Posted buying request for Korean sunscreen, dated 30 June 2026.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-007",
+          "claim": "country",
+          "value": "JP",
+          "source_url": "https://sakurabeautytrading.example/company",
+          "source_domain": "sakurabeautytrading.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-008",
+          "claim": "contact_channels",
+          "value": [
+            "partnership_form",
+            "corporate_email",
+            "linkedin"
+          ],
+          "source_url": "https://sakurabeautytrading.example/company",
+          "source_domain": "sakurabeautytrading.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [],
+      "country_name": "Japan",
+      "product_categories": [
+        "skincare",
+        "sunscreen",
+        "mask_sheet",
+        "cushion"
+      ],
+      "korean_products_signal": true,
+      "korean_brands_carried": [
+        "Brand X",
+        "Brand Y",
+        "Brand Z",
+        "Brand AA"
+      ],
+      "wholesale_signal": true,
+      "partnership_signal": true,
+      "sourcing_intent": "high",
+      "sourcing_signals": [
+        "rfq_posted",
+        "partnership_page"
+      ],
+      "channels": [
+        "wholesale",
+        "ecommerce",
+        "distributor_network"
+      ],
+      "contact_channels": [
+        {
+          "type": "partnership_form",
+          "value": "https://sakurabeautytrading.example/partner"
+        },
+        {
+          "type": "corporate_email",
+          "value": "kaigai@sakurabeautytrading.example"
+        },
+        {
+          "type": "linkedin",
+          "value": "https://linkedin.example/company/sakura-beauty-trading"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active",
+      "source_query": {
+        "country": "JP",
+        "product_categories": [
+          "sunscreen"
+        ],
+        "category_drift": false
+      }
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "buyer_id": "BUY-kantoimport-example",
+      "company_name": "Kanto Import Partners KK",
+      "website": "https://kantoimport.example/",
+      "canonical_domain": "kantoimport.example",
+      "country": "JP",
+      "company_type": "importer",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-001",
+          "claim": "company_type",
+          "value": "importer",
+          "source_url": "https://kantoimport.example/about",
+          "source_domain": "kantoimport.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-02-14",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-002",
+          "claim": "country",
+          "value": "JP",
+          "source_url": "https://kantoimport.example/about",
+          "source_domain": "kantoimport.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-02-14",
+          "confidence": 0.9,
+          "quote_or_summary": "Registered office: Tokyo, Japan.",
+          "retrieval_method": "page_fetch",
+          "conflicts_with": [
+            "EV-003"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-003",
+          "claim": "country",
+          "value": "KR",
+          "source_url": "https://asiatradelist.example/kanto-import",
+          "source_domain": "asiatradelist.example",
+          "source_type": "third_party",
+          "source_tier": 4,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2025-06-01",
+          "confidence": 0.9,
+          "quote_or_summary": "Third-party listing gives a Seoul address for a similarly named entity.",
+          "retrieval_method": "page_fetch",
+          "conflicts_with": [
+            "EV-002"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-004",
+          "claim": "contact_channels",
+          "value": [
+            "contact_page"
+          ],
+          "source_url": "https://kantoimport.example/contact",
+          "source_domain": "kantoimport.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-02-14",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "product_categories, korean_products_signal, wholesale_signal, partnership_signal and sourcing_intent are all unknown: the site publishes no such statement"
+      ],
+      "country_name": "Japan",
+      "contact_channels": [
+        {
+          "type": "contact_page",
+          "value": "https://kantoimport.example/contact"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active",
+      "source_query": {
+        "country": "JP",
+        "product_categories": [
+          "sunscreen"
+        ],
+        "category_drift": false
+      }
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "buyer_id": "BUY-lioncitybeauty-example",
+      "company_name": "Lion City Beauty Pte Ltd",
+      "website": "https://lioncitybeauty.example/",
+      "canonical_domain": "lioncitybeauty.example",
+      "country": "SG",
+      "company_type": "distributor",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-001",
+          "claim": "company_type",
+          "value": "distributor",
+          "source_url": "https://lioncitybeauty.example/about",
+          "source_domain": "lioncitybeauty.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-25",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-002",
+          "claim": "product_categories",
+          "value": [
+            "skincare",
+            "sunscreen",
+            "serum"
+          ],
+          "source_url": "https://lioncitybeauty.example/brands",
+          "source_domain": "lioncitybeauty.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-25",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-003",
+          "claim": "korean_products_signal",
+          "value": true,
+          "source_url": "https://lioncitybeauty.example/brands",
+          "source_domain": "lioncitybeauty.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-25",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-004",
+          "claim": "wholesale_signal",
+          "value": true,
+          "source_url": "https://lioncitybeauty.example/trade",
+          "source_domain": "lioncitybeauty.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-25",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-005",
+          "claim": "partnership_signal",
+          "value": true,
+          "source_url": "https://lioncitybeauty.example/brand-enquiry",
+          "source_domain": "lioncitybeauty.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-25",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-006",
+          "claim": "sourcing_intent",
+          "value": "medium",
+          "source_url": "https://lioncitybeauty.example/brand-enquiry",
+          "source_domain": "lioncitybeauty.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-25",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-007",
+          "claim": "country",
+          "value": "SG",
+          "source_url": "https://lioncitybeauty.example/contact",
+          "source_domain": "lioncitybeauty.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-25",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-008",
+          "claim": "contact_channels",
+          "value": [
+            "partnership_form",
+            "corporate_email"
+          ],
+          "source_url": "https://lioncitybeauty.example/contact",
+          "source_domain": "lioncitybeauty.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-25",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-009",
+          "claim": "korean_products_signal",
+          "value": true,
+          "source_url": "https://sgbeautyexpo.example/exhibitors/lion-city-beauty",
+          "source_domain": "sgbeautyexpo.example",
+          "source_type": "trade_show",
+          "source_tier": 2,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-10",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [],
+      "country_name": "Singapore",
+      "product_categories": [
+        "skincare",
+        "sunscreen",
+        "serum"
+      ],
+      "korean_products_signal": true,
+      "korean_brands_carried": [
+        "Brand AB",
+        "Brand AC",
+        "Brand AD"
+      ],
+      "wholesale_signal": true,
+      "partnership_signal": true,
+      "sourcing_intent": "medium",
+      "sourcing_signals": [
+        "partnership_page",
+        "trade_show_attendance"
+      ],
+      "channels": [
+        "wholesale",
+        "ecommerce",
+        "pharmacy"
+      ],
+      "contact_channels": [
+        {
+          "type": "partnership_form",
+          "value": "https://lioncitybeauty.example/brand-enquiry"
+        },
+        {
+          "type": "corporate_email",
+          "value": "hello@lioncitybeauty.example"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active",
+      "source_query": {
+        "country": "SG",
+        "product_categories": [
+          "sunscreen"
+        ],
+        "category_drift": false
+      }
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "buyer_id": "BUY-straitswholesale-example",
+      "company_name": "Straits Wholesale Pte Ltd",
+      "website": "https://straitswholesale.example/",
+      "canonical_domain": "straitswholesale.example",
+      "country": "SG",
+      "company_type": "wholesaler",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-001",
+          "claim": "company_type",
+          "value": "wholesaler",
+          "source_url": "https://straitswholesale.example/about",
+          "source_domain": "straitswholesale.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-002",
+          "claim": "product_categories",
+          "value": [
+            "skincare",
+            "bodycare"
+          ],
+          "source_url": "https://straitswholesale.example/products",
+          "source_domain": "straitswholesale.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-003",
+          "claim": "korean_products_signal",
+          "value": true,
+          "source_url": "https://straitswholesale.example/products",
+          "source_domain": "straitswholesale.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-004",
+          "claim": "wholesale_signal",
+          "value": true,
+          "source_url": "https://straitswholesale.example/trade",
+          "source_domain": "straitswholesale.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-005",
+          "claim": "sourcing_intent",
+          "value": "medium",
+          "source_url": "https://straitswholesale.example/trade",
+          "source_domain": "straitswholesale.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-006",
+          "claim": "country",
+          "value": "SG",
+          "source_url": "https://straitswholesale.example/about",
+          "source_domain": "straitswholesale.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-007",
+          "claim": "contact_channels",
+          "value": "none_published",
+          "source_url": "https://straitswholesale.example/about",
+          "source_domain": "straitswholesale.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Checked About, Contact and Trade pages: no form, address, phone or email is published anywhere on the site.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "contact_channels is present and empty: the site publishes no company-level contact channel at all (verified negative, not unknown)"
+      ],
+      "country_name": "Singapore",
+      "product_categories": [
+        "skincare",
+        "bodycare"
+      ],
+      "korean_products_signal": true,
+      "wholesale_signal": true,
+      "sourcing_intent": "medium",
+      "channels": [
+        "wholesale"
+      ],
+      "contact_channels": [],
+      "stale": false,
+      "operational_status": "active",
+      "source_query": {
+        "country": "SG",
+        "product_categories": [
+          "sunscreen"
+        ],
+        "category_drift": false
+      }
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "buyer_id": "BUY-rheinkosmetik-example",
+      "company_name": "Rhein Kosmetik Handels GmbH",
+      "website": "https://rheinkosmetik.example/",
+      "canonical_domain": "rheinkosmetik.example",
+      "country": "DE",
+      "company_type": "importer",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-001",
+          "claim": "company_type",
+          "value": "importer",
+          "source_url": "https://rheinkosmetik.example/ueber-uns",
+          "source_domain": "rheinkosmetik.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-28",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-002",
+          "claim": "product_categories",
+          "value": [
+            "skincare",
+            "sunscreen",
+            "mens_skincare"
+          ],
+          "source_url": "https://rheinkosmetik.example/marken",
+          "source_domain": "rheinkosmetik.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-28",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-003",
+          "claim": "korean_products_signal",
+          "value": true,
+          "source_url": "https://rheinkosmetik.example/marken",
+          "source_domain": "rheinkosmetik.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-28",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-004",
+          "claim": "wholesale_signal",
+          "value": true,
+          "source_url": "https://rheinkosmetik.example/handelsanfrage",
+          "source_domain": "rheinkosmetik.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-28",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-005",
+          "claim": "partnership_signal",
+          "value": true,
+          "source_url": "https://rheinkosmetik.example/partner",
+          "source_domain": "rheinkosmetik.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-28",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-006",
+          "claim": "sourcing_intent",
+          "value": "medium",
+          "source_url": "https://rheinkosmetik.example/partner",
+          "source_domain": "rheinkosmetik.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-28",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-007",
+          "claim": "country",
+          "value": "DE",
+          "source_url": "https://rheinkosmetik.example/impressum",
+          "source_domain": "rheinkosmetik.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-28",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-008",
+          "claim": "contact_channels",
+          "value": [
+            "wholesale_form",
+            "corporate_email"
+          ],
+          "source_url": "https://rheinkosmetik.example/impressum",
+          "source_domain": "rheinkosmetik.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-28",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [],
+      "country_name": "Germany",
+      "product_categories": [
+        "skincare",
+        "sunscreen",
+        "mens_skincare"
+      ],
+      "korean_products_signal": true,
+      "korean_brands_carried": [
+        "Brand AE",
+        "Brand AF"
+      ],
+      "wholesale_signal": true,
+      "partnership_signal": true,
+      "sourcing_intent": "medium",
+      "sourcing_signals": [
+        "partnership_page",
+        "wholesale_inquiry_form"
+      ],
+      "channels": [
+        "wholesale",
+        "pharmacy"
+      ],
+      "contact_channels": [
+        {
+          "type": "wholesale_form",
+          "value": "https://rheinkosmetik.example/handelsanfrage"
+        },
+        {
+          "type": "corporate_email",
+          "value": "einkauf@rheinkosmetik.example"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active",
+      "source_query": {
+        "country": "DE",
+        "product_categories": [
+          "sunscreen"
+        ],
+        "category_drift": false
+      }
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "buyer_id": "BUY-novadrift-example",
+      "company_name": "Nova Drift Trading Ltd",
+      "website": "https://novadrift.example/",
+      "canonical_domain": "novadrift.example",
+      "country": "GB",
+      "company_type": "distributor",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-001",
+          "claim": "company_type",
+          "value": "distributor",
+          "source_url": "https://novadrift.example/about",
+          "source_domain": "novadrift.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-06",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-002",
+          "claim": "product_categories",
+          "value": [
+            "skincare",
+            "serum"
+          ],
+          "source_url": "https://novadrift.example/brands",
+          "source_domain": "novadrift.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-06",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-003",
+          "claim": "korean_products_signal",
+          "value": true,
+          "source_url": "https://novadrift.example/brands",
+          "source_domain": "novadrift.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-06",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-004",
+          "claim": "wholesale_signal",
+          "value": true,
+          "source_url": "https://novadrift.example/trade",
+          "source_domain": "novadrift.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-06",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-005",
+          "claim": "sourcing_intent",
+          "value": "medium",
+          "source_url": "https://novadrift.example/partners",
+          "source_domain": "novadrift.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-06",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-006",
+          "claim": "country",
+          "value": "GB",
+          "source_url": "https://novadrift.example/contact",
+          "source_domain": "novadrift.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-06",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-007",
+          "claim": "contact_channels",
+          "value": [
+            "corporate_email"
+          ],
+          "source_url": "https://novadrift.example/contact",
+          "source_domain": "novadrift.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-06",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "first seen after the run widened the query from sunscreen to skincare (category_drift, PRD DISC-05)"
+      ],
+      "country_name": "United Kingdom",
+      "product_categories": [
+        "skincare",
+        "serum"
+      ],
+      "korean_products_signal": true,
+      "korean_brands_carried": [
+        "Brand AG"
+      ],
+      "wholesale_signal": true,
+      "sourcing_intent": "medium",
+      "sourcing_signals": [
+        "partnership_page"
+      ],
+      "channels": [
+        "wholesale",
+        "ecommerce"
+      ],
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "trade@novadrift.example"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active",
+      "source_query": {
+        "country": "GB",
+        "product_categories": [
+          "skincare"
+        ],
+        "keywords": [
+          "korean skincare distributor uk",
+          "asian beauty wholesale uk"
+        ],
+        "category_drift": true
+      }
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "buyer_id": "BUY-quietharbour-example",
+      "company_name": "Quiet Harbour Trading Ltd",
+      "website": "https://quietharbour.example/",
+      "canonical_domain": "quietharbour.example",
+      "country": "unknown",
+      "company_type": "unknown",
+      "status": "DISCOVERED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-001",
+          "claim": "website",
+          "value": "https://quietharbour.example/",
+          "source_url": "https://ukbeautydirectory.example/quiet-harbour",
+          "source_domain": "ukbeautydirectory.example",
+          "source_type": "third_party",
+          "source_tier": 4,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2025-11-30",
+          "confidence": 0.9,
+          "quote_or_summary": "Directory row: Quiet Harbour Trading Ltd, with a website link and nothing else.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "only a bare directory listing was found; no material claim is evidenced, so the record is excluded from the ranked set rather than padded into it (DISC-06)"
+      ],
+      "stale": false,
+      "operational_status": "unknown",
+      "source_query": {
+        "country": "GB",
+        "product_categories": [
+          "sunscreen"
+        ],
+        "category_drift": false
+      }
+    }
+  ]
+}

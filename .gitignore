@@ -1,0 +1,62 @@
+# Python (stdlib-only package, but interpreters still leave caches behind)
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.venv/
+venv/
+env/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# TradeWith adapter file backend — real company data, never committed.
+# (adapters/tradewith_adapter.md §4: keep the data directory outside version control.)
+tradewith-data/
+**/tradewith-data/
+
+# Local environment / credentials. No secret belongs in this repo, ever.
+.env
+.env.*
+!.env.example
+*.local
+.envrc
+.direnv/
+
+# Installer bookkeeping written into an installed copy
+.kbtm-install-manifest
+
+# Agent/tooling runtime state (not part of the skill package)
+.omc/
+
+# Scratch output from manual runs
+out/
+tmp/
+*.log
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*~
+
+# --- Internal product document (not published) ---
+# docs/PRD-v0.1.md is TradeWith's internal PRD: growth strategy, KPIs and
+# open questions about internal APIs. Kept locally, excluded from the public
+# repo. Delete these two lines to publish it.
+docs/PRD-v0.1.md
+
+# Field-trial working artifact: contains real company names and domains with
+# evaluative judgements gathered from the live web. Kept locally, not published.
+docs/FIELD-FINDINGS.json

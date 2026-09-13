@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tradewith.example/kbeauty-trade-matchmaker/v0.1.0/evidence.schema.json",
+  "title": "Evidence",
+  "description": "A single atomic, source-backed claim about a company, RFQ or market fact. PRD 7.4 + 10.3 (source priority) + EVID-01..EVID-05. Evidence objects are embedded by value inside buyer/seller/rfq/match-result documents; evidence_id is unique within the enclosing document.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "evidence_id",
+    "claim",
+    "value",
+    "source_url",
+    "source_type",
+    "source_tier",
+    "is_official",
+    "observed_at",
+    "source_date",
+    "confidence",
+    "quote_or_summary"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Version of this schema contract, e.g. \"0.1.0\".",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "evidence_id": {
+      "type": "string",
+      "description": "Stable id, unique within the enclosing document. Recommended form: EV-<zero padded counter>, e.g. \"EV-001\".",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "claim": {
+      "type": "string",
+      "description": "Canonical claim key this evidence supports. Use a key from BUILD-CONTRACT.md section 4.6 (canonical claim keys) whenever one applies, e.g. \"korean_products_signal\", \"moq\", \"certifications\", \"oem_odm\". Free text is allowed only for claims that have no canonical key. Korean gloss: 이 근거가 뒷받침하는 주장 키.",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "value": {
+      "description": "The observed value for the claim, exactly as normalized into the parent record. Arrays are allowed for list-valued claims such as certifications. \"unknown\" is allowed when the source explicitly states the value is undisclosed.",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "$ref": "#/$defs/numeric_range"
+        }
+      ]
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Absolute http(s) URL that a human can click to re-verify the claim. No login-walled, CAPTCHA-bypassed or paywalled URLs (PRD 11.1).",
+      "pattern": "^https?://[^\\s]+$",
+      "maxLength": 2048
+    },
+    "source_domain": {
+      "type": "string",
+      "description": "Canonical registrable domain of source_url, derived by _common.canonical_domain(). Used for the independent-source count in the evidence-quality sub-score.",
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
+      "maxLength": 253
+    },
+    "source_type": {
+      "type": "string",
+      "description": "PRD 7.4 source_type enum, plus \"internal_record\" for facts read out of TradeWith's own database via adapters/tradewith_adapter.py (BUILD-CONTRACT.md 4.7).",
+      "enum": [
+        "official_site",
+        "official_directory",
+        "trade_show",
+        "third_party",
+        "social",
+        "internal_record"
+      ]
+    },
+    "source_tier": {
+      "type": "integer",
+      "description": "PRD 10.3 source priority tier. 1 = company official site / official contact-wholesale-export-OEM page. 2 = official trade-show, association, government or trade-agency directory. 3 = official LinkedIn or company social profile. 4 = reputable third-party directory or press release. 5 = community, blog, forum (supporting signal only). Korean gloss: 출처 우선순위 등급. internal_record defaults to tier 2.",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "is_official": {
+      "type": "boolean",
+      "description": "True only when the claim was read on a channel the company itself controls (own domain, own verified social profile, own exhibitor entry). PRD EVID-02."
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC3339 timestamp of when the agent read the page. This is OUR observation time, never the page's own date.",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "source_date": {
+      "description": "Date the source content itself was published or last updated. \"unknown\" when the page exposes no date. Never guess. Korean gloss: 출처 자체의 작성/갱신일.",
+      "oneOf": [
+        {
+          "type": "string",
+          "format": "date",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        {
+          "const": "unknown"
+        }
+      ]
+    },
+    "confidence": {
+      "type": "number",
+      "description": "How strongly this single source supports the claim, 0..1, two decimal places.",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "quote_or_summary": {
+      "type": "string",
+      "description": "Verbatim quote (preferred, <= 300 chars) or a faithful one-sentence summary of the passage that supports the claim. Must not contain inference.",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "inferred": {
+      "type": "boolean",
+      "description": "True when the value was derived by reasoning rather than read literally. PRD EVID-03 requires fact and inference to be separated. Default false.",
+      "default": false
+    },
+    "stale": {
+      "type": "boolean",
+      "description": "True when the source is unreachable, archived, or clearly outdated (PRD EVID-04, test T07). Triggers the stale penalty in the evidence-quality sub-score.",
+      "default": false
+    },
+    "conflicts_with": {
+      "type": "array",
+      "description": "evidence_id values in the same document that assert a contradictory value for the same claim (PRD test T08). Non-empty triggers the conflict penalty and requires a conflict note on the parent record.",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "retrieval_method": {
+      "type": "string",
+      "description": "How the page was retrieved. Only non-bypassing methods are permitted (PRD 11.1).",
+      "enum": [
+        "web_search",
+        "page_fetch",
+        "sitemap",
+        "internal_api",
+        "manual_entry"
+      ]
+    },
+    "notes": {
+      "type": "array",
+      "description": "Free-form operator notes about this single evidence item.",
+      "items": {
+        "type": "string",
+        "maxLength": 1000
+      },
+      "default": []
+    }
+  },
+  "$defs": {
+    "numeric_range": {
+      "type": "object",
+      "description": "Inclusive numeric interval.",
+      "additionalProperties": false,
+      "required": [
+        "min",
+        "max"
+      ],
+      "properties": {
+        "min": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max": {
+          "type": "number",
+          "minimum": 0
+        },
+        "unit": {
+          "type": "string",
+          "maxLength": 32
+        }
+      }
+    }
+  }
+}

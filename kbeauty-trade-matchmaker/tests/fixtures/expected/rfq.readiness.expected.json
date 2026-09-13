@@ -1,0 +1,27 @@
+{
+  "__note__": "RFQ readiness per SCORING-CONTRACT 2.9 / BUILD-CONTRACT 5.4.",
+  "rfq.134.json": {
+    "qualification_score": 70,
+    "readiness_detail": {
+      "filled": 7,
+      "total": 10,
+      "missing_fields": [
+        "buyer_id",
+        "target_price",
+        "timeline"
+      ]
+    }
+  },
+  "rfq.no-match.json": {
+    "qualification_score": 70,
+    "readiness_detail": {
+      "filled": 7,
+      "total": 10,
+      "missing_fields": [
+        "buyer_id",
+        "target_price",
+        "timeline"
+      ]
+    }
+  }
+}

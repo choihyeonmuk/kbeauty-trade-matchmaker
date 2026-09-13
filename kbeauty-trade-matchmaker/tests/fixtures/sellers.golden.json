@@ -1,0 +1,3903 @@
+{
+  "schema_version": "0.1.0",
+  "as_of": "2026-09-12",
+  "entity": "seller",
+  "records": [
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-hanbitcos-example",
+      "company_name": "Hanbit Cosmetics Co., Ltd.",
+      "website": "https://hanbitcos.example/",
+      "canonical_domain": "hanbitcos.example",
+      "country": "KR",
+      "company_type": "manufacturer",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-101",
+          "claim": "company_type",
+          "value": "manufacturer",
+          "source_url": "https://hanbitcos.example/about",
+          "source_domain": "hanbitcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-20",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-102",
+          "claim": "product_categories",
+          "value": [
+            "sunscreen",
+            "skincare",
+            "cleanser"
+          ],
+          "source_url": "https://hanbitcos.example/products/sunscreen-spf50",
+          "source_domain": "hanbitcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-20",
+          "confidence": 0.9,
+          "quote_or_summary": "SPF50+ PA++++ daily sunscreen, no white cast, stable in hot and humid climates.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:named_product_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-103",
+          "claim": "oem_odm",
+          "value": true,
+          "source_url": "https://hanbitcos.example/oem",
+          "source_domain": "hanbitcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-20",
+          "confidence": 0.9,
+          "quote_or_summary": "We provide OEM and ODM manufacturing for overseas brand owners.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-104",
+          "claim": "private_label",
+          "value": true,
+          "source_url": "https://hanbitcos.example/oem",
+          "source_domain": "hanbitcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-20",
+          "confidence": 0.9,
+          "quote_or_summary": "Private-label production under the customer's own brand is available.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-105",
+          "claim": "moq",
+          "value": 2500,
+          "source_url": "https://hanbitcos.example/oem",
+          "source_domain": "hanbitcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "unknown",
+          "confidence": 0.9,
+          "quote_or_summary": "Minimum order quantity 2,500 units per SKU.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-106",
+          "claim": "certifications",
+          "value": [
+            "ISO22716",
+            "CGMP",
+            "ISO9001"
+          ],
+          "source_url": "https://hanbitcos.example/quality",
+          "source_domain": "hanbitcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-02-10",
+          "confidence": 0.9,
+          "quote_or_summary": "Certification page lists ISO 22716, cGMP and ISO 9001 with certificate numbers.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-107",
+          "claim": "export_markets",
+          "value": [
+            "SA",
+            "KW",
+            "SG",
+            "JP"
+          ],
+          "source_url": "https://koreatradeagency.example/directory/hanbitcos",
+          "source_domain": "koreatradeagency.example",
+          "source_type": "official_directory",
+          "source_tier": 2,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-01-15",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-108",
+          "claim": "overseas_partner_signal",
+          "value": true,
+          "source_url": "https://seoulbeautyexpo.example/exhibitors/hanbitcos",
+          "source_domain": "seoulbeautyexpo.example",
+          "source_type": "trade_show",
+          "source_tier": 2,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-22",
+          "confidence": 0.9,
+          "quote_or_summary": "Exhibitor entry: seeking overseas distribution partners.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-109",
+          "claim": "product_categories",
+          "value": [
+            "sunscreen",
+            "skincare",
+            "cleanser"
+          ],
+          "source_url": "https://hanbitcos.example/downloads/catalogue-2026.pdf",
+          "source_domain": "hanbitcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-20",
+          "confidence": 0.9,
+          "quote_or_summary": "Downloadable 2026 product catalogue.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:catalog_or_pdf_published"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-110",
+          "claim": "sample_or_trial_order_accepted",
+          "value": "moq",
+          "source_url": "https://hanbitcos.example/oem",
+          "source_domain": "hanbitcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-20",
+          "confidence": 0.9,
+          "quote_or_summary": "Sample and trial orders are accepted before a first bulk order.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-111",
+          "claim": "regulatory_registrations",
+          "value": [
+            "AE"
+          ],
+          "source_url": "https://hanbitcos.example/quality",
+          "source_domain": "hanbitcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-02-10",
+          "confidence": 0.9,
+          "quote_or_summary": "UAE MoHAP product registration is in progress.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-112",
+          "claim": "named_product_page",
+          "value": "product_categories",
+          "source_url": "https://hanbitcos.example/products/sunscreen-spf50",
+          "source_domain": "hanbitcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-20",
+          "confidence": 0.9,
+          "quote_or_summary": "SPF50+ PA++++ daily sunscreen, no white cast, stable in hot and humid climates.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-113",
+          "claim": "catalog_or_pdf_published",
+          "value": "product_categories",
+          "source_url": "https://hanbitcos.example/downloads/catalogue-2026.pdf",
+          "source_domain": "hanbitcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-20",
+          "confidence": 0.9,
+          "quote_or_summary": "Downloadable 2026 product catalogue.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [],
+      "product_categories": [
+        "sunscreen",
+        "skincare",
+        "cleanser"
+      ],
+      "product_forms": [
+        "cream",
+        "lotion",
+        "stick"
+      ],
+      "oem_odm": true,
+      "private_label": true,
+      "brand_export": true,
+      "moq": 2500,
+      "moq_unit": "units",
+      "lead_time_days": 45,
+      "monthly_capacity_units": 150000,
+      "certifications": [
+        "ISO22716",
+        "CGMP",
+        "ISO9001"
+      ],
+      "certifications_verified": true,
+      "regulatory_registrations": [
+        {
+          "market": "AE",
+          "scheme": "UAE MoHAP cosmetic product registration",
+          "registration_status": "in_progress",
+          "evidence_ids": [
+            "EV-111"
+          ]
+        }
+      ],
+      "export_markets": [
+        "SA",
+        "KW",
+        "SG",
+        "JP"
+      ],
+      "excluded_markets": [],
+      "english_site": true,
+      "overseas_partner_signal": true,
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "export@hanbitcos.example"
+        },
+        {
+          "type": "contact_page",
+          "value": "https://hanbitcos.example/contact"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active"
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-daehansuncare-example",
+      "company_name": "Daehan Sun Care Co., Ltd.",
+      "website": "https://daehansuncare.example/",
+      "canonical_domain": "daehansuncare.example",
+      "country": "KR",
+      "company_type": "manufacturer",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-201",
+          "claim": "moq",
+          "value": 5000,
+          "source_url": "https://daehansuncare.example/oem",
+          "source_domain": "daehansuncare.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-01",
+          "confidence": 0.9,
+          "quote_or_summary": "Minimum order quantity is 5,000 units per SKU and per shade.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-202",
+          "claim": "company_type",
+          "value": "manufacturer",
+          "source_url": "https://daehansuncare.example/about",
+          "source_domain": "daehansuncare.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-01",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-203",
+          "claim": "product_categories",
+          "value": [
+            "sunscreen"
+          ],
+          "source_url": "https://daehansuncare.example/products/sun",
+          "source_domain": "daehansuncare.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-01",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-204",
+          "claim": "oem_odm",
+          "value": true,
+          "source_url": "https://daehansuncare.example/oem",
+          "source_domain": "daehansuncare.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-01",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-205",
+          "claim": "private_label",
+          "value": true,
+          "source_url": "https://daehansuncare.example/oem",
+          "source_domain": "daehansuncare.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-01",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-206",
+          "claim": "certifications",
+          "value": [
+            "ISO22716",
+            "CGMP"
+          ],
+          "source_url": "https://daehansuncare.example/quality",
+          "source_domain": "daehansuncare.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-01",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-207",
+          "claim": "export_markets",
+          "value": [
+            "JP",
+            "TW"
+          ],
+          "source_url": "https://daehansuncare.example/global",
+          "source_domain": "daehansuncare.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-01",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-208",
+          "claim": "overseas_partner_signal",
+          "value": true,
+          "source_url": "https://daehansuncare.example/global",
+          "source_domain": "daehansuncare.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-01",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [],
+      "product_categories": [
+        "sunscreen"
+      ],
+      "oem_odm": true,
+      "private_label": true,
+      "moq": 5000,
+      "moq_unit": "units",
+      "lead_time_days": 40,
+      "certifications": [
+        "ISO22716",
+        "CGMP"
+      ],
+      "certifications_verified": true,
+      "export_markets": [
+        "JP",
+        "TW"
+      ],
+      "english_site": true,
+      "overseas_partner_signal": true,
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "sales@daehansuncare.example"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active"
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-yeonhwalab-example",
+      "company_name": "Yeonhwa Lab Co., Ltd.",
+      "website": "https://yeonhwalab.example/",
+      "canonical_domain": "yeonhwalab.example",
+      "country": "KR",
+      "company_type": "oem_odm",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-301",
+          "claim": "company_type",
+          "value": "oem_odm",
+          "source_url": "https://yeonhwalab.example/about",
+          "source_domain": "yeonhwalab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-302",
+          "claim": "product_categories",
+          "value": [
+            "sunscreen",
+            "skincare"
+          ],
+          "source_url": "https://yeonhwalab.example/products/sun-essence",
+          "source_domain": "yeonhwalab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Sunscreen essence is a named product line on the product page.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:named_product_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-303",
+          "claim": "oem_odm",
+          "value": true,
+          "source_url": "https://yeonhwalab.example/oem",
+          "source_domain": "yeonhwalab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-304",
+          "claim": "private_label",
+          "value": true,
+          "source_url": "https://yeonhwalab.example/oem",
+          "source_domain": "yeonhwalab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-305",
+          "claim": "certifications",
+          "value": [
+            "ISO22716"
+          ],
+          "source_url": "https://yeonhwalab.example/quality",
+          "source_domain": "yeonhwalab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2024-11-20",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-306",
+          "claim": "export_markets",
+          "value": [
+            "VN",
+            "TH"
+          ],
+          "source_url": "https://yeonhwalab.example/global",
+          "source_domain": "yeonhwalab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "unknown",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-307",
+          "claim": "overseas_partner_signal",
+          "value": true,
+          "source_url": "https://yeonhwalab.example/global",
+          "source_domain": "yeonhwalab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-308",
+          "claim": "named_product_page",
+          "value": "product_categories",
+          "source_url": "https://yeonhwalab.example/products/sun-essence",
+          "source_domain": "yeonhwalab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-05",
+          "confidence": 0.9,
+          "quote_or_summary": "Sunscreen essence is a named product line on the product page.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "moq is not published anywhere on the site; it stays unknown and is never guessed (PRD T04)"
+      ],
+      "product_categories": [
+        "sunscreen",
+        "skincare"
+      ],
+      "oem_odm": true,
+      "private_label": true,
+      "lead_time_days": 60,
+      "certifications": [
+        "ISO22716"
+      ],
+      "export_markets": [
+        "VN",
+        "TH"
+      ],
+      "english_site": true,
+      "overseas_partner_signal": true,
+      "contact_channels": [
+        {
+          "type": "contact_page",
+          "value": "https://yeonhwalab.example/contact"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active"
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-mirinaeoem-example",
+      "company_name": "Mirinae OEM Co., Ltd.",
+      "website": "https://mirinaeoem.example/",
+      "canonical_domain": "mirinaeoem.example",
+      "country": "KR",
+      "company_type": "manufacturer",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-401",
+          "claim": "company_type",
+          "value": "manufacturer",
+          "source_url": "https://mirinaeoem.example/about",
+          "source_domain": "mirinaeoem.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-402",
+          "claim": "product_categories",
+          "value": [
+            "sunscreen",
+            "suncare",
+            "skincare"
+          ],
+          "source_url": "https://mirinaeoem.example/products/sun-cream",
+          "source_domain": "mirinaeoem.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:named_product_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-403",
+          "claim": "oem_odm",
+          "value": true,
+          "source_url": "https://mirinaeoem.example/oem",
+          "source_domain": "mirinaeoem.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-404",
+          "claim": "private_label",
+          "value": true,
+          "source_url": "https://mirinaeoem.example/oem",
+          "source_domain": "mirinaeoem.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-405",
+          "claim": "moq",
+          "value": 3000,
+          "source_url": "https://mirinaeoem.example/oem",
+          "source_domain": "mirinaeoem.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-406",
+          "claim": "certifications",
+          "value": [
+            "CGMP"
+          ],
+          "source_url": "https://mirinaeoem.example/quality",
+          "source_domain": "mirinaeoem.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-407",
+          "claim": "export_markets",
+          "value": [
+            "VN",
+            "MY"
+          ],
+          "source_url": "https://mirinaeoem.example/global",
+          "source_domain": "mirinaeoem.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-408",
+          "claim": "overseas_partner_signal",
+          "value": true,
+          "source_url": "https://mirinaeoem.example/global",
+          "source_domain": "mirinaeoem.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-409",
+          "claim": "named_product_page",
+          "value": "product_categories",
+          "source_url": "https://mirinaeoem.example/products/sun-cream",
+          "source_domain": "mirinaeoem.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "certifications_verified is false: the certification page exists but does not state that the list is exhaustive"
+      ],
+      "product_categories": [
+        "sunscreen",
+        "suncare",
+        "skincare"
+      ],
+      "product_forms": [
+        "cream",
+        "gel"
+      ],
+      "oem_odm": true,
+      "private_label": true,
+      "brand_export": false,
+      "moq": 3000,
+      "moq_unit": "units",
+      "lead_time_days": 50,
+      "monthly_capacity_units": 80000,
+      "certifications": [
+        "CGMP"
+      ],
+      "certifications_verified": false,
+      "regulatory_registrations": [],
+      "export_markets": [
+        "VN",
+        "MY"
+      ],
+      "english_site": true,
+      "overseas_partner_signal": true,
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "oem@mirinaeoem.example"
+        },
+        {
+          "type": "contact_page",
+          "value": "https://mirinaeoem.example/contact"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active"
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-saebyeokbrand-example",
+      "company_name": "Saebyeok Brand Export Co., Ltd.",
+      "website": "https://saebyeokbrand.example/",
+      "canonical_domain": "saebyeokbrand.example",
+      "country": "KR",
+      "company_type": "brand",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-501",
+          "claim": "company_type",
+          "value": "brand",
+          "source_url": "https://saebyeokbrand.example/about",
+          "source_domain": "saebyeokbrand.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-11",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-502",
+          "claim": "product_categories",
+          "value": [
+            "sunscreen",
+            "skincare"
+          ],
+          "source_url": "https://saebyeokbrand.example/products",
+          "source_domain": "saebyeokbrand.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-11",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-503",
+          "claim": "oem_odm",
+          "value": false,
+          "source_url": "https://saebyeokbrand.example/faq",
+          "source_domain": "saebyeokbrand.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-11",
+          "confidence": 0.9,
+          "quote_or_summary": "We do not undertake OEM or ODM manufacturing for other brands.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-504",
+          "claim": "private_label",
+          "value": false,
+          "source_url": "https://saebyeokbrand.example/faq",
+          "source_domain": "saebyeokbrand.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-11",
+          "confidence": 0.9,
+          "quote_or_summary": "We do not offer private-label production; we export our own brand only.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-505",
+          "claim": "moq",
+          "value": 1200,
+          "source_url": "https://saebyeokbrand.example/export",
+          "source_domain": "saebyeokbrand.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-11",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-506",
+          "claim": "certifications",
+          "value": [
+            "ISO22716"
+          ],
+          "source_url": "https://saebyeokbrand.example/quality",
+          "source_domain": "saebyeokbrand.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-11",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-507",
+          "claim": "export_markets",
+          "value": [
+            "AE",
+            "SA"
+          ],
+          "source_url": "https://saebyeokbrand.example/export",
+          "source_domain": "saebyeokbrand.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-11",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-508",
+          "claim": "overseas_partner_signal",
+          "value": true,
+          "source_url": "https://saebyeokbrand.example/export",
+          "source_domain": "saebyeokbrand.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-11",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "exports its own brand only; it has confirmed publicly that it does not take private-label or OEM work"
+      ],
+      "product_categories": [
+        "sunscreen",
+        "skincare"
+      ],
+      "oem_odm": false,
+      "private_label": false,
+      "brand_export": true,
+      "moq": 1200,
+      "moq_unit": "units",
+      "lead_time_days": 30,
+      "monthly_capacity_units": 40000,
+      "certifications": [
+        "ISO22716"
+      ],
+      "certifications_verified": true,
+      "export_markets": [
+        "AE",
+        "SA"
+      ],
+      "english_site": true,
+      "overseas_partner_signal": true,
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "global@saebyeokbrand.example"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active"
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-hansolodm-example",
+      "company_name": "Hansol ODM Corp",
+      "website": "https://hansolodm.example/",
+      "canonical_domain": "hansolodm.example",
+      "country": "KR",
+      "company_type": "oem_odm",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-601",
+          "claim": "company_type",
+          "value": "oem_odm",
+          "source_url": "https://hansolodm.example/about",
+          "source_domain": "hansolodm.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-03",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-602",
+          "claim": "product_categories",
+          "value": [
+            "sunscreen",
+            "serum",
+            "essence",
+            "cushion"
+          ],
+          "source_url": "https://hansolodm.example/products/sun-gel",
+          "source_domain": "hansolodm.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-03",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:named_product_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-603",
+          "claim": "oem_odm",
+          "value": true,
+          "source_url": "https://hansolodm.example/odm",
+          "source_domain": "hansolodm.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-03",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-604",
+          "claim": "private_label",
+          "value": true,
+          "source_url": "https://hansolodm.example/odm",
+          "source_domain": "hansolodm.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-03",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-605",
+          "claim": "moq",
+          "value": 1000,
+          "source_url": "https://hansolodm.example/odm",
+          "source_domain": "hansolodm.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-03",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-606",
+          "claim": "certifications",
+          "value": [
+            "ISO22716",
+            "CGMP",
+            "ISO9001",
+            "HALAL"
+          ],
+          "source_url": "https://hansolodm.example/quality",
+          "source_domain": "hansolodm.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-03",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-607",
+          "claim": "export_markets",
+          "value": [
+            "AE",
+            "SA",
+            "KW",
+            "JP"
+          ],
+          "source_url": "https://hansolodm.example/global",
+          "source_domain": "hansolodm.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-03",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-608",
+          "claim": "overseas_partner_signal",
+          "value": true,
+          "source_url": "https://hansolodm.example/global",
+          "source_domain": "hansolodm.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-03",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-609",
+          "claim": "regulatory_registrations",
+          "value": [
+            "AE"
+          ],
+          "source_url": "https://hansolodm.example/quality",
+          "source_domain": "hansolodm.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-03",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-610",
+          "claim": "product_categories",
+          "value": [
+            "sunscreen",
+            "serum",
+            "essence",
+            "cushion"
+          ],
+          "source_url": "https://hansolodm.example/downloads/odm-catalogue.pdf",
+          "source_domain": "hansolodm.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-03",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:catalog_or_pdf_published"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-611",
+          "claim": "export_markets",
+          "value": [
+            "AE",
+            "SA",
+            "KW",
+            "JP"
+          ],
+          "source_url": "https://koreatradeagency.example/directory/hansolodm",
+          "source_domain": "koreatradeagency.example",
+          "source_type": "official_directory",
+          "source_tier": 2,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-01",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-612",
+          "claim": "named_product_page",
+          "value": "product_categories",
+          "source_url": "https://hansolodm.example/products/sun-gel",
+          "source_domain": "hansolodm.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-03",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-613",
+          "claim": "catalog_or_pdf_published",
+          "value": "product_categories",
+          "source_url": "https://hansolodm.example/downloads/odm-catalogue.pdf",
+          "source_domain": "hansolodm.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-07-03",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [],
+      "product_categories": [
+        "sunscreen",
+        "serum",
+        "essence",
+        "cushion"
+      ],
+      "product_forms": [
+        "cream",
+        "serum",
+        "cushion"
+      ],
+      "oem_odm": true,
+      "private_label": true,
+      "moq": 1000,
+      "moq_unit": "units",
+      "lead_time_days": 40,
+      "monthly_capacity_units": 200000,
+      "certifications": [
+        "ISO22716",
+        "CGMP",
+        "ISO9001",
+        "HALAL"
+      ],
+      "certifications_verified": true,
+      "regulatory_registrations": [
+        {
+          "market": "AE",
+          "scheme": "UAE MoHAP cosmetic product registration",
+          "registration_status": "registered",
+          "evidence_ids": [
+            "EV-609"
+          ]
+        }
+      ],
+      "export_markets": [
+        "AE",
+        "SA",
+        "KW",
+        "JP"
+      ],
+      "excluded_markets": [],
+      "english_site": true,
+      "overseas_partner_signal": true,
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "odm@hansolodm.example"
+        },
+        {
+          "type": "form",
+          "value": "https://hansolodm.example/enquiry"
+        },
+        {
+          "type": "contact_page",
+          "value": "https://hansolodm.example/contact"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active"
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-baekdutrading-example",
+      "company_name": "Baekdu Trading Co., Ltd.",
+      "website": "https://baekdutrading.example/",
+      "canonical_domain": "baekdutrading.example",
+      "country": "KR",
+      "company_type": "distributor",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-701",
+          "claim": "company_type",
+          "value": "distributor",
+          "source_url": "https://baekdutrading.example/about",
+          "source_domain": "baekdutrading.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-20",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-702",
+          "claim": "product_categories",
+          "value": [
+            "sunscreen",
+            "skincare"
+          ],
+          "source_url": "https://baekdutrading.example/catalogue",
+          "source_domain": "baekdutrading.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-20",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-703",
+          "claim": "oem_odm",
+          "value": false,
+          "source_url": "https://baekdutrading.example/about",
+          "source_domain": "baekdutrading.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-20",
+          "confidence": 0.9,
+          "quote_or_summary": "We are an export trading company; we do not operate a factory.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-704",
+          "claim": "private_label",
+          "value": false,
+          "source_url": "https://baekdutrading.example/about",
+          "source_domain": "baekdutrading.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-20",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-705",
+          "claim": "moq",
+          "value": 500,
+          "source_url": "https://baekdutrading.example/terms",
+          "source_domain": "baekdutrading.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-20",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-706",
+          "claim": "certifications",
+          "value": "none_held",
+          "source_url": "https://baekdutrading.example/about",
+          "source_domain": "baekdutrading.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-20",
+          "confidence": 0.9,
+          "quote_or_summary": "No certification is claimed anywhere on the site.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-707",
+          "claim": "export_markets",
+          "value": [
+            "SG",
+            "MY"
+          ],
+          "source_url": "https://baekdutrading.example/export",
+          "source_domain": "baekdutrading.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-20",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-708",
+          "claim": "overseas_partner_signal",
+          "value": false,
+          "source_url": "https://baekdutrading.example/export",
+          "source_domain": "baekdutrading.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-20",
+          "confidence": 0.9,
+          "quote_or_summary": "We are not currently recruiting overseas partners.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "a trading company that resells other makers' goods; it neither manufactures nor contracts manufacture, so oem_odm and private_label are verified false"
+      ],
+      "product_categories": [
+        "sunscreen",
+        "skincare"
+      ],
+      "oem_odm": false,
+      "private_label": false,
+      "brand_export": true,
+      "moq": 500,
+      "moq_unit": "units",
+      "lead_time_days": 20,
+      "certifications": [],
+      "certifications_verified": false,
+      "export_markets": [
+        "SG",
+        "MY"
+      ],
+      "english_site": true,
+      "overseas_partner_signal": false,
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "trade@baekdutrading.example"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active"
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-chorokfactory-example",
+      "company_name": "Chorok Cosmetic Factory Co., Ltd.",
+      "website": "https://chorokfactory.example/",
+      "canonical_domain": "chorokfactory.example",
+      "country": "KR",
+      "company_type": "manufacturer",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-801",
+          "claim": "company_type",
+          "value": "manufacturer",
+          "source_url": "https://chorokfactory.example/company",
+          "source_domain": "chorokfactory.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-02-27",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-802",
+          "claim": "product_categories",
+          "value": [
+            "sunscreen",
+            "cleanser"
+          ],
+          "source_url": "https://chorokfactory.example/product",
+          "source_domain": "chorokfactory.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-02-27",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-803",
+          "claim": "oem_odm",
+          "value": true,
+          "source_url": "https://chorokfactory.example/oem",
+          "source_domain": "chorokfactory.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-02-27",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-804",
+          "claim": "private_label",
+          "value": true,
+          "source_url": "https://chorokfactory.example/oem",
+          "source_domain": "chorokfactory.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-02-27",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-805",
+          "claim": "moq",
+          "value": 2000,
+          "source_url": "https://chorokfactory.example/oem",
+          "source_domain": "chorokfactory.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-02-27",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "certifications, export_markets, english_site and overseas_partner_signal are all unknown: the site is Korean-only and publishes no such page"
+      ],
+      "product_categories": [
+        "sunscreen",
+        "cleanser"
+      ],
+      "oem_odm": true,
+      "private_label": true,
+      "moq": 2000,
+      "moq_unit": "units",
+      "lead_time_days": 50,
+      "contact_channels": [
+        {
+          "type": "contact_page",
+          "value": "https://chorokfactory.example/contact"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active"
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-nuriskinlab-example",
+      "company_name": "Nuri Skin Lab Co., Ltd.",
+      "website": "https://nuriskinlab.example/",
+      "canonical_domain": "nuriskinlab.example",
+      "country": "KR",
+      "company_type": "manufacturer",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-901",
+          "claim": "company_type",
+          "value": "manufacturer",
+          "source_url": "https://nuriskinlab.example/about",
+          "source_domain": "nuriskinlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-902",
+          "claim": "product_categories",
+          "value": [
+            "sunscreen"
+          ],
+          "source_url": "https://nuriskinlab.example/products/sunscreen",
+          "source_domain": "nuriskinlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:named_product_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-903",
+          "claim": "oem_odm",
+          "value": true,
+          "source_url": "https://nuriskinlab.example/oem",
+          "source_domain": "nuriskinlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-904",
+          "claim": "private_label",
+          "value": true,
+          "source_url": "https://nuriskinlab.example/oem",
+          "source_domain": "nuriskinlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-905",
+          "claim": "moq",
+          "value": {
+            "min": 1000,
+            "max": 5000
+          },
+          "source_url": "https://nuriskinlab.example/oem",
+          "source_domain": "nuriskinlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-02",
+          "confidence": 0.9,
+          "quote_or_summary": "MOQ 1,000-5,000 units depending on formulation and packaging.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-906",
+          "claim": "certifications",
+          "value": [
+            "ISO22716"
+          ],
+          "source_url": "https://nuriskinlab.example/quality",
+          "source_domain": "nuriskinlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-907",
+          "claim": "export_markets",
+          "value": [
+            "JP",
+            "SG"
+          ],
+          "source_url": "https://nuriskinlab.example/global",
+          "source_domain": "nuriskinlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-908",
+          "claim": "overseas_partner_signal",
+          "value": true,
+          "source_url": "https://nuriskinlab.example/global",
+          "source_domain": "nuriskinlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-909",
+          "claim": "named_product_page",
+          "value": "product_categories",
+          "source_url": "https://nuriskinlab.example/products/sunscreen",
+          "source_domain": "nuriskinlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "MOQ is published as a 1,000-5,000 unit band; the ceiling test compares the min (BUILD-CONTRACT 3.3)"
+      ],
+      "product_categories": [
+        "sunscreen"
+      ],
+      "oem_odm": true,
+      "private_label": true,
+      "moq": {
+        "min": 1000,
+        "max": 5000
+      },
+      "moq_unit": "units",
+      "lead_time_days": 35,
+      "monthly_capacity_units": 60000,
+      "certifications": [
+        "ISO22716"
+      ],
+      "certifications_verified": true,
+      "export_markets": [
+        "JP",
+        "SG"
+      ],
+      "english_site": true,
+      "overseas_partner_signal": true,
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "sales@nuriskinlab.example"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active"
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-pyeongwhacos-example",
+      "company_name": "Pyeongwha Cosmetics Co., Ltd.",
+      "website": "https://pyeongwhacos.example/",
+      "canonical_domain": "pyeongwhacos.example",
+      "country": "KR",
+      "company_type": "manufacturer",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1001",
+          "claim": "company_type",
+          "value": "manufacturer",
+          "source_url": "https://pyeongwhacos.example/about",
+          "source_domain": "pyeongwhacos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1002",
+          "claim": "product_categories",
+          "value": [
+            "sunscreen",
+            "sun_stick"
+          ],
+          "source_url": "https://pyeongwhacos.example/products/sun-stick",
+          "source_domain": "pyeongwhacos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:named_product_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1003",
+          "claim": "oem_odm",
+          "value": true,
+          "source_url": "https://pyeongwhacos.example/oem",
+          "source_domain": "pyeongwhacos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1004",
+          "claim": "private_label",
+          "value": true,
+          "source_url": "https://pyeongwhacos.example/oem",
+          "source_domain": "pyeongwhacos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1005",
+          "claim": "moq",
+          "value": {
+            "min": 0,
+            "max": 2000
+          },
+          "source_url": "https://pyeongwhacos.example/oem",
+          "source_domain": "pyeongwhacos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Small-batch production accepted, up to 2,000 units per run.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1006",
+          "claim": "certifications",
+          "value": [
+            "ISO22716",
+            "ECOCERT"
+          ],
+          "source_url": "https://pyeongwhacos.example/quality",
+          "source_domain": "pyeongwhacos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1007",
+          "claim": "export_markets",
+          "value": [
+            "JP"
+          ],
+          "source_url": "https://pyeongwhacos.example/global",
+          "source_domain": "pyeongwhacos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1008",
+          "claim": "overseas_partner_signal",
+          "value": true,
+          "source_url": "https://pyeongwhacos.example/global",
+          "source_domain": "pyeongwhacos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1009",
+          "claim": "named_product_page",
+          "value": "product_categories",
+          "source_url": "https://pyeongwhacos.example/products/sun-stick",
+          "source_domain": "pyeongwhacos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "MOQ published as \"up to 2,000 units\"; the absent lower bound is stored as 0, the normal form required by BUILD-CONTRACT 3.3"
+      ],
+      "product_categories": [
+        "sunscreen",
+        "sun_stick"
+      ],
+      "oem_odm": true,
+      "private_label": true,
+      "moq": {
+        "min": 0,
+        "max": 2000
+      },
+      "moq_unit": "units",
+      "lead_time_days": 25,
+      "monthly_capacity_units": 30000,
+      "certifications": [
+        "ISO22716",
+        "ECOCERT"
+      ],
+      "certifications_verified": true,
+      "export_markets": [
+        "JP"
+      ],
+      "english_site": true,
+      "overseas_partner_signal": true,
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "hello@pyeongwhacos.example"
+        },
+        {
+          "type": "contact_page",
+          "value": "https://pyeongwhacos.example/contact"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active"
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-dalbitlabs-example",
+      "company_name": "Dalbit Labs Co., Ltd.",
+      "website": "https://dalbitlabs.example/",
+      "canonical_domain": "dalbitlabs.example",
+      "country": "KR",
+      "company_type": "manufacturer",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1101",
+          "claim": "company_type",
+          "value": "manufacturer",
+          "source_url": "https://dalbitlabs.example/about",
+          "source_domain": "dalbitlabs.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-14",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1102",
+          "claim": "product_categories",
+          "value": [
+            "sunscreen"
+          ],
+          "source_url": "https://dalbitlabs.example/products/sunscreen",
+          "source_domain": "dalbitlabs.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-14",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:named_product_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1103",
+          "claim": "oem_odm",
+          "value": true,
+          "source_url": "https://dalbitlabs.example/oem",
+          "source_domain": "dalbitlabs.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-14",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1104",
+          "claim": "private_label",
+          "value": true,
+          "source_url": "https://dalbitlabs.example/oem",
+          "source_domain": "dalbitlabs.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-14",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1105",
+          "claim": "moq",
+          "value": "unknown",
+          "source_url": "https://dalbitlabs.example/oem",
+          "source_domain": "dalbitlabs.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-14",
+          "confidence": 0.9,
+          "quote_or_summary": "Orders from 2,000 units.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1106",
+          "claim": "certifications",
+          "value": [
+            "CGMP"
+          ],
+          "source_url": "https://dalbitlabs.example/quality",
+          "source_domain": "dalbitlabs.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-14",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1107",
+          "claim": "export_markets",
+          "value": [
+            "JP",
+            "VN"
+          ],
+          "source_url": "https://dalbitlabs.example/global",
+          "source_domain": "dalbitlabs.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-14",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1108",
+          "claim": "overseas_partner_signal",
+          "value": true,
+          "source_url": "https://dalbitlabs.example/global",
+          "source_domain": "dalbitlabs.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-14",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1109",
+          "claim": "named_product_page",
+          "value": "product_categories",
+          "source_url": "https://dalbitlabs.example/products/sunscreen",
+          "source_domain": "dalbitlabs.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-04-14",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "MOQ is published as \"from 2,000 units\": an open upper bound establishes no comparable value, so moq is stored as \"unknown\" and is never coerced to 2,000, to +inf or to the ceiling (BUILD-CONTRACT 3.3)"
+      ],
+      "product_categories": [
+        "sunscreen"
+      ],
+      "oem_odm": true,
+      "private_label": true,
+      "moq": "unknown",
+      "moq_unit": "units",
+      "lead_time_days": 50,
+      "monthly_capacity_units": 50000,
+      "certifications": [
+        "CGMP"
+      ],
+      "certifications_verified": false,
+      "export_markets": [
+        "JP",
+        "VN"
+      ],
+      "english_site": true,
+      "overseas_partner_signal": true,
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "info@dalbitlabs.example"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active"
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-kkotgilcos-example",
+      "company_name": "Kkotgil Cosmetic Co., Ltd.",
+      "website": "https://kkotgilcos.example/",
+      "canonical_domain": "kkotgilcos.example",
+      "country": "KR",
+      "company_type": "manufacturer",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1201",
+          "claim": "company_type",
+          "value": "manufacturer",
+          "source_url": "https://kkotgilcos.example/about",
+          "source_domain": "kkotgilcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-30",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1202",
+          "claim": "product_categories",
+          "value": [
+            "sunscreen"
+          ],
+          "source_url": "https://kkotgilcos.example/products/bulk-sun",
+          "source_domain": "kkotgilcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-30",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:named_product_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1203",
+          "claim": "oem_odm",
+          "value": true,
+          "source_url": "https://kkotgilcos.example/oem",
+          "source_domain": "kkotgilcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-30",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1204",
+          "claim": "private_label",
+          "value": true,
+          "source_url": "https://kkotgilcos.example/oem",
+          "source_domain": "kkotgilcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-30",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1205",
+          "claim": "moq",
+          "value": 500,
+          "source_url": "https://kkotgilcos.example/oem",
+          "source_domain": "kkotgilcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-30",
+          "confidence": 0.9,
+          "quote_or_summary": "Minimum bulk order 500 kg.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1206",
+          "claim": "certifications",
+          "value": [
+            "ISO22716"
+          ],
+          "source_url": "https://kkotgilcos.example/quality",
+          "source_domain": "kkotgilcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-30",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1207",
+          "claim": "export_markets",
+          "value": [
+            "CN",
+            "JP"
+          ],
+          "source_url": "https://kkotgilcos.example/global",
+          "source_domain": "kkotgilcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-30",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1208",
+          "claim": "overseas_partner_signal",
+          "value": true,
+          "source_url": "https://kkotgilcos.example/global",
+          "source_domain": "kkotgilcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-30",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1209",
+          "claim": "named_product_page",
+          "value": "product_categories",
+          "source_url": "https://kkotgilcos.example/products/bulk-sun",
+          "source_domain": "kkotgilcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-03-30",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "MOQ is quoted in kilograms of bulk formulation; a query denominated in units cannot be compared against it"
+      ],
+      "product_categories": [
+        "sunscreen"
+      ],
+      "oem_odm": true,
+      "private_label": true,
+      "moq": 500,
+      "moq_unit": "kg",
+      "lead_time_days": 50,
+      "monthly_capacity_units": 70000,
+      "certifications": [
+        "ISO22716"
+      ],
+      "certifications_verified": false,
+      "export_markets": [
+        "CN",
+        "JP"
+      ],
+      "english_site": true,
+      "overseas_partner_signal": true,
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "export@kkotgilcos.example"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active"
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-haneulbio-example",
+      "company_name": "Haneul Bio Co., Ltd.",
+      "website": "https://haneulbio.example/",
+      "canonical_domain": "haneulbio.example",
+      "country": "KR",
+      "company_type": "manufacturer",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1301",
+          "claim": "company_type",
+          "value": "manufacturer",
+          "source_url": "https://haneulbio.example/about",
+          "source_domain": "haneulbio.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-25",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1302",
+          "claim": "product_categories",
+          "value": [
+            "sunscreen",
+            "skincare"
+          ],
+          "source_url": "https://haneulbio.example/products/sun-milk",
+          "source_domain": "haneulbio.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-25",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:named_product_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1303",
+          "claim": "oem_odm",
+          "value": true,
+          "source_url": "https://haneulbio.example/oem",
+          "source_domain": "haneulbio.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-25",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1304",
+          "claim": "private_label",
+          "value": true,
+          "source_url": "https://haneulbio.example/oem",
+          "source_domain": "haneulbio.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-25",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1305",
+          "claim": "moq",
+          "value": 800,
+          "source_url": "https://haneulbio.example/oem",
+          "source_domain": "haneulbio.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-25",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1306",
+          "claim": "certifications",
+          "value": "none_held",
+          "source_url": "https://haneulbio.example/quality",
+          "source_domain": "haneulbio.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-25",
+          "confidence": 0.9,
+          "quote_or_summary": "Our quality page lists every certification we hold: none at this time. ISO 22716 audit is planned for 2027.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1307",
+          "claim": "export_markets",
+          "value": [
+            "VN"
+          ],
+          "source_url": "https://haneulbio.example/global",
+          "source_domain": "haneulbio.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-25",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1308",
+          "claim": "overseas_partner_signal",
+          "value": true,
+          "source_url": "https://haneulbio.example/global",
+          "source_domain": "haneulbio.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-25",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1309",
+          "claim": "named_product_page",
+          "value": "product_categories",
+          "source_url": "https://haneulbio.example/products/sun-milk",
+          "source_domain": "haneulbio.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-25",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "the official quality page states in full that the factory holds no third-party certification yet; the list is therefore present, empty and verified exhaustive"
+      ],
+      "product_categories": [
+        "sunscreen",
+        "skincare"
+      ],
+      "oem_odm": true,
+      "private_label": true,
+      "moq": 800,
+      "moq_unit": "units",
+      "lead_time_days": 30,
+      "monthly_capacity_units": 25000,
+      "certifications": [],
+      "certifications_verified": true,
+      "export_markets": [
+        "VN"
+      ],
+      "english_site": true,
+      "overseas_partner_signal": true,
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "contact@haneulbio.example"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active"
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-sopoongworks-example",
+      "company_name": "Sopoong Works Co., Ltd.",
+      "website": "https://sopoongworks.example/",
+      "canonical_domain": "sopoongworks.example",
+      "country": "KR",
+      "company_type": "manufacturer",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1401",
+          "claim": "company_type",
+          "value": "manufacturer",
+          "source_url": "https://koreacosmeticassociation.example/members/sopoong",
+          "source_domain": "koreacosmeticassociation.example",
+          "source_type": "official_directory",
+          "source_tier": 2,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2025-05-04",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1402",
+          "claim": "product_categories",
+          "value": [
+            "sunscreen"
+          ],
+          "source_url": "https://koreacosmeticassociation.example/members/sopoong",
+          "source_domain": "koreacosmeticassociation.example",
+          "source_type": "official_directory",
+          "source_tier": 2,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2025-05-04",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1403",
+          "claim": "oem_odm",
+          "value": true,
+          "source_url": "https://koreacosmeticassociation.example/members/sopoong",
+          "source_domain": "koreacosmeticassociation.example",
+          "source_type": "official_directory",
+          "source_tier": 2,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2025-05-04",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1404",
+          "claim": "private_label",
+          "value": true,
+          "source_url": "https://koreacosmeticassociation.example/members/sopoong",
+          "source_domain": "koreacosmeticassociation.example",
+          "source_type": "official_directory",
+          "source_tier": 2,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2025-05-04",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1405",
+          "claim": "moq",
+          "value": 1500,
+          "source_url": "https://koreacosmeticassociation.example/members/sopoong",
+          "source_domain": "koreacosmeticassociation.example",
+          "source_type": "official_directory",
+          "source_tier": 2,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2025-05-04",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1406",
+          "claim": "certifications",
+          "value": [
+            "ISO22716"
+          ],
+          "source_url": "https://koreacosmeticassociation.example/members/sopoong",
+          "source_domain": "koreacosmeticassociation.example",
+          "source_type": "official_directory",
+          "source_tier": 2,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2025-05-04",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1407",
+          "claim": "export_markets",
+          "value": [
+            "JP"
+          ],
+          "source_url": "https://koreacosmeticassociation.example/members/sopoong",
+          "source_domain": "koreacosmeticassociation.example",
+          "source_type": "official_directory",
+          "source_tier": 2,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2025-05-04",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1408",
+          "claim": "overseas_partner_signal",
+          "value": true,
+          "source_url": "https://koreacosmeticassociation.example/members/sopoong",
+          "source_domain": "koreacosmeticassociation.example",
+          "source_type": "official_directory",
+          "source_tier": 2,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2025-05-04",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1409",
+          "claim": "operational_status",
+          "value": "unreachable",
+          "source_url": "https://koreacosmeticassociation.example/members/sopoong",
+          "source_domain": "koreacosmeticassociation.example",
+          "source_type": "official_directory",
+          "source_tier": 2,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2025-05-04",
+          "confidence": 0.9,
+          "quote_or_summary": "Member entry flagged: website unreachable, membership lapsed.",
+          "retrieval_method": "page_fetch",
+          "stale": true
+        }
+      ],
+      "notes": [
+        "the company website no longer resolves and the association directory marks the business as unreachable (T07 b, seller side)"
+      ],
+      "product_categories": [
+        "sunscreen"
+      ],
+      "oem_odm": true,
+      "private_label": true,
+      "moq": 1500,
+      "moq_unit": "units",
+      "lead_time_days": 45,
+      "certifications": [
+        "ISO22716"
+      ],
+      "certifications_verified": true,
+      "export_markets": [
+        "JP"
+      ],
+      "english_site": true,
+      "overseas_partner_signal": true,
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "info@sopoongworks.example"
+        }
+      ],
+      "stale": false,
+      "operational_status": "unreachable"
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-areumfactory-example",
+      "company_name": "Areum Factory Co., Ltd.",
+      "website": "https://areumfactory.example/",
+      "canonical_domain": "areumfactory.example",
+      "country": "KR",
+      "company_type": "manufacturer",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1501",
+          "claim": "company_type",
+          "value": "manufacturer",
+          "source_url": "https://areumfactory.example/about",
+          "source_domain": "areumfactory.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2023-03-12",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "stale": true
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1502",
+          "claim": "product_categories",
+          "value": [
+            "sunscreen",
+            "skincare"
+          ],
+          "source_url": "https://areumfactory.example/products/sun",
+          "source_domain": "areumfactory.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2023-03-12",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "stale": true,
+          "notes": [
+            "signal:named_product_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1503",
+          "claim": "oem_odm",
+          "value": true,
+          "source_url": "https://areumfactory.example/oem",
+          "source_domain": "areumfactory.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2023-03-12",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "stale": true
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1504",
+          "claim": "private_label",
+          "value": true,
+          "source_url": "https://areumfactory.example/oem",
+          "source_domain": "areumfactory.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2023-03-12",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "stale": true
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1505",
+          "claim": "moq",
+          "value": 2000,
+          "source_url": "https://areumfactory.example/oem",
+          "source_domain": "areumfactory.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2023-03-12",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "stale": true
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1506",
+          "claim": "certifications",
+          "value": [
+            "ISO22716"
+          ],
+          "source_url": "https://areumfactory.example/quality",
+          "source_domain": "areumfactory.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2023-03-12",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "stale": true
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1507",
+          "claim": "export_markets",
+          "value": [
+            "JP",
+            "TW"
+          ],
+          "source_url": "https://areumfactory.example/global",
+          "source_domain": "areumfactory.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2023-03-12",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "stale": true
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1508",
+          "claim": "overseas_partner_signal",
+          "value": true,
+          "source_url": "https://areumfactory.example/global",
+          "source_domain": "areumfactory.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2023-03-12",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "stale": true
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1509",
+          "claim": "named_product_page",
+          "value": "product_categories",
+          "source_url": "https://areumfactory.example/products/sun",
+          "source_domain": "areumfactory.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2023-03-12",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "every page carries a 2023 copyright and the news feed stopped in 2023; the site is reachable, so the record is kept, penalised and rendered LOW (T07 a)"
+      ],
+      "product_categories": [
+        "sunscreen",
+        "skincare"
+      ],
+      "oem_odm": true,
+      "private_label": true,
+      "moq": 2000,
+      "moq_unit": "units",
+      "lead_time_days": 60,
+      "monthly_capacity_units": 45000,
+      "certifications": [
+        "ISO22716"
+      ],
+      "certifications_verified": false,
+      "export_markets": [
+        "JP",
+        "TW"
+      ],
+      "english_site": true,
+      "overseas_partner_signal": true,
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "sales@areumfactory.example"
+        }
+      ],
+      "stale": true,
+      "operational_status": "active"
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-jinheungcos-example",
+      "company_name": "Jinheung Cosmetics Co., Ltd.",
+      "website": "https://jinheungcos.example/",
+      "canonical_domain": "jinheungcos.example",
+      "country": "KR",
+      "company_type": "manufacturer",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1601",
+          "claim": "company_type",
+          "value": "manufacturer",
+          "source_url": "https://jinheungcos.example/about",
+          "source_domain": "jinheungcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-19",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1602",
+          "claim": "product_categories",
+          "value": [
+            "sunscreen"
+          ],
+          "source_url": "https://jinheungcos.example/products/sunscreen",
+          "source_domain": "jinheungcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-19",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:named_product_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1603",
+          "claim": "oem_odm",
+          "value": true,
+          "source_url": "https://jinheungcos.example/oem",
+          "source_domain": "jinheungcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-19",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1604",
+          "claim": "private_label",
+          "value": true,
+          "source_url": "https://jinheungcos.example/oem",
+          "source_domain": "jinheungcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-19",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1605",
+          "claim": "moq",
+          "value": 1000,
+          "source_url": "https://jinheungcos.example/oem",
+          "source_domain": "jinheungcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-19",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1606",
+          "claim": "certifications",
+          "value": [
+            "ISO22716"
+          ],
+          "source_url": "https://jinheungcos.example/quality",
+          "source_domain": "jinheungcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-19",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1607",
+          "claim": "export_markets",
+          "value": [
+            "JP",
+            "CN"
+          ],
+          "source_url": "https://jinheungcos.example/global",
+          "source_domain": "jinheungcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-19",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1608",
+          "claim": "overseas_partner_signal",
+          "value": true,
+          "source_url": "https://jinheungcos.example/global",
+          "source_domain": "jinheungcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-19",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1609",
+          "claim": "excluded_markets",
+          "value": [
+            "AE"
+          ],
+          "source_url": "https://jinheungcos.example/global",
+          "source_domain": "jinheungcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-19",
+          "confidence": 0.9,
+          "quote_or_summary": "The UAE is covered by an existing exclusive agreement and is not open.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1610",
+          "claim": "named_product_page",
+          "value": "product_categories",
+          "source_url": "https://jinheungcos.example/products/sunscreen",
+          "source_domain": "jinheungcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-19",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "an exclusive agreement already covers the UAE, so the seller publicly excludes that market"
+      ],
+      "product_categories": [
+        "sunscreen"
+      ],
+      "oem_odm": true,
+      "private_label": true,
+      "moq": 1000,
+      "moq_unit": "units",
+      "lead_time_days": 30,
+      "monthly_capacity_units": 90000,
+      "certifications": [
+        "ISO22716"
+      ],
+      "certifications_verified": true,
+      "export_markets": [
+        "JP",
+        "CN"
+      ],
+      "excluded_markets": [
+        "AE"
+      ],
+      "english_site": true,
+      "overseas_partner_signal": true,
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "global@jinheungcos.example"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active"
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-byeolbitlab-example",
+      "company_name": "Byeolbit Lab Co., Ltd.",
+      "website": "https://byeolbitlab.example/",
+      "canonical_domain": "byeolbitlab.example",
+      "country": "KR",
+      "company_type": "manufacturer",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1701",
+          "claim": "company_type",
+          "value": "manufacturer",
+          "source_url": "https://byeolbitlab.example/about",
+          "source_domain": "byeolbitlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1702",
+          "claim": "product_categories",
+          "value": [
+            "shampoo",
+            "hair_treatment"
+          ],
+          "source_url": "https://byeolbitlab.example/products/shampoo",
+          "source_domain": "byeolbitlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1703",
+          "claim": "oem_odm",
+          "value": true,
+          "source_url": "https://byeolbitlab.example/oem",
+          "source_domain": "byeolbitlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1704",
+          "claim": "private_label",
+          "value": true,
+          "source_url": "https://byeolbitlab.example/oem",
+          "source_domain": "byeolbitlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1705",
+          "claim": "moq",
+          "value": 1500,
+          "source_url": "https://byeolbitlab.example/oem",
+          "source_domain": "byeolbitlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1706",
+          "claim": "certifications",
+          "value": [
+            "ISO22716"
+          ],
+          "source_url": "https://byeolbitlab.example/quality",
+          "source_domain": "byeolbitlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1707",
+          "claim": "export_markets",
+          "value": [
+            "JP"
+          ],
+          "source_url": "https://byeolbitlab.example/global",
+          "source_domain": "byeolbitlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1708",
+          "claim": "overseas_partner_signal",
+          "value": true,
+          "source_url": "https://byeolbitlab.example/global",
+          "source_domain": "byeolbitlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [],
+      "product_categories": [
+        "shampoo",
+        "hair_treatment"
+      ],
+      "oem_odm": true,
+      "private_label": true,
+      "moq": 1500,
+      "moq_unit": "units",
+      "lead_time_days": 35,
+      "monthly_capacity_units": 55000,
+      "certifications": [
+        "ISO22716"
+      ],
+      "certifications_verified": true,
+      "export_markets": [
+        "JP"
+      ],
+      "english_site": true,
+      "overseas_partner_signal": true,
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "oem@byeolbitlab.example"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active"
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-muljilcosmetic-example",
+      "company_name": "Muljil Cosmetic Co., Ltd.",
+      "website": "https://muljilcosmetic.example/",
+      "canonical_domain": "muljilcosmetic.example",
+      "country": "KR",
+      "company_type": "manufacturer",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1801",
+          "claim": "company_type",
+          "value": "manufacturer",
+          "source_url": "https://muljilcosmetic.example/about",
+          "source_domain": "muljilcosmetic.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1802",
+          "claim": "product_categories",
+          "value": [
+            "serum",
+            "essence"
+          ],
+          "source_url": "https://muljilcosmetic.example/products/serum",
+          "source_domain": "muljilcosmetic.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1803",
+          "claim": "oem_odm",
+          "value": true,
+          "source_url": "https://muljilcosmetic.example/oem",
+          "source_domain": "muljilcosmetic.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1804",
+          "claim": "private_label",
+          "value": true,
+          "source_url": "https://muljilcosmetic.example/oem",
+          "source_domain": "muljilcosmetic.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1805",
+          "claim": "moq",
+          "value": 2000,
+          "source_url": "https://muljilcosmetic.example/oem",
+          "source_domain": "muljilcosmetic.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1806",
+          "claim": "certifications",
+          "value": [
+            "ISO22716"
+          ],
+          "source_url": "https://muljilcosmetic.example/quality",
+          "source_domain": "muljilcosmetic.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1807",
+          "claim": "export_markets",
+          "value": [
+            "JP",
+            "SG"
+          ],
+          "source_url": "https://muljilcosmetic.example/global",
+          "source_domain": "muljilcosmetic.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1808",
+          "claim": "overseas_partner_signal",
+          "value": true,
+          "source_url": "https://muljilcosmetic.example/global",
+          "source_domain": "muljilcosmetic.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-05-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "serum and essence are siblings of sunscreen through the shared G1 adjacency group; an adjacent category scores but does not clear HF-01"
+      ],
+      "product_categories": [
+        "serum",
+        "essence"
+      ],
+      "oem_odm": true,
+      "private_label": true,
+      "moq": 2000,
+      "moq_unit": "units",
+      "lead_time_days": 30,
+      "monthly_capacity_units": 65000,
+      "certifications": [
+        "ISO22716"
+      ],
+      "certifications_verified": true,
+      "export_markets": [
+        "JP",
+        "SG"
+      ],
+      "english_site": true,
+      "overseas_partner_signal": true,
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "sales@muljilcosmetic.example"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active"
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-hwadamglobal-example",
+      "company_name": "Hwadam Global Co., Ltd.",
+      "website": "https://hwadamglobal.example/",
+      "canonical_domain": "hwadamglobal.example",
+      "country": "unknown",
+      "company_type": "manufacturer",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1901",
+          "claim": "company_type",
+          "value": "manufacturer",
+          "source_url": "https://hwadamglobal.example/about",
+          "source_domain": "hwadamglobal.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-15",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1902",
+          "claim": "product_categories",
+          "value": [
+            "sunscreen"
+          ],
+          "source_url": "https://hwadamglobal.example/products/sunscreen",
+          "source_domain": "hwadamglobal.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-15",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:named_product_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1903",
+          "claim": "oem_odm",
+          "value": true,
+          "source_url": "https://hwadamglobal.example/oem",
+          "source_domain": "hwadamglobal.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-15",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1904",
+          "claim": "private_label",
+          "value": true,
+          "source_url": "https://hwadamglobal.example/oem",
+          "source_domain": "hwadamglobal.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-15",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1905",
+          "claim": "moq",
+          "value": 3000,
+          "source_url": "https://hwadamglobal.example/oem",
+          "source_domain": "hwadamglobal.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-15",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1906",
+          "claim": "certifications",
+          "value": [
+            "ISO22716"
+          ],
+          "source_url": "https://hwadamglobal.example/quality",
+          "source_domain": "hwadamglobal.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-15",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1907",
+          "claim": "export_markets",
+          "value": [
+            "AE"
+          ],
+          "source_url": "https://hwadamglobal.example/global",
+          "source_domain": "hwadamglobal.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-15",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1908",
+          "claim": "overseas_partner_signal",
+          "value": true,
+          "source_url": "https://hwadamglobal.example/global",
+          "source_domain": "hwadamglobal.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-15",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-1909",
+          "claim": "named_product_page",
+          "value": "product_categories",
+          "source_url": "https://hwadamglobal.example/products/sunscreen",
+          "source_domain": "hwadamglobal.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2026-06-15",
+          "confidence": 0.9,
+          "quote_or_summary": "Published statement supporting the claim.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "the site names no registered address and no business registration number, so the country stays unknown; HF-08 is skipped rather than failed (INV-07)"
+      ],
+      "product_categories": [
+        "sunscreen"
+      ],
+      "oem_odm": true,
+      "private_label": true,
+      "moq": 3000,
+      "moq_unit": "units",
+      "lead_time_days": 40,
+      "monthly_capacity_units": 100000,
+      "certifications": [
+        "ISO22716"
+      ],
+      "certifications_verified": true,
+      "export_markets": [
+        "AE"
+      ],
+      "english_site": true,
+      "overseas_partner_signal": true,
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "export@hwadamglobal.example"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active"
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-saeromtrading-example",
+      "company_name": "Saerom Trading Co., Ltd.",
+      "website": "https://saeromtrading.example/",
+      "canonical_domain": "saeromtrading.example",
+      "country": "KR",
+      "company_type": "unknown",
+      "status": "DISCOVERED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-2001",
+          "claim": "website",
+          "value": "https://saeromtrading.example/",
+          "source_url": "https://koreatradeagency.example/directory/saerom",
+          "source_domain": "koreatradeagency.example",
+          "source_type": "official_directory",
+          "source_tier": 2,
+          "is_official": false,
+          "observed_at": "2026-09-10T09:00:00Z",
+          "source_date": "2025-10-08",
+          "confidence": 0.9,
+          "quote_or_summary": "Directory row: Saerom Trading Co., Ltd., with a website link and nothing else.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "notes": [
+        "only a bare directory row was found; no material claim is evidenced, so the record cannot produce two evidenced fit reasons (HF-00) and is excluded from the ranked set"
+      ],
+      "stale": false,
+      "operational_status": "unknown"
+    }
+  ]
+}
