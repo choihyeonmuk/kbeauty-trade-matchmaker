@@ -1,281 +1,295 @@
 # K-Beauty Trade Matchmaker
 
-**해외 K-Beauty Buyer와 한국 Seller를 공개 정보 기반으로 발굴·검증·점수화·매칭하고, 사람이 검토할 아웃리치 초안까지만 만드는 재사용형 Agent Skill.**
+**An Agent Skill that finds overseas K-Beauty buyers and Korean sellers on the public web, verifies every material claim against a source you can click, scores both sides with deterministic scripts, matches buying requests to sellers, and stops at an outreach draft for a human to review.**
 
-Claude Agent Skills와 OpenAI/Codex Skills 양쪽에서 **같은 폴더가 수정 없이** 동작한다.
-Python은 **표준 라이브러리만** 사용하며(3.9–3.14), 설치할 의존성이 없다.
+The same folder runs unmodified in **Claude Code** and **OpenAI Codex**. Python is **standard library only** (3.9–3.14); there is nothing to `pip install`.
 
----
+[Project page](https://choihyeonmuk.github.io/kbeauty-trade-matchmaker/) · [한국어 README](README.ko.md)
 
-## ⚠️ 안전 경계 — 이 스킬은 아무것도 보내지 않는다
-
-가장 먼저 알아야 할 사실이다. 이 패키지 어디에도 **메시지를 전송하는 코드가 없다.**
-
-- **Draft only.** 아웃리치 작업은 항상 `READY_FOR_REVIEW` 상태에서 끝난다. 초안에는 `auto_send: false`, `manual_approval_required: true`가 붙는다.
-- **승인은 사람이, 발송은 외부 시스템이.** 스킬이 쓸 수 있는 상태는 `DISCOVERED` → `VERIFIED` → `QUALIFIED` → `MATCH_CANDIDATE` → `READY_FOR_REVIEW`까지다. `APPROVED_FOR_OUTREACH` 이후는 TradeWith/CRM과 사람의 결정이며, 어댑터도 그 상태로의 전이를 **거부**한다.
-- **SMTP·Gmail·SES·webhook 전송 코드 없음**, 개인 이메일/전화번호 추론·대량 수집 없음(회사 단위 채널만), CAPTCHA·로그인·robots/ToS 우회 없음.
-- **없는 사실은 만들지 않는다.** MOQ, 인증, 수출 가능 국가, 독점권, 생산능력은 근거가 있을 때만 기재하고 그 외에는 `"unknown"`으로 남는다. "바이어가 기다리고 있다" 같은 근거 없는 긴박감 문구는 템플릿 수준에서 금지된다.
-- **법률 판단을 하지 않는다.** `references/compliance-notes.md`는 "확인이 필요하다"를 표시할 뿐, "보내도 된다"를 결론짓지 않는다.
-
-이건 기능 부족이 아니라 설계다. *초안 작성*과 *발송*은 서로 다른 권한이고, 이 패키지에는 앞의 것만 들어 있다.
+> **Status: v0.1.0.** The pipeline is tested against 175 cases on fictional fixtures and was trialled once against the live web. The scoring rubric is **not yet validated against real outcomes**: scores are reproducible and traceable, not yet known to be predictive. RFQ Matching and Outreach Draft have not been run on live data. Read [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) before trusting a score.
 
 ---
 
-## 1. 무엇을 해주는가
+## Safety boundary: this skill sends nothing
 
-TradeWith 운영자가 하루 종일 Google·LinkedIn·박람회 디렉터리를 뒤지던 작업을, **근거 URL이 달린 검증 가능한 후보 리스트와 매칭 제안**으로 바꾼다.
+The most important fact about this package: **no code in it can send a message.**
 
-1. **발굴** — 국가/카테고리/OEM·MOQ·인증 조건으로 Buyer·Seller 후보를 공개 웹에서 찾는다.
-2. **검증** — 회사 공식 페이지 등 신뢰 출처에서 각 주장(claim)을 확인하고 출처 URL·관찰 시각과 함께 저장한다.
-3. **정규화** — 도메인·회사명을 정규화해 중복을 병합하고, Buyer 요구조건과 Seller 역량을 하나의 스키마에 올린다.
-4. **점수화** — 결정론적 Python 스크립트로 Buyer/Seller 적격 점수를 계산한다. 같은 입력 + 같은 `--as-of` = 같은 출력.
-5. **매칭** — RFQ를 기준으로 하드 필터 → 가중 점수 → 의미 기반 재정렬 → unknown 처리 순으로 Top N과 **제외 사유**를 함께 낸다.
-6. **초안** — 검증된 사실만 써서 개인화 아웃리치 초안을 만들고 거기서 멈춘다.
+- **Draft only.** Outreach work always ends in state `READY_FOR_REVIEW`, with `auto_send: false` and `manual_approval_required: true` on the draft.
+- **Humans approve, external systems send.** The skill may move a lead through `DISCOVERED` → `VERIFIED` → `QUALIFIED` → `MATCH_CANDIDATE` → `READY_FOR_REVIEW` and no further. `APPROVED_FOR_OUTREACH` and later belong to a CRM and a person; the adapter **refuses** those transitions.
+- **No SMTP, Gmail, SES or webhook sending code.** No inferring or bulk-collecting personal emails or phone numbers (company-level channels only). No bypassing CAPTCHA, logins, paywalls, robots.txt or terms of service.
+- **Nothing is invented.** MOQ, certifications, export markets, exclusivity and capacity are recorded only when a source states them; otherwise they stay `"unknown"`. Unbacked urgency such as "a buyer is waiting for you" is banned at the template level.
+- **No legal judgements.** [`compliance-notes.md`](kbeauty-trade-matchmaker/references/compliance-notes.md) marks where a check is needed; it never concludes that sending is allowed.
+
+This is a design decision, not a missing feature. *Drafting* and *sending* are different permissions, and this package only holds the first.
 
 ---
 
-## 2. 4가지 모드
+## What it does
 
-PRD §5의 대표 시나리오 그대로다. 아래 호출 형태는 운영자가 에이전트에게 말하는 방식이며, 런타임이 슬래시 명령을 지원하지 않으면 같은 내용을 자연어로 말해도 된다.
+It turns a day of searching Google, LinkedIn and trade-show directories into **a verifiable shortlist where every claim links to its source**.
 
-### 2.1 Buyer Discovery — 해외 바이어 발굴
+1. **Discover** buyer and seller candidates on the public web by country, category, OEM/ODM, MOQ and certification.
+2. **Verify** each claim against trustworthy sources, usually the company's own site, and store it with its URL and the time it was observed.
+3. **Normalize** domains and company names, merge duplicates, and put buyer requirements and seller capabilities on one schema.
+4. **Score** buyers and sellers with deterministic Python scripts. Same input and same `--as-of` give the same output.
+5. **Match** a buying request (RFQ) to sellers: hard filters, then weighted score, then a bounded semantic rerank, then unknown handling. It returns the top N **and the reason each rejected seller was rejected**.
+6. **Draft** personalised outreach from verified facts only, and stop there.
+
+---
+
+## Four modes
+
+Ask the agent in plain language. The forms below are shorthand for the parameters each mode takes.
+
+### Buyer Discovery
 
 ```
 /kbeauty-buyers country="UAE" category="sunscreen" count=30
 ```
 
-UAE에서 K-Beauty를 취급하는 Distributor/Importer/Wholesaler를 찾아 회사 유형·취급 브랜드·Wholesale 여부·파트너 모집 신호·공식 연락 채널·근거 URL을 정규화해 출력한다.
+Finds distributors, importers and wholesalers that carry K-Beauty in the UAE, and normalises company type, brands carried, wholesale availability, partnership signals, official contact channels and evidence URLs.
 
-### 2.2 Seller Discovery — 한국 셀러 발굴
+### Seller Discovery
 
 ```
 /kbeauty-sellers product="sunscreen" oem_odm=true max_moq=3000 certifications="ISO22716" count=30
 ```
 
-한국 Seller/Manufacturer 후보를 찾아 OEM/ODM 여부, MOQ, 인증, 주요 제품, 해외 수출·파트너십 신호를 검증한다.
+Finds Korean manufacturers and brands, and verifies OEM/ODM capability, MOQ, certifications, main products and export or partnership signals.
 
-### 2.3 RFQ Matching — 구매요청 ↔ 셀러 매칭
+### RFQ Matching
 
 ```
 /kbeauty-match rfq="#134" top=10
 ```
 
-RFQ #134의 제품·MOQ·목적국·인증·private-label 요구를 기준으로 셀러를 필터링하고 정량/정성 점수를 결합해 Top 10과 **제외 이유**를 반환한다. 적격 셀러가 없으면 "없음"을 근거와 함께 답하는 것도 정상 출력이다.
+Filters sellers against the RFQ's product, MOQ, destination, certifications and private-label requirement, combines quantitative and qualitative scores, and returns the top 10 plus the exclusion reasons. "No qualified match", with its reasons, is a normal output.
 
-### 2.4 Outreach Draft — 아웃리치 초안
+### Outreach Draft
 
 ```
 /kbeauty-outreach buyer="ABC Beauty UAE" seller="Seller A" mode="draft"
 ```
 
-검증된 사실만으로 제목/본문/개인화 포인트를 작성한다. 근거가 약하면 일반화하거나 "확인 필요"로 표시한다. **발송하지 않는다.**
+Writes a subject, body and personalisation points from verified facts only. Weak evidence is generalised or marked "needs verification". **It does not send.**
 
 ---
 
-## 3. 패키지 구조
+## Example output
+
+An excerpt of RFQ Matching on the bundled test fixture. The sellers are fictional.
+
+```
+RFQ #134
+Destination: United Arab Emirates
+Product: Sunscreen
+MOQ: <= 3,000
+Commercial model: Private label
+ISO22716: Required
+
+Matches
+1. Hansol ODM Corp — Match 99/100
+   Product Fit: 100
+   Model Fit: 98
+   MOQ: 95
+   Compliance: 100
+   Market Fit: 100
+   Evidence Quality: 100
+   Risks: none
+   Missing: none
+...
+9. Yeonhwa Lab Co., Ltd. — Match 79/100
+   MOQ: 43
+   Risks: seller.moq not published; hard filter HF-03 skipped.
+   Missing: MOQ against the buyer ceiling; Capacity against the order quantity; Destination-market registration
+
+Excluded
+- Daehan Sun Care Co., Ltd.: MOQ minimum 5,000 exceeds RFQ max 3,000
+- Haneul Bio Co., Ltd.: Required certification ISO22716 not held (verified list: none)
+- Jinheung Cosmetics Co., Ltd.: Does not supply AE (market excluded by the seller)
+
+Summary: 20 considered · 11 passed hard filter · 10 returned · 11 qualified
+```
+
+Note seller 9: its MOQ is unpublished, so the MOQ hard filter was **skipped, not failed**. It stays in the list with a lower operational score and an explicit "Missing" line, instead of being silently rejected or silently passed.
+
+---
+
+## Package layout
 
 ```
 kbeauty-trade-matchmaker/
-├── SKILL.md                      # 런타임 진입점: frontmatter(name/description) + 4 모드 + workflow
-├── install.sh                    # 두 런타임의 skills 디렉터리로 설치 (symlink 기본, --copy 가능)
+├── SKILL.md                      # Runtime entry point: frontmatter (name/description), four modes, workflow
+├── install.sh                    # Installs into either runtime's skills directory (symlink by default)
 ├── adapters/
-│   ├── tradewith_adapter.py      # TradeWith 내부 데이터 경계. file/http 두 백엔드, 자격증명 없이 import 가능
-│   └── tradewith_adapter.md      # 어댑터 설정·호출법과 "하지 않는 일"
-├── references/                   # progressive disclosure — 필요할 때만 열리는 참조 문서
-│   ├── buyer-discovery.md        # 바이어 쿼리 확장, 국가별 검색 패턴, 중단 조건
-│   ├── seller-discovery.md       # 한국 셀러 쿼리 확장, OEM/ODM·MOQ 페이지 패턴, 협회/박람회 디렉터리
-│   ├── qualification-rubric.md   # 점수 차원의 서술형 설명 (숫자는 SCORING-CONTRACT가 진실)
-│   ├── matching-rules.md         # 하드 필터 → 가중 점수 → 재정렬 → unknown 처리, HF-00..HF-08 표
-│   ├── calibration-notes.md      # 두 번의 실측 트라이얼이 무엇을 재고 무엇을 바꿨는가, 무엇이 미검증인가
-│   ├── evidence-policy.md        # fact vs inference vs unknown, 출처 tier, observed_at 규율, 충돌 처리
-│   ├── outreach-guidelines.md    # draft-only 규칙, 근거 기반 개인화, CTA 정책, 금지 표현, 리뷰 체크리스트
-│   ├── compliance-notes.md       # 관할별 다이렉트 마케팅 주의, 데이터 최소화, robots/ToS 경계
-│   ├── data-contract.md          # 스키마·정규화 계약의 동봉 요약본 (docs/ 없이도 동작)
-│   ├── output-format.md          # 출력 렌더링 계약 10.1–10.5 + 한국어 라벨 맵 (동봉본)
-│   └── runtime-adapters.md       # 이식성 계층 — 벤더 도구 이름이 등장하는 유일한 파일
-├── schemas/                      # 데이터 계약 (JSON Schema 부분집합, 자체 validator로 검증)
-│   ├── buyer.schema.json         #   raw / scored 두 프로필
+│   ├── tradewith_adapter.py      # Internal-data boundary. File and HTTP backends; imports without credentials
+│   └── tradewith_adapter.md      # Adapter setup, usage, and what it refuses to do
+├── references/                   # Progressive disclosure: loaded only when a mode needs them
+│   ├── buyer-discovery.md        # Buyer query expansion, per-country search patterns, stop conditions
+│   ├── seller-discovery.md       # Korean seller queries, OEM/ODM and MOQ page patterns, directories
+│   ├── qualification-rubric.md   # Narrative explanation of the scoring dimensions
+│   ├── matching-rules.md         # Hard filters, weighted score, rerank, unknown handling; HF-00..HF-08
+│   ├── calibration-notes.md      # What the live trials measured and changed, and what is unvalidated
+│   ├── evidence-policy.md        # Fact vs inference vs unknown, source tiers, observed_at, conflicts
+│   ├── outreach-guidelines.md    # Draft-only rules, evidence-backed personalisation, banned phrasing
+│   ├── compliance-notes.md       # Per-jurisdiction direct-marketing cautions, data minimisation
+│   ├── data-contract.md          # Bundled summary of the schema and normalisation contract
+│   ├── output-format.md          # Output rendering contract, bundled
+│   └── runtime-adapters.md       # Portability layer; the only file that names vendor tools
+├── schemas/                      # Data contracts, checked by the bundled validator
+│   ├── buyer.schema.json
 │   ├── seller.schema.json
 │   ├── rfq.schema.json
-│   ├── evidence.schema.json      #   출처 하나 + 주장 하나의 최소 단위
-│   ├── match-result.schema.json  #   한 번의 매칭 실행 전체
-│   ├── discovery-result.schema.json  # 한 번의 발굴 실행 전체 (summary/records/excluded/partial/notes)
-│   └── scoring.config.json       #   모든 가중치·임계값·페널티가 사는 단일 파일
-├── scripts/                      # 표준 라이브러리만. 네트워크 없음, 자격증명 없음
-│   ├── _common.py                #   설정 로딩, 반올림, 정규화, tri-state 헬퍼, 의존성 없는 스키마 검증기
-│   ├── normalize_company.py      #   canonical_domain / normalized_name / alias 도메인 산출
-│   ├── dedupe_companies.py       #   중복 회사 병합, merged_from / alias_domains / conflicts 생성
-│   ├── score_buyer.py            #   바이어 차원 점수 · 적격 점수 · confidence · missing
-│   ├── score_seller.py           #   셀러 동일 (쿼리 표면 기준)
-│   ├── score_match.py            #   RFQ → 셀러 파이프라인, match-result 문서 생성
-│   └── validate_output.py        #   스키마 + 계약 불변식 검증 (검증자의 진입점)
+│   ├── evidence.schema.json      # The smallest unit: one source, one claim
+│   ├── match-result.schema.json  # One complete matching run
+│   ├── discovery-result.schema.json
+│   └── scoring.config.json       # Every weight, threshold and penalty lives in this one file
+├── scripts/                      # Standard library only. No network, no credentials
+│   ├── _common.py                # Config, rounding, normalisation, tri-state helpers, schema validator
+│   ├── normalize_company.py
+│   ├── dedupe_companies.py
+│   ├── score_buyer.py
+│   ├── score_seller.py
+│   ├── score_match.py
+│   └── validate_output.py        # Schema plus contract invariants
 ├── templates/
-│   ├── buyer_outreach.md         # 바이어용 초안 템플릿 ({{token}} 자리표시자)
-│   ├── seller_outreach.md        # 셀러용 초안 템플릿 (RFQ 있는 경우 / 없는 경우)
-│   └── legal_notices.md          # 관할×채널별 고지 블록 ({{country_alpha2}}.{{channel_type}})
+│   ├── buyer_outreach.md
+│   ├── seller_outreach.md        # With and without an RFQ
+│   └── legal_notices.md          # Per-jurisdiction, per-channel notice blocks
 └── tests/
-    ├── cases.md                  # PRD T01–T10 + negative/edge 케이스 명세
-    ├── run_tests.py              # 표준 라이브러리 러너. 인자 없이 실행, exit 0/1
-    └── fixtures/                 # golden 입력과 expected/ 출력 (실제 개인정보 없음)
+    ├── cases.md                  # Test case specification, including negative and edge cases
+    ├── run_tests.py
+    └── fixtures/                 # Golden inputs and expected outputs; all companies fictional
 ```
 
-저장소 루트에는 이 README와 함께 `docs/`가 있다. 공개되는 것은 구현 계약 두 건 — `docs/BUILD-CONTRACT.md`와 `docs/SCORING-CONTRACT.md` — 이며, 두 계약이 인용하는 제품 정의(PRD)와 실측 트라이얼 원자료는 내부 문서라 이 저장소에 포함되지 않는다. 계약이 PRD 조항 번호를 인용하는 곳은 그 조항의 요구사항을 계약 본문이 이미 다시 적어 두었으므로, PRD 없이도 읽을 수 있다. **`docs/`는 배포 대상이 아니다** — 설치되는 것은 `kbeauty-trade-matchmaker/` 폴더뿐이고, 런타임이 필요로 하는 계약 내용은 `references/data-contract.md`(스키마·정규화)와 `references/output-format.md`(출력 렌더링)에 동봉되어 있다. 그래서 패키지 안의 어떤 파일도 런타임 에이전트에게 `docs/…` 경로를 열라고 지시하지 않는다.
+The repository root also holds `docs/BUILD-CONTRACT.md` and `docs/SCORING-CONTRACT.md`, the implementation contracts. **`docs/` is not installed.** Only the `kbeauty-trade-matchmaker/` folder is; the contract content the runtime needs is bundled in `references/data-contract.md` and `references/output-format.md`. The product requirements document the contracts cite is internal and not published; the contracts restate the requirements they depend on.
 
 ---
 
-## 4. 점수는 어떻게 매겨지는가
+## How scoring works
 
-점수는 LLM의 인상이 아니라 **결정론적 스크립트**가 낸다. Buyer는 6개 차원(`kbeauty_korea_fit` 20, `b2b_commercial_role` 20, `sourcing_intent` 25, `market_relevance` 15, `reachability` 10, `evidence_quality` 10 — 합 100), Seller도 6개 차원(`product_fit` 25, `commercial_model` 20, `operational_fit` 20, `compliance_readiness` 15, `export_readiness` 10, `evidence_quality` 10)으로 채점되고, 각 차원은 criterion 단위 가점을 합산한 뒤 적용 가능한 만점으로 0–100 정규화한다. 매칭은 네 단계를 순서대로 밟는다 — 하드 필터 `HF-01..HF-08`과 렌더링 게이트 `HF-00`(실패해도 단락하지 않고 **모든** 제외 사유를 수집한다) → 가중 점수(`product_fit` 0.30 + `model_fit` 0.20 + `operation_fit` 0.15 + `compliance_fit` 0.15 + `market_fit` 0.10 + `evidence_quality` 0.10) → 경계가 정해진 의미 기반 재정렬 → unknown 처리. 여섯 개의 매칭 성분은 **셀러의 여섯 차원 바로 그것**이며, RFQ를 같은 쿼리 표면에 투영해 다시 채점한 값이다. 한 셀러가 두 개의 다른 루브릭으로 평가되는 일은 없다. 핵심 규칙 세 가지: **unknown은 0이 아니다** — 모르는 값은 해당 criterion 만점의 30%를 받고(`neutral_base` 50 × `penalty_factor` 0.6), unknown이라는 이유만으로 후보를 탈락시키는 것은 금지이며, 페널티를 피하려고 값을 추정하는 것도 금지다. **시계를 읽지 않는다** — 모든 시간 계산은 `--as-of`(기본 `2026-09-12`)를 쓰므로 같은 입력은 언제 돌려도 같은 숫자를 낸다. **confidence는 품질 점수가 아니다** — `evidence_quality / 100 × coverage_factor × stale × conflict`로 계산되는 "이 레코드를 얼마나 믿을 수 있나"이며, `HIGH ≥ 0.75 / MEDIUM ≥ 0.5 / LOW`로 표시되고 적격 점수를 절대 읽지 않는다. 기본 합격선은 70점 고정이고(`thresholds.mode = "fixed"`), percentile 모드도 구현되어 있다(§9 항목 3). 모든 튜닝 숫자는 `schemas/scoring.config.json` 한 곳에만 있다.
+Scores come from **deterministic scripts**, not from a model's impression.
 
-## 5. 근거(evidence)는 어떻게 다뤄지는가
+Buyers are scored on six dimensions: `kbeauty_korea_fit` 20, `b2b_commercial_role` 20, `sourcing_intent` 25, `market_relevance` 15, `reachability` 10, `evidence_quality` 10. Sellers are scored on six: `product_fit` 25, `commercial_model` 20, `operational_fit` 20, `compliance_readiness` 15, `export_readiness` 10, `evidence_quality` 10. Each dimension sums criterion-level points and normalises to 0–100 over the points that apply.
 
-이 스킬의 출력 단위는 "회사"가 아니라 **근거가 붙은 주장**이다. evidence 항목 하나는 주장 하나(`claim`)와 그 출처 URL, 출처 tier, 콘텐츠 날짜(`source_date`), 우리가 본 시각(`observed_at`), 사실인지 추론인지(fact/inference), 짧은 인용으로 이루어진다. 출처는 5단계로 등급이 매겨진다 — tier 1 회사 공식 사이트(100점), tier 2 박람회·협회·정부/무역기관 공식 디렉터리와 TradeWith 내부 레코드(82), tier 3 공식 LinkedIn·소셜(64), tier 4 평판 있는 제3자 디렉터리·보도자료(46), tier 5 커뮤니티·블로그(20, 보조 신호 전용). 여기에 콘텐츠 나이에 따른 배수가 곱해진다(90일 이내 1.00, 1년 이내 0.92, 2년 이내 0.80, 그 이상 0.60, 날짜 불명 0.85). 배수의 기준은 언제나 `source_date`이지 `observed_at`이 아니다 — 후자는 우리가 읽은 시각이지 내용의 나이가 아니기 때문이다. 차원 점수로 들어가는 `evidence_quality`는 `0.50 × 출처 강도 + 0.35 × 주요 주장 커버리지 + 0.15 × 교차검증`에 공식 출처 보너스·다중 출처 보너스·staleness/충돌/추론 페널티를 더한 뒤 0–100으로 clamp한 값이다. 여기서 서로 다른 두 상태를 구분해야 한다. **`unverified`** 는 근거가 있으나 주요 주장에 **공식(tier 1, `is_official`) 출처가 하나도 없는** 경우다 — 점수가 매겨지고 순위에 올라가며 출력 헤더에 ` — unverified` 표시가 붙는다. **탈락하지 않는다**(PRD 15.1). 반면 **주요 주장에 근거 항목이 아예 하나도 없는** 레코드는 `evidence_quality = 0`이고 DISC-06 근거 기준선에 따라 점수 산정 전에 `excluded[]`로 빠진다 — 이때 사유에는 "사이트를 열 수 없었다"인지 "읽었으나 주요 주장이 없었다"인지가 명시된다. 근거가 전혀 없는 회사를 순위 목록에 채워 넣는 것이야말로 DISC-06이 막으려는 실패다. 저장은 최소화 원칙을 따른다: 주장·URL·관찰 시각·짧은 인용만 남기고 페이지 전체나 불필요한 개인 프로필은 남기지 않는다. 상충하는 출처가 나오면 조용히 하나를 고르지 않고 `conflicts[]`에 기록해 사람이 보게 하며, 그 대가로 confidence가 내려간다.
+Matching runs four stages in order:
+
+1. **Hard filters** `HF-01..HF-08`, plus the rendering gate `HF-00`. Failures don't short-circuit; **every** exclusion reason is collected.
+2. **Weighted score:** `product_fit` 0.30 + `model_fit` 0.20 + `operation_fit` 0.15 + `compliance_fit` 0.15 + `market_fit` 0.10 + `evidence_quality` 0.10. These are the seller's own six dimensions, re-scored against the RFQ, so a seller is never judged by two different rubrics.
+3. **Bounded semantic rerank.** The one model-authored step. It is capped, needs evidence-cited reasons, and can never resurrect a hard-filter failure.
+4. **Unknown handling.**
+
+Three rules matter most:
+
+- **Unknown is not zero.** An unknown value earns 30% of that criterion's maximum (`neutral_base` 50 × `penalty_factor` 0.6). Rejecting a candidate merely because a value is unknown is forbidden, and so is guessing a value to avoid the penalty.
+- **No clock reads.** All time arithmetic uses `--as-of`, so the same input gives the same numbers whenever you run it.
+- **Confidence is not quality.** Confidence answers "how far can this record be trusted", is shown as `HIGH ≥ 0.75 / MEDIUM ≥ 0.5 / LOW`, and never reads the qualification score.
+
+A buyer with no K-Beauty evidence at all is still scored and ranked but can never be marked qualified, however strong its other dimensions are. The default qualification threshold is a fixed 70; a percentile mode is also implemented. Every tunable number is in `schemas/scoring.config.json`.
+
+## How evidence works
+
+The unit of output is not "a company" but **a claim with evidence**. An evidence item holds one `claim`, its source URL, the source tier, the content date (`source_date`), when it was observed (`observed_at`), whether it is fact or inference, and a short quote.
+
+| Tier | Source | Points |
+|---|---|---|
+| 1 | The company's official site | 100 |
+| 2 | Official trade-show, association, government or trade-agency directories; internal records | 82 |
+| 3 | Official LinkedIn and social profiles | 64 |
+| 4 | Reputable third-party directories and press releases | 46 |
+| 5 | Community posts and blogs (supporting signal only) | 20 |
+
+Points are multiplied by content age: within 90 days 1.00, within a year 0.92, within two years 0.80, older 0.60, undated 0.85. Age is always measured from `source_date`, never `observed_at`, because when we read a page says nothing about how old its content is.
+
+Two states are deliberately distinct:
+
+- **`unverified`**: the record has evidence, but no material claim has an official (tier 1) source. It is scored, ranked and shown with an `— unverified` marker. It is **not** excluded.
+- **No evidence at all** on any material claim: the record is moved to `excluded[]` before scoring, with the reason stated ("site could not be opened" or "read, but no material claims"). Padding a ranked list with evidence-free companies is exactly the failure this prevents.
+
+Storage is minimal: the claim, URL, observation time and a short quote; never whole pages or unnecessary personal profiles. Conflicting sources are recorded in `conflicts[]` for a human to see, never silently resolved, and conflicts lower confidence.
 
 ---
 
-## 6. 설치
+## Installation
 
-`install.sh`는 POSIX `sh` 스크립트이며 네트워크도 sudo도 쓰지 않고, 선택한 대상 디렉터리 바깥에는 아무것도 쓰지 않는다. **먼저 `--dry-run`으로 계획을 확인하는 것을 권한다.**
+`install.sh` is POSIX `sh`, uses no network and no sudo, and writes nothing outside the target directory. **Run `--dry-run` first.**
 
 ```bash
+git clone https://github.com/choihyeonmuk/kbeauty-trade-matchmaker.git
 cd kbeauty-trade-matchmaker
 
-sh install.sh --dry-run              # 무엇을 할지만 출력하고 아무것도 바꾸지 않는다
-sh install.sh                        # 기본: ~/.claude/skills/ 로 symlink
-sh install.sh --runtime codex        # Codex: ~/.agents/skills/ 로 symlink
-sh install.sh --verify               # 설치 후 번들 테스트 스위트까지 실행
+sh kbeauty-trade-matchmaker/install.sh --dry-run          # Print the plan, change nothing
+sh kbeauty-trade-matchmaker/install.sh --verify           # Claude Code: symlink into ~/.claude/skills/, then run the tests
+sh kbeauty-trade-matchmaker/install.sh --runtime codex    # Codex: symlink into ~/.agents/skills/
 ```
 
-| 옵션 | 뜻 |
+| Option | Meaning |
 |---|---|
-| *(기본)* | `$HOME/.claude/skills/kbeauty-trade-matchmaker` 로 **symlink**. 원본을 고치면 즉시 반영된다 |
-| `--runtime claude\|codex` | 대상 런타임의 skills 디렉터리를 고른다. `claude`(기본) → `.claude/skills/`, `codex` → `.agents/skills/`. `--codex`는 `--runtime codex`의 축약 |
-| `--copy` | symlink 대신 독립 사본 설치 (`tradewith-data/`와 `__pycache__`는 사본에서 제외) |
-| `--project DIR` | `$HOME` 대신 `DIR` 아래 해당 런타임의 skills 디렉터리에 설치 — 저장소와 함께 커밋되는 프로젝트 범위 |
-| `--force` | 이 스크립트가 만들지 않은 기존 디렉터리를 덮어쓴다 (기본은 **거부**) |
-| `--verify` | 설치 후 `tests/run_tests.py` 실행. 실패하면 exit 1 |
-| `--dry-run` | 계획만 출력. 파일 시스템을 건드리지 않는다 |
+| *(default)* | **Symlink** to `$HOME/.claude/skills/kbeauty-trade-matchmaker`; edits to the source apply immediately |
+| `--runtime claude\|codex` | Choose the runtime. `claude` (default) uses `.claude/skills/`, `codex` uses `.agents/skills/`. `--codex` is short for `--runtime codex` |
+| `--copy` | Install an independent copy instead of a symlink |
+| `--project DIR` | Install under `DIR` instead of `$HOME`, so the skill travels with that repository |
+| `--force` | Overwrite an existing directory this script did not create (refused by default) |
+| `--verify` | Run `tests/run_tests.py` after installing; exit 1 on failure |
+| `--dry-run` | Print the plan only |
 
-재실행은 안전하다. 이미 같은 곳을 가리키는 symlink면 "Nothing to do"로 끝나고, 이 스크립트가 만든 사본이면 `--force` 없이 갱신된다. 반대로 **내가 만들지 않은 디렉터리는 `--force` 없이는 절대 지우지 않는다.** exit 코드는 `0` 성공, `1` 설치 거부 또는 검증 실패, `2` 사용법 오류다.
+Re-running is safe. Exit codes: `0` success, `1` installation refused or verification failed, `2` usage error.
 
-두 런타임 모두 **symlink된 스킬 폴더를 따라간다**(target까지 읽는다). 그래서 symlink가 기본값이다.
-
-### 6.1 Claude Code / claude.ai (Agent Skills)
+### Claude Code and claude.ai
 
 ```bash
-# 전역(개인) 스킬 — 이 머신의 모든 프로젝트에서 사용
-sh kbeauty-trade-matchmaker/install.sh
-
-# 또는 프로젝트 범위 — 저장소와 함께 이동
-sh kbeauty-trade-matchmaker/install.sh --project /path/to/your-project
+sh kbeauty-trade-matchmaker/install.sh                                  # Personal: every project on this machine
+sh kbeauty-trade-matchmaker/install.sh --project /path/to/your-project  # Project scope
 ```
 
-스크립트 없이 손으로 해도 같다:
+- **The folder must be named `kbeauty-trade-matchmaker`**, matching the `name` in `SKILL.md`.
+- **`SKILL.md` is already fully conformant; adding frontmatter keys is a regression, not an improvement.** The [Agent Skills open standard](https://agentskills.io/specification) recognises exactly six fields: `name` and `description` (required), and optional `license`, `compatibility`, `metadata` and experimental `allowed-tools`. Outside Claude Code (claude.ai, the Skills API), only those six are accepted, so one Claude-Code-only key blocks upload. This package carries only the two required keys. Versions live in the `SKILL.md` body.
+- Surfaces don't sync. Claude Code (filesystem), claude.ai (zip upload in Settings → Features) and the Skills API (`/v1/skills`) each need the folder uploaded separately.
+
+### OpenAI Codex and ChatGPT
+
+The folder moves over unchanged, but Codex does not read `.claude/skills`. Its skill roots are `.agents/skills`.
 
 ```bash
-# 전역
-mkdir -p ~/.claude/skills
-ln -s "$(pwd)/kbeauty-trade-matchmaker" ~/.claude/skills/kbeauty-trade-matchmaker
-# 또는 사본으로
-cp -R kbeauty-trade-matchmaker ~/.claude/skills/
-
-# 프로젝트 범위
-mkdir -p <project>/.claude/skills
-cp -R kbeauty-trade-matchmaker <project>/.claude/skills/
+sh kbeauty-trade-matchmaker/install.sh --runtime codex                                # User scope: ~/.agents/skills/
+sh kbeauty-trade-matchmaker/install.sh --runtime codex --project /path/to/your-repo   # Repository scope
 ```
 
-`install.sh`가 쓰는 위치는 위 두 개지만 **런타임이 스캔하는 위치는 더 많다**(우선순위 순): ① 엔터프라이즈 관리 설정 디렉터리의 `.claude/skills/`, ② 개인 `~/.claude/skills/`, ③ 프로젝트 `.claude/skills/`, ④ 중첩 `<subdir>/.claude/skills/`(`/subdir:skill-name`으로 호출), ⑤ `--add-dir` 디렉터리의 `.claude/skills/`, ⑥ 플러그인 `<plugin>/skills/`(`/plugin-name:skill-name`), ⑦ claude.ai 계정 동기화(클라우드 세션). **같은 이름의 엔터프라이즈 스킬이 있으면 내 설치보다 우선한다** — 스킬이 안 보이면 여기부터 확인한다. 전체 표는 `kbeauty-trade-matchmaker/references/runtime-adapters.md` §5.1에 있다.
+- Codex scans `.agents/skills` in every directory from the working directory up to the repository root. `~/.codex/skills` is deprecated but still supported; use `~/.agents/skills` for new installs.
+- Invoke explicitly with `$kbeauty-trade-matchmaker` or `/skills` in the CLI and IDE extension, or `@` in ChatGPT. Implicit invocation is decided by the `description`.
+- A standalone skill folder is visible in the **ChatGPT desktop app, Codex CLI and IDE extension** only. ChatGPT **web and mobile** need the skill packaged as a plugin, which v0.1.0 does not include.
+- `AGENTS.md` is not a way to install skills. It is a separate Codex feature for always-on repository instructions.
 
-- **폴더 이름은 반드시 `kbeauty-trade-matchmaker`** — `SKILL.md` frontmatter의 `name`과 일치해야 한다(open standard의 규칙). 폴더 이름 `synced`는 런타임 예약어라 쓸 수 없다.
-- **`SKILL.md`는 이미 규격을 완전히 만족한다 — 키를 더하는 것은 개선이 아니라 회귀다.** Agent Skills 오픈 표준이 인정하는 frontmatter 필드는 정확히 **6개**다: `name`, `description`(둘 다 필수)과 선택 필드 `license`, `compatibility`, `metadata`, 그리고 실험적 `allowed-tools`(2026-09-13 확인 — https://agentskills.io/specification). Claude Code는 호스트 전용 키를 더 받아주지만, **Claude Code 밖(claude.ai·Skills API)에서는 이 6개만 허용된다**(2026-09-13 확인 — https://code.claude.com/docs/en/skills). 즉 Claude Code 전용 키가 **하나라도** 있으면 그 폴더는 업로드 자체가 막힌다. 이 패키지는 필수 2개(`name`, `description`)만 싣는 **최대 이식 형태**다.
-- 표준이 못박은 한계값(2026-09-13 확인 — https://agentskills.io/specification): `name` 1–64자, 소문자 `[a-z0-9]`와 하이픈만, 앞뒤 하이픈 금지, `--` 금지, **부모 디렉터리 이름과 일치**. `description` 1–1024자. `compatibility`는 쓸 경우 500자 이하. 본문은 **500줄 미만·약 5,000토큰 미만**을 유지한다. Anthropic 제품 문서는 여기에 두 가지를 더한다 — `name`·`description`에 XML 태그 금지, `name`에 예약어 "anthropic"/"claude" 금지(2026-09-13 확인 — https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview).
-- 버전 3종(`skill_version` / `schema_version` / `score_version`)은 frontmatter가 아니라 `SKILL.md` **본문**에 적혀 있다 — 표준에 `version` frontmatter 키는 **존재하지 않으며**(버전 문자열의 유일한 정규 자리는 `metadata.version`이다), 최상위 `version`을 추가하면 claude.ai / Skills API 업로드가 막히고 이 패키지의 테스트도 실패한다.
-- 표면(surface)끼리 **동기화되지 않는다.** Claude Code(파일 시스템), claude.ai(설정 → Features에서 zip 업로드), Skills API(`/v1/skills`)는 같은 폴더를 각각 따로 올려야 한다.
-
-### 6.2 OpenAI Codex / ChatGPT Skills
-
-같은 폴더를 **한 글자도 고치지 않고** 옮기면 되지만, Codex는 `.claude/skills`를 보지 않는다. Codex의 스킬 루트는 모두 `.agents/skills`다.
-
-```bash
-# 사용자 범위
-sh kbeauty-trade-matchmaker/install.sh --runtime codex
-# 또는 손으로
-mkdir -p ~/.agents/skills && cp -R kbeauty-trade-matchmaker ~/.agents/skills/
-
-# 저장소 범위
-sh kbeauty-trade-matchmaker/install.sh --runtime codex --project /path/to/your-repo
-# 또는 손으로
-mkdir -p <repo>/.agents/skills && cp -R kbeauty-trade-matchmaker <repo>/.agents/skills/
-
-# 머신 전체(관리자)
-cp -R kbeauty-trade-matchmaker /etc/codex/skills/
-```
-
-Codex는 작업 디렉터리에서 저장소 루트까지 **모든 디렉터리의 `.agents/skills`를 스캔**한다. `~/.codex/skills`(`$CODEX_HOME/skills`)는 **deprecated이지만 여전히 지원된다** — Codex의 스킬 루트 해석 코드가 *"Deprecated … kept for backward compatibility"* 주석과 함께 남겨 두고 있다(`codex-rs/ext/skills/src/host_roots.rs`, https://github.com/openai/codex/tree/main/codex-rs/skills). 이미 거기 설치한 것은 계속 동작하고 제거 일정도 공표된 바 없지만, 공개 문서에는 등장하지 않으므로 **새로 설치할 때는 `~/.agents/skills`를 쓴다.**
-
-호출과 갱신:
-
-- 명시 호출은 `$kbeauty-trade-matchmaker` 또는 CLI/IDE 확장의 `/skills`, ChatGPT에서는 `@`. 암묵 호출은 `description`으로 결정된다.
-- 스킬 변경은 자동 감지되지만, 반영되지 않으면 Codex를 재시작한다.
-- 지우지 않고 끄려면 `~/.codex/config.toml`에 다음을 넣고 재시작한다:
-
-```toml
-[[skills.config]]
-path = "/path/to/kbeauty-trade-matchmaker/SKILL.md"
-enabled = false
-```
-
-**ChatGPT 표면 주의.** 단독 스킬 폴더는 **ChatGPT 데스크톱 앱, Codex CLI, IDE 확장**에서만 보인다. ChatGPT **웹·모바일**의 Chat/Work에서 쓰려면 스킬을 **플러그인으로 패키징**해야 한다. 이 패키지는 v0.1.0에서 단독 폴더로만 배포하며 플러그인 패키징은 범위 밖이다.
-
-> **2026-09-13 기준 공식 문서.** 설치 전에 재확인하고, 아래와 어긋나면 **공식 문서가 맞다.**
-> - Agent Skills 오픈 표준(규범): https://agentskills.io/specification
-> - Anthropic — Agent Skills overview: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview
-> - Claude Code — Skills: https://code.claude.com/docs/en/skills
-> - OpenAI — Build skills(정본; `developers.openai.com/codex/skills`는 여기로 308 리다이렉트): https://learn.chatgpt.com/docs/build-skills
+> **Checked against official documentation on 2026-09-13.** If anything here disagrees with the current docs, the docs are right.
+> [Agent Skills specification](https://agentskills.io/specification) · [Anthropic Agent Skills overview](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) · [Claude Code skills](https://code.claude.com/docs/en/skills) · [OpenAI build skills](https://learn.chatgpt.com/docs/build-skills)
 >
-> **2026-09-13에 확인했으나 열리지 않은 문서:** `https://openai.com/academy/skills/`와 `https://help.openai.com/en/articles/20001066`("Skills in ChatGPT")은 자동 요청에 **HTTP 403**을 반환한다. 그래서 **ChatGPT 워크스페이스 업로드·활성화 절차는 이 저장소에서 검증하지 못했고, 사람이 확인해야 한다.** 같은 이유로 **ChatGPT(데스크톱 외 표면)가 번들 `python3` 스크립트를 실제로 실행할 수 있는지도 미확인**이다 — 실행할 수 없다면 `references/runtime-adapters.md` §4의 "Cannot execute `scripts/*.py`" 행(점수 없이 근거만 제시)이 적용된다.
->
-> 런타임별 경로 매핑은 `references/runtime-adapters.md` §5에 정리되어 있고, 런타임이 바뀌면 **그 파일 하나만** 고치면 된다.
+> The ChatGPT workspace upload procedure, and whether ChatGPT surfaces other than desktop can execute the bundled `python3` scripts, could **not** be verified; the relevant OpenAI help pages returned HTTP 403 to automated requests. If scripts cannot run, the skill falls back to evidence without scores (see `references/runtime-adapters.md` §4).
 
-- 런타임은 `SKILL.md`의 `name` / `description`을 보고 언제 이 스킬을 쓸지 판단한다. description의 트리거 단어(K뷰티 바이어 발굴, OEM/ODM 셀러 소싱, RFQ 매칭, 아웃리치 초안, 그리고 영어 표현들)를 지우지 말 것.
-- Codex가 실제로 읽는 frontmatter 키는 `name`, `description`, `metadata.short-description`뿐이고 나머지는 조용히 무시한다. 그래도 **표준에 맞춰** 작성해야 다른 런타임에서 깨지지 않는다.
-- `scripts/`는 평범한 Python이며 `python3 scripts/<name>.py`로 실행된다. 런타임 전용 래퍼가 필요 없지만, 런타임의 승인/샌드박스 설정을 따른다.
-- **`AGENTS.md`는 스킬 설치 수단이 아니다.** Codex의 별개 기능으로, 저장소에 상시 적용되는 커스텀 지시문이며 디렉터리 단위로 이어 붙고 `project_doc_max_bytes`(기본 32 KiB)로 제한된다(2026-09-13 확인 — https://learn.chatgpt.com/docs/agent-configuration/agents-md). 스킬은 `name`/`description`을 보고 **필요할 때** 로드되고, `AGENTS.md`는 **매 세션** 읽힌다. 이 패키지를 설치하는 데 `AGENTS.md` 항목이 필요하지도 않고, `AGENTS.md`가 스킬 설치를 대신하지도 않는다.
+### Check the installation
 
-### 6.3 설치 확인
-
-두 가지가 따로 깨질 수 있다. 아래 세 줄은 그중 **코드만** 검사한다.
+Two things can break independently. These three lines check **the code only**:
 
 ```bash
-python3 scripts/validate_output.py --version      # 스크립트가 실행된다
-python3 adapters/tradewith_adapter.py --version   # 어댑터가 자격증명 없이 실행된다
-python3 tests/run_tests.py                        # golden fixture가 통과한다
+python3 kbeauty-trade-matchmaker/scripts/validate_output.py --version
+python3 kbeauty-trade-matchmaker/adapters/tradewith_adapter.py --version
+python3 kbeauty-trade-matchmaker/tests/run_tests.py
 ```
 
-앞의 두 개가 버전 줄을 출력하고 세 번째가 exit `0`이면 그 런타임에서 **코드는** 건전하다.
-
-**런타임이 스킬을 실제로 보는지**는 따로 확인해야 한다 — 위 세 줄은 `SKILL.md`를 한 번도 읽지 않은 런타임에서도 전부 통과하기 때문이다.
-
-- Claude Code: 스킬 목록에 `kbeauty-trade-matchmaker`가 보이는지 확인한다.
-- Codex CLI/IDE: `/skills` 목록에 나오는지, 또는 `$kbeauty`가 자동완성되는지 확인한다.
-
-안 보이면 ① 폴더가 해당 런타임의 skills 루트 **바로 아래**에 있는지, ② 디렉터리 이름이 `kbeauty-trade-matchmaker`인지(frontmatter `name`과 같아야 한다), ③ `SKILL.md`의 **첫 줄이 정확히 `---`**인지(아니면 파일 전체가 본문으로 취급된다), ④ 더 높은 우선순위 범위에 같은 이름의 스킬이 있는지를 본다. Codex는 재시작한다.
+To check that **the runtime sees the skill**, look for `kbeauty-trade-matchmaker` in Claude Code's skill list, or in Codex's `/skills` list. If it is missing, check that the folder sits directly under the skills root, that it is named `kbeauty-trade-matchmaker`, that the first line of `SKILL.md` is exactly `---`, and that no higher-priority scope has a skill with the same name. Restart Codex after changes.
 
 ---
 
-## 7. 테스트 실행
+## Running the tests
 
 ```bash
 cd kbeauty-trade-matchmaker
-python3 tests/run_tests.py            # 인자 없음. exit 0 = 전부 통과, 1 = 하나라도 실패
-python3 tests/run_tests.py -v         # 실패만이 아니라 모든 케이스를 한 줄씩 출력
+python3 tests/run_tests.py       # Exit 0 when everything passes, 1 otherwise
+python3 tests/run_tests.py -v    # One line per case, not just failures
 ```
 
-러너는 표준 라이브러리만 쓰고, fixture를 `__file__` 기준으로 스스로 찾으며, 모든 스크립트에 `--as-of 2026-09-12`를 넘겨 재현 가능하게 실행한 뒤 expected fixture와 **바이트 단위로** 비교한다. 마지막에 `PASS n / FAIL m` 요약을 낸다.
+The runner uses only the standard library, finds fixtures relative to itself, passes `--as-of 2026-09-12` to every script, and compares output with the expected fixtures **byte for byte**. Before the fixture cases it checks the schemas themselves: that they parse, that every `$ref` resolves, that no unsupported keyword is used, that shared `$defs` agree across files, and that embedded versions match `scoring.config.json`.
 
-fixture 케이스보다 먼저 도는 것이 **스키마 자체 검사**다: `schemas/*.json`이 파싱되는지, `$ref`가 자기 파일 안에서 풀리는지, 검증기가 지원하지 않는 키워드를 쓴 곳이 없는지, 공유 `$defs`가 파일 간에 구조적으로 일치하는지, 그리고 스키마에 박힌 `schema_version` / `score_version`이 `scoring.config.json`과 어긋나지 않는지를 본다. 그 다음 각 문서 종류의 golden fixture 하나씩을 `validate_output.py --strict --invariants`로 통과시킨다. 이 두 검사가 PRD 완료 조건 "스키마가 validator를 통과한다"의 기계 검증 형태다.
-
-개별 스크립트를 직접 돌려볼 수도 있다. `stdout`에는 JSON만, 진단은 전부 `stderr`로 나가므로 파이프가 안전하다.
+Scripts can also be run directly. JSON goes to `stdout` and every diagnostic to `stderr`, so pipes are safe.
 
 ```bash
 python3 scripts/score_buyer.py \
@@ -283,115 +297,83 @@ python3 scripts/score_buyer.py \
     --query tests/fixtures/query-buyer-uae-kbeauty.json \
     --as-of 2026-09-12 --pretty
 
-python3 scripts/score_match.py \
-    --input tests/fixtures/match-134.input.json \
-    --as-of 2026-09-12 --pretty
-
-python3 scripts/validate_output.py --input out/match-134.json --strict --invariants
+python3 scripts/score_match.py --input tests/fixtures/match-134.input.json --as-of 2026-09-12 --pretty
 ```
 
 ---
 
-## 8. TradeWith 어댑터 quickstart — 백엔드 없이 파일만으로
+## Adapter quickstart: files only, no backend
 
-TradeWith 내부 API가 **아직 없어도** 전체 워크플로가 오늘 돈다. 어댑터는 인터페이스 하나에 백엔드 두 개(`file`, `http`)를 두고, 기본값이 `file`이다. 자격증명도, 네트워크도, 서비스도 필요 없다.
+The whole workflow runs today **without any internal API**. The adapter has one interface and two backends, `file` and `http`, and `file` is the default. It needs no credentials, network or service.
 
 ```bash
 cd kbeauty-trade-matchmaker
+export TRADEWITH_DATA_DIR=./tradewith-data     # Created on first write
 
-# 1. 데이터 디렉터리를 정한다. 첫 쓰기에서 자동 생성된다.
-export TRADEWITH_DATA_DIR=./tradewith-data
-
-# 2. 구매요청 읽기
 python3 adapters/tradewith_adapter.py get-rfq --id 134 --pretty
-
-# 3. 내부 셀러 후보 조회
 python3 adapters/tradewith_adapter.py list-sellers --country KR --limit 20
-
-# 4. 발굴 결과 저장 (buyer 또는 seller 문서)
 python3 adapters/tradewith_adapter.py save-leads --input out/buyers.scored.json
-
-# 5. 매칭 실행 결과 저장
 python3 adapters/tradewith_adapter.py save-matches --input out/match-134.json
-
-# 6. 아웃리치 초안을 사람 검토 큐에 넣기 (발송이 아니다)
-python3 adapters/tradewith_adapter.py save-outreach-drafts --input out/drafts.json
-
-# 7. 스킬이 쓸 수 있는 범위 안에서 lead 상태 이동
-python3 adapters/tradewith_adapter.py update-lead-status \
-    --id BUY-gulfbeauty-example-com --status VERIFIED
+python3 adapters/tradewith_adapter.py save-outreach-drafts --input out/drafts.json   # Queues for review; does not send
+python3 adapters/tradewith_adapter.py update-lead-status --id BUY-gulfbeauty-example-com --status VERIFIED
 ```
 
-데이터 디렉터리 구조는 그냥 JSON 파일 트리다. **파일 이름이 곧 id**이고, 같은 입력을 다시 넣으면 같은 파일을 덮어써서 결과가 바이트 단위로 안정적이다.
+The data directory is a plain JSON file tree where **the file name is the id**, so re-running with the same input overwrites the same file and results stay byte-stable. Keep it outside the package, and outside version control if it holds real company data; `.gitignore` already excludes `tradewith-data/`.
 
-```
-tradewith-data/
-├── rfqs/134.json
-├── sellers/SEL-hankosun-example-com.json
-├── leads/BUY-gulfbeauty-example-com.json
-├── matches/MR-134-2026-09-12-01.json
-└── outreach-drafts/OD-SEL-hankosun-example-com-partnership_form.json
-```
-
-시드하는 방법도 지루할 만큼 단순하다 — 스키마에 맞는 RFQ 하나를 `rfqs/`에, 셀러들을 `sellers/`에 넣으면 끝이다. **이 디렉터리는 패키지 바깥에, 그리고 실제 회사 데이터가 들어간다면 버전 관리 바깥에 두라.** 저장소의 `.gitignore`에 `tradewith-data/`가 이미 들어 있다.
-
-나중에 API가 생기면 플래그 하나만 바뀐다. 점수도, 스키마도, 출력 블록도 바뀌지 않는다.
+When an API exists, one flag changes. Scores, schemas and output don't.
 
 ```bash
 export TRADEWITH_BASE_URL='https://api.tradewith.example/v1'
-export TRADEWITH_TOKEN='...'       # 환경변수로만. 커맨드라인에 쓰면 셸 히스토리에 남는다
+export TRADEWITH_TOKEN='...'       # Environment only; a command-line token lands in shell history
 python3 adapters/tradewith_adapter.py --backend http get-rfq --id 134
 ```
 
-환경변수는 **호출 시점에만** 읽는다(import 시점이 아니다). `--backend http`를 이름으로 지정하지 않는 한 어떤 호출도 네트워크에 나가지 않으며, "API를 시도하고 실패하면 파일로 폴백" 같은 동작은 존재하지 않는다. 토큰은 어떤 에러 메시지·경고·저장 문서에도 출력되지 않는다. 자세한 내용은 `adapters/tradewith_adapter.md`에 있다.
+Environment variables are read at call time, not import time. Nothing touches the network unless `--backend http` is named, there is no silent fallback from API to files, and the token never appears in errors, warnings or stored documents. Details are in `adapters/tradewith_adapter.md`.
 
 ---
 
-## 9. 결정 필요 (PRD §21 Open Questions)
+## Open decisions
 
-PRD가 열어 둔 여섯 가지다. 각 항목은 **아직 사람이 결정할 문제**이고, 결정될 때까지 이 구현이 고른 기본값을 함께 적는다. 기본값은 전부 바꿀 수 있게 한 곳에 모여 있다.
+Six questions remain open. Each has a default in this implementation, and every default can be changed in one place.
 
-| # | 결정 필요 | 이 구현의 기본값 | 어디서 바꾸나 |
+| # | Question | Default here | Where to change it |
 |---|---|---|---|
-| 1 | TradeWith 내부 Seller/RFQ **API가 이미 있는가, 파일/DB 직접 연결로 시작하는가?** | **둘 다.** 인터페이스 하나에 백엔드 두 개. `file`이 기본이라 API 없이 오늘 동작하고, API가 생기면 `--backend http`로 전환한다. 스코어·스키마·출력은 그대로다. | `TRADEWITH_BACKEND` 환경변수 / `--backend` 플래그 |
-| 2 | 발굴한 lead를 **서비스 DB에 바로 저장할지, 별도 research staging을 둘지?** | **staging 우선.** 스킬은 `POST /research/leads`(파일 백엔드에서는 `<data-dir>/leads/`)에만 쓴다. 서비스 DB로의 승격은 애플리케이션 레이어의 승인 단계이며, 스킬의 상태 기계는 `READY_FOR_REVIEW`에서 끝난다. | `adapters/tradewith_adapter.py`의 write 대상 |
-| 3 | 적격 임계값을 **70점 고정으로 할지, 카테고리별 percentile로 할지?** | **70점 고정** (`thresholds.mode = "fixed"`, `fixed = 70`). PRD 12.1의 "Qualified (>=70)"과 일치한다. percentile 모드도 완전히 구현되어 있다(nearest-rank 75, 하한 50, 모집단 8 미만이면 fixed로 폴백). 어느 쪽을 썼든 `summary.threshold_used` / `summary.threshold_mode`에 항상 기록된다. | `schemas/scoring.config.json`의 `thresholds` / `--threshold`, `--threshold-mode` |
-| 4 | `info@`·`sales@` 같은 대표 주소와 named business contact를 **어디까지 저장할지?** | **회사 단위 채널만.** 공개된 대표 연락 채널(대표 메일, 문의 폼, 회사 전화)만 저장한다. 개인 이메일·전화번호의 추론·생성·대량 수집은 코드 수준에서 존재하지 않는다. 이름이 붙은 담당자 정보는 이 스킬이 만들지 않으며, 필요하면 사람이 CRM에 직접 넣는다. | `references/evidence-policy.md`, `references/compliance-notes.md` (정책 변경 시 스키마의 contact 필드도 함께) |
-| 5 | 박람회·협회 디렉터리별 **crawling 허용 범위와 ToS 확인 프로세스**를 어떻게 둘지? | **robots/ToS 준수, 우회 없음.** CAPTCHA·로그인·페이월·rate-limit 우회 코드가 없다. 접근이 막히면 그 사실은 추정되지 않고 `"unknown"`으로 남는다. 저장은 주장·URL·관찰 시각·짧은 인용까지만(데이터 최소화). 관할별·사이트별 확인은 `compliance-notes.md`가 "확인 필요"로 **표시**할 뿐 합법 여부를 결론짓지 않는다. | `references/compliance-notes.md`, `references/buyer-discovery.md` / `seller-discovery.md`의 소스 목록 |
-| 6 | **RFQ가 없을 때** Seller outreach를 어떤 value proposition으로 제한할지? | **RFQ 없는 변형 템플릿을 따로 쓴다.** 존재하지 않는 수요나 대기 중인 바이어를 암시하는 문장은 금지(PRD 테스트 T05)이며, 검증된 사실에 근거한 카테고리 수준의 소개와 중립적 CTA만 허용한다. 초안은 그래도 `READY_FOR_REVIEW`에서 멈춘다. | `templates/seller_outreach.md`의 RFQ-absent 변형, `references/outreach-guidelines.md` |
+| 1 | Does an internal seller/RFQ API exist, or start with files? | **Both.** File backend by default; `--backend http` when an API exists | `TRADEWITH_BACKEND` / `--backend` |
+| 2 | Save leads straight to the service database, or to staging? | **Staging.** The skill writes only to `POST /research/leads` (or `<data-dir>/leads/`); promotion is an application-layer approval | Adapter write target |
+| 3 | Fixed threshold of 70, or per-category percentile? | **Fixed 70.** Percentile mode is implemented; the mode used is always recorded in `summary` | `thresholds` in `scoring.config.json`, `--threshold`, `--threshold-mode` |
+| 4 | How far to store role addresses (`info@`, `sales@`) and named contacts? | **Company-level channels only.** No personal contact inference or collection exists in code | `evidence-policy.md`, `compliance-notes.md` |
+| 5 | Crawling scope and terms-of-service checks for directories? | **Respect robots and ToS, bypass nothing.** Blocked access stays `"unknown"` | `compliance-notes.md`, discovery source lists |
+| 6 | What can seller outreach say when there is no RFQ? | **A separate no-RFQ template.** Implying demand that doesn't exist is banned | `templates/seller_outreach.md`, `outreach-guidelines.md` |
 
 ---
 
-## 10. 버전
+## Versions
 
-| 버전 | 현재 값 | 무엇을 설명하나 | 어디에 사는가 |
+| Version | Value | Describes | Lives in |
 |---|---|---|---|
-| `skill_version` | `0.1.0` | 패키지 자체 — 프롬프트, references, scripts, templates, tests | `SKILL.md` 본문, 이 README, `match-result.skill_version` |
-| `schema_version` | `0.1.0` | **모양** 계약 — 필드 이름, enum, required 목록 | 모든 문서, `schemas/*.json` |
-| `score_version` | `kbtm-score-0.1.0` | **루브릭** — 가중치, criterion, 신호, 페널티, 임계값, 하드 필터, evidence 함수 | `schemas/scoring.config.json`, 점수가 매겨진 모든 문서 |
-
-세 값을 확인하는 가장 빠른 방법:
+| `skill_version` | `0.1.0` | The package: prompts, references, scripts, templates, tests | `SKILL.md` body, `match-result.skill_version` |
+| `schema_version` | `0.1.0` | The shape contract: field names, enums, required lists | Every document, `schemas/*.json` |
+| `score_version` | `kbtm-score-0.1.0` | The rubric: weights, criteria, signals, penalties, thresholds, hard filters | `scoring.config.json`, every scored document |
 
 ```bash
 python3 scripts/validate_output.py --version
-# validate_output.py skill_version=0.1.0 schema_version=0.1.0 score_version=kbtm-score-0.1.0
 ```
 
-루브릭이 바뀌면 저장된 점수는 **정의상 낡은 것**이 된다. 원본 레코드를 그대로 보관하기 때문에(evidence·쿼리 표면·`as_of`를 함께 저장한다) 웹을 다시 긁지 않고 재계산할 수 있다. 과거 결과를 **재현**하려면 원래의 `--as-of`를, 최신 상태로 **갱신**하려면 새 `--as-of`를 넘긴다. 서로 다른 `score_version`의 결과를 한 목록에서 비교하거나 순위를 매기는 것은 금지이며, `validate_output.py`가 이를 잡아낸다.
+When the rubric changes, stored scores are stale by definition. Because raw records keep their evidence, query surface and `as_of`, scores can be recomputed without re-crawling. Comparing or ranking results from different `score_version`s in one list is forbidden, and `validate_output.py` catches it.
 
 ---
 
-## 11. 요구사항
+## Requirements
 
-- `python3` 3.9–3.14. **표준 라이브러리만** 사용한다. `pip install`이 필요한 것은 아무것도 없다.
-- POSIX 셸 (설치 스크립트용).
-- 발굴 모드에는 런타임의 웹 검색·페이지 조회 능력이 필요하다. 스크립트 자체는 완전히 오프라인이므로 테스트와 점수 재계산은 네트워크 없이 돈다.
-- TradeWith 연동은 선택이다. 어댑터의 `file` 백엔드는 아무것도 요구하지 않는다.
+- `python3` 3.9–3.14, standard library only.
+- A POSIX shell for the installer.
+- Discovery modes need the runtime's web search and page fetching. The scripts are fully offline, so tests and re-scoring run without a network.
+- The internal-data integration is optional; the adapter's `file` backend needs nothing.
 
 ---
 
-## 12. 라이선스 / 데이터 취급
+## Data handling
 
-이 저장소에는 실제 회사 데이터나 개인정보가 들어 있지 않다. fixture는 `example.com` 계열의 가공 도메인을 쓴다. 운영 데이터를 넣기 시작하면 `.gitignore`가 이미 막고 있는 `tradewith-data/`, `.env`, `out/`을 그대로 두고, 저장하는 것이 주장·URL·관찰 시각·짧은 인용에 머무는지 주기적으로 확인하라.
+This repository contains no real company data or personal information. Fixtures use fictional companies on `.example` domains. When you start adding operational data, keep `tradewith-data/`, `.env` and `out/` ignored as `.gitignore` already does, and check periodically that what you store stays at claim, URL, observation time and short quote.
 
-**법률 자문이 아니다.** 관할별 다이렉트 마케팅 규정 확인은 사람의 몫이며, 이 패키지는 그 확인이 필요한 지점을 표시할 뿐이다.
+**This is not legal advice.** Checking direct-marketing rules in each jurisdiction is a human's job; this package marks where that check is needed.
