@@ -1,0 +1,31 @@
+{
+  "country": "KR",
+  "country_name": "Republic of Korea",
+  "destination_country": "AE",
+  "region_countries": [
+    "AE",
+    "BH",
+    "KW",
+    "OM",
+    "QA",
+    "SA"
+  ],
+  "adjacent_region_countries": [],
+  "product_categories": [
+    "sunscreen"
+  ],
+  "commercial_model": "oem_odm",
+  "quantity": 5000,
+  "max_moq": 3000,
+  "moq_unit": "units",
+  "required_seller_countries": [
+    "KR"
+  ],
+  "excluded_seller_countries": [],
+  "keywords": [
+    "korean sunscreen oem",
+    "spf50 odm manufacturer korea"
+  ],
+  "category_drift": false,
+  "vertical": "K-Beauty"
+}

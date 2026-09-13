@@ -1,0 +1,54 @@
+{
+  "schema_version": "0.1.0",
+  "score_version": "unscored",
+  "rfq_id": "901",
+  "buyer_id": null,
+  "destination_country": "AE",
+  "product_category": "sunscreen",
+  "product_categories_extra": [],
+  "product_description": "EWG Verified SPF50+ sunscreen for a pharmacy-channel launch",
+  "product_forms": [],
+  "quantity": 2000,
+  "max_moq": 3000,
+  "moq_unit": "units",
+  "target_price": null,
+  "commercial_model": "private_label",
+  "required_certifications": [
+    "EWG_VERIFIED"
+  ],
+  "preferred_certifications": [],
+  "timeline": "unknown",
+  "max_lead_time_days": 45,
+  "required_seller_countries": [
+    "KR"
+  ],
+  "excluded_seller_countries": [],
+  "status": "matching",
+  "qualification_score": 0,
+  "confidence": 0,
+  "unknown_penalty_applied": [],
+  "evidence": [
+    {
+      "schema_version": "0.1.0",
+      "evidence_id": "EV-001",
+      "claim": "required_certifications",
+      "value": [
+        "EWG_VERIFIED"
+      ],
+      "source_url": "https://app.tradewith.example/rfqs/901",
+      "source_domain": "app.tradewith.example",
+      "source_type": "internal_record",
+      "source_tier": 2,
+      "is_official": false,
+      "observed_at": "2026-09-10T09:00:00Z",
+      "source_date": "2026-09-05",
+      "confidence": 0.9,
+      "quote_or_summary": "RFQ #901 required_certifications = [EWG_VERIFIED], max_moq = 3000, max_lead_time_days = 45.",
+      "retrieval_method": "internal_api"
+    }
+  ],
+  "as_of": "2026-09-12",
+  "notes": [
+    "EWG_VERIFIED is a well-formed token outside the BUILD-CONTRACT 8.6 vocabulary; it is preserved verbatim and matches only exactly (INV-33)"
+  ]
+}

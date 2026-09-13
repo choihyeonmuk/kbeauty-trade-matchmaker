@@ -1,0 +1,367 @@
+{
+  "__note__": "Field-level expectation document. Every value was derived from docs/SCORING-CONTRACT.md v0.1.0 and cross-checked against its worked examples; run_tests.py compares the named fields of the script output against it.",
+  "run": {
+    "script": "score_seller.py",
+    "as_of": "2026-09-12",
+    "score_version": "kbtm-score-0.1.0",
+    "threshold": 70,
+    "threshold_mode": "fixed",
+    "hard_filter_rules_applied": [
+      "HF-01",
+      "HF-02",
+      "HF-03",
+      "HF-04",
+      "HF-05",
+      "HF-08"
+    ]
+  },
+  "summary": {
+    "candidates_found": 20,
+    "scored_count": 13,
+    "returned": 13,
+    "qualified_count": 13,
+    "excluded_count": 7,
+    "threshold_used": 70,
+    "threshold_mode": "fixed"
+  },
+  "order": [
+    "SEL-hansolodm-example",
+    "SEL-hanbitcos-example",
+    "SEL-hwadamglobal-example",
+    "SEL-nuriskinlab-example",
+    "SEL-pyeongwhacos-example",
+    "SEL-mirinaeoem-example",
+    "SEL-haneulbio-example",
+    "SEL-areumfactory-example",
+    "SEL-dalbitlabs-example",
+    "SEL-kkotgilcos-example",
+    "SEL-sopoongworks-example",
+    "SEL-yeonhwalab-example",
+    "SEL-chorokfactory-example"
+  ],
+  "records": {
+    "SEL-hanbitcos-example": {
+      "qualification_score": 93,
+      "qualified": true,
+      "confidence": 1.0,
+      "dimension_scores": {
+        "product_fit": 100,
+        "commercial_model": 100,
+        "operational_fit": 90,
+        "compliance_readiness": 78,
+        "export_readiness": 87,
+        "evidence_quality": 100
+      },
+      "unknown_criteria": [],
+      "missing": []
+    },
+    "SEL-yeonhwalab-example": {
+      "qualification_score": 75,
+      "qualified": true,
+      "confidence": 0.82,
+      "dimension_scores": {
+        "product_fit": 91,
+        "commercial_model": 95,
+        "operational_fit": 43,
+        "compliance_readiness": 53,
+        "export_readiness": 77,
+        "evidence_quality": 86
+      },
+      "unknown_criteria": [
+        "S-CP3",
+        "S-OP1",
+        "S-OP3"
+      ],
+      "missing": [
+        "MOQ against the buyer ceiling",
+        "Capacity against the order quantity",
+        "Destination-market registration"
+      ],
+      "hard_filter_rules_skipped_unknown": [
+        "HF-03"
+      ]
+    },
+    "SEL-mirinaeoem-example": {
+      "qualification_score": 83,
+      "qualified": true,
+      "confidence": 0.95,
+      "dimension_scores": {
+        "product_fit": 96,
+        "commercial_model": 98,
+        "operational_fit": 87,
+        "compliance_readiness": 33,
+        "export_readiness": 77,
+        "evidence_quality": 95
+      },
+      "unknown_criteria": [],
+      "missing": []
+    },
+    "SEL-hansolodm-example": {
+      "qualification_score": 99,
+      "qualified": true,
+      "confidence": 1.0,
+      "dimension_scores": {
+        "product_fit": 100,
+        "commercial_model": 98,
+        "operational_fit": 95,
+        "compliance_readiness": 100,
+        "export_readiness": 100,
+        "evidence_quality": 100
+      },
+      "unknown_criteria": [],
+      "missing": []
+    },
+    "SEL-chorokfactory-example": {
+      "qualification_score": 70,
+      "qualified": true,
+      "confidence": 0.66,
+      "dimension_scores": {
+        "product_fit": 80,
+        "commercial_model": 98,
+        "operational_fit": 73,
+        "compliance_readiness": 30,
+        "export_readiness": 31,
+        "evidence_quality": 78
+      },
+      "unknown_criteria": [
+        "S-CP3",
+        "S-CP4",
+        "S-EX1",
+        "S-EX2",
+        "S-EX3",
+        "S-OP3"
+      ],
+      "missing": [
+        "Capacity against the order quantity",
+        "Destination-market registration",
+        "Baseline quality certification",
+        "Export track record",
+        "English or destination-language presence",
+        "Overseas partner recruitment"
+      ]
+    },
+    "SEL-nuriskinlab-example": {
+      "qualification_score": 87,
+      "qualified": true,
+      "confidence": 0.91,
+      "dimension_scores": {
+        "product_fit": 91,
+        "commercial_model": 98,
+        "operational_fit": 95,
+        "compliance_readiness": 58,
+        "export_readiness": 77,
+        "evidence_quality": 91
+      },
+      "unknown_criteria": [
+        "S-CP3"
+      ],
+      "missing": [
+        "Destination-market registration"
+      ]
+    },
+    "SEL-pyeongwhacos-example": {
+      "qualification_score": 87,
+      "qualified": true,
+      "confidence": 0.91,
+      "dimension_scores": {
+        "product_fit": 91,
+        "commercial_model": 98,
+        "operational_fit": 95,
+        "compliance_readiness": 58,
+        "export_readiness": 77,
+        "evidence_quality": 91
+      },
+      "unknown_criteria": [
+        "S-CP3"
+      ],
+      "missing": [
+        "Destination-market registration"
+      ]
+    },
+    "SEL-dalbitlabs-example": {
+      "qualification_score": 79,
+      "qualified": true,
+      "confidence": 0.86,
+      "dimension_scores": {
+        "product_fit": 91,
+        "commercial_model": 98,
+        "operational_fit": 57,
+        "compliance_readiness": 53,
+        "export_readiness": 77,
+        "evidence_quality": 91
+      },
+      "unknown_criteria": [
+        "S-CP3",
+        "S-OP1"
+      ],
+      "missing": [
+        "MOQ against the buyer ceiling",
+        "Destination-market registration"
+      ],
+      "hard_filter_rules_skipped_unknown": [
+        "HF-03"
+      ]
+    },
+    "SEL-kkotgilcos-example": {
+      "qualification_score": 77,
+      "qualified": true,
+      "confidence": 0.91,
+      "dimension_scores": {
+        "product_fit": 91,
+        "commercial_model": 98,
+        "operational_fit": 47,
+        "compliance_readiness": 53,
+        "export_readiness": 77,
+        "evidence_quality": 91
+      },
+      "unknown_criteria": [
+        "S-CP3",
+        "S-OP1"
+      ],
+      "missing": [
+        "MOQ against the buyer ceiling",
+        "Destination-market registration"
+      ],
+      "hard_filter_rules_skipped_unknown": [
+        "HF-03"
+      ]
+    },
+    "SEL-haneulbio-example": {
+      "qualification_score": 82,
+      "qualified": true,
+      "confidence": 0.95,
+      "dimension_scores": {
+        "product_fit": 91,
+        "commercial_model": 98,
+        "operational_fit": 95,
+        "compliance_readiness": 25,
+        "export_readiness": 77,
+        "evidence_quality": 95
+      },
+      "unknown_criteria": [
+        "S-CP3"
+      ],
+      "missing": [
+        "Destination-market registration"
+      ]
+    },
+    "SEL-sopoongworks-example": {
+      "qualification_score": 77,
+      "qualified": true,
+      "confidence": 0.68,
+      "dimension_scores": {
+        "product_fit": 80,
+        "commercial_model": 90,
+        "operational_fit": 81,
+        "compliance_readiness": 58,
+        "export_readiness": 77,
+        "evidence_quality": 68
+      },
+      "unknown_criteria": [
+        "S-CP3",
+        "S-OP3"
+      ],
+      "missing": [
+        "Capacity against the order quantity",
+        "Destination-market registration"
+      ]
+    },
+    "SEL-areumfactory-example": {
+      "qualification_score": 80,
+      "qualified": true,
+      "confidence": 0.3,
+      "dimension_scores": {
+        "product_fit": 91,
+        "commercial_model": 98,
+        "operational_fit": 87,
+        "compliance_readiness": 53,
+        "export_readiness": 77,
+        "evidence_quality": 50
+      },
+      "unknown_criteria": [
+        "S-CP3"
+      ],
+      "missing": [
+        "Destination-market registration"
+      ]
+    },
+    "SEL-hwadamglobal-example": {
+      "qualification_score": 88,
+      "qualified": true,
+      "confidence": 0.95,
+      "dimension_scores": {
+        "product_fit": 91,
+        "commercial_model": 98,
+        "operational_fit": 87,
+        "compliance_readiness": 58,
+        "export_readiness": 100,
+        "evidence_quality": 95
+      },
+      "unknown_criteria": [
+        "S-CP3"
+      ],
+      "missing": [
+        "Destination-market registration"
+      ],
+      "hard_filter_rules_skipped_unknown": [
+        "HF-08"
+      ]
+    }
+  },
+  "excluded": {
+    "SEL-daehansuncare-example": {
+      "company_name": "Daehan Sun Care Co., Ltd.",
+      "canonical_domain": "daehansuncare.example",
+      "reason_summary": "MOQ minimum 5,000 exceeds RFQ max 3,000",
+      "failed_rule_ids": [
+        "HF-03"
+      ]
+    },
+    "SEL-saebyeokbrand-example": {
+      "company_name": "Saebyeok Brand Export Co., Ltd.",
+      "canonical_domain": "saebyeokbrand.example",
+      "reason_summary": "not offered",
+      "failed_rule_ids": [
+        "HF-02"
+      ]
+    },
+    "SEL-baekdutrading-example": {
+      "company_name": "Baekdu Trading Co., Ltd.",
+      "canonical_domain": "baekdutrading.example",
+      "reason_summary": "not offered",
+      "failed_rule_ids": [
+        "HF-02"
+      ]
+    },
+    "SEL-jinheungcos-example": {
+      "company_name": "Jinheung Cosmetics Co., Ltd.",
+      "canonical_domain": "jinheungcos.example",
+      "reason_summary": "market excluded by the seller",
+      "failed_rule_ids": [
+        "HF-05"
+      ]
+    },
+    "SEL-byeolbitlab-example": {
+      "company_name": "Byeolbit Lab Co., Ltd.",
+      "canonical_domain": "byeolbitlab.example",
+      "reason_summary": "not covered",
+      "failed_rule_ids": [
+        "HF-01"
+      ]
+    },
+    "SEL-muljilcosmetic-example": {
+      "company_name": "Muljil Cosmetic Co., Ltd.",
+      "canonical_domain": "muljilcosmetic.example",
+      "reason_summary": "not covered",
+      "failed_rule_ids": [
+        "HF-01"
+      ]
+    },
+    "SEL-saeromtrading-example": {
+      "company_name": "Saerom Trading Co., Ltd.",
+      "canonical_domain": "saeromtrading.example",
+      "reason_summary": "no evidenced material claim",
+      "failed_rule_ids": []
+    }
+  }
+}

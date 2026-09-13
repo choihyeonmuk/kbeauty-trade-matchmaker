@@ -1,0 +1,392 @@
+{
+  "__note__": "Field-level expectation document. Every value was derived from docs/SCORING-CONTRACT.md v0.1.0 and cross-checked against its worked examples; run_tests.py compares the named fields of the script output against it.",
+  "run": {
+    "script": "score_buyer.py",
+    "as_of": "2026-09-12",
+    "score_version": "kbtm-score-0.1.0",
+    "threshold": 70,
+    "threshold_mode": "fixed",
+    "hard_filter_rules_applied": []
+  },
+  "summary": {
+    "candidates_found": 20,
+    "scored_count": 19,
+    "returned": 19,
+    "qualified_count": 8,
+    "excluded_count": 1,
+    "threshold_used": 70,
+    "threshold_mode": "fixed"
+  },
+  "order": [
+    "BUY-britsun-example",
+    "BUY-luminaglow-example",
+    "BUY-sakurabeautytrading-example",
+    "BUY-gulfglow-example",
+    "BUY-pacificglowdist-example",
+    "BUY-novadrift-example",
+    "BUY-palefade-example",
+    "BUY-lioncitybeauty-example",
+    "BUY-dunesourcing-example",
+    "BUY-rheinkosmetik-example",
+    "BUY-www-luminaglow-example",
+    "BUY-libertybeautysupply-example",
+    "BUY-northgateimport-example",
+    "BUY-albionbeautyhall-example",
+    "BUY-straitswholesale-example",
+    "BUY-desertbulk-example",
+    "BUY-marinaretail-example",
+    "BUY-kantoimport-example",
+    "BUY-cascademarket-example"
+  ],
+  "records": {
+    "BUY-gulfglow-example": {
+      "qualification_score": 81,
+      "qualified": true,
+      "confidence": 0.94,
+      "dimension_scores": {
+        "kbeauty_fit": 92,
+        "b2b_role": 95,
+        "sourcing_intent": 100,
+        "market_relevance": 0,
+        "reachability": 95,
+        "evidence_quality": 94
+      },
+      "unknown_criteria": [],
+      "missing": []
+    },
+    "BUY-dunesourcing-example": {
+      "qualification_score": 69,
+      "qualified": false,
+      "confidence": 1.0,
+      "dimension_scores": {
+        "kbeauty_fit": 83,
+        "b2b_role": 85,
+        "sourcing_intent": 63,
+        "market_relevance": 0,
+        "reachability": 98,
+        "evidence_quality": 100
+      },
+      "unknown_criteria": [],
+      "missing": []
+    },
+    "BUY-marinaretail-example": {
+      "qualification_score": 38,
+      "qualified": false,
+      "confidence": 0.95,
+      "dimension_scores": {
+        "kbeauty_fit": 83,
+        "b2b_role": 0,
+        "sourcing_intent": 26,
+        "market_relevance": 0,
+        "reachability": 50,
+        "evidence_quality": 95
+      },
+      "unknown_criteria": [
+        "B-CR3",
+        "B-SI2"
+      ],
+      "missing": [
+        "Procurement / buying function",
+        "Public sourcing signals"
+      ]
+    },
+    "BUY-desertbulk-example": {
+      "qualification_score": 38,
+      "qualified": false,
+      "confidence": 0.83,
+      "dimension_scores": {
+        "kbeauty_fit": 0,
+        "b2b_role": 82,
+        "sourcing_intent": 32,
+        "market_relevance": 0,
+        "reachability": 50,
+        "evidence_quality": 87
+      },
+      "unknown_criteria": [
+        "B-SI2"
+      ],
+      "missing": [
+        "Public sourcing signals"
+      ]
+    },
+    "BUY-luminaglow-example": {
+      "qualification_score": 86,
+      "qualified": true,
+      "confidence": 0.91,
+      "dimension_scores": {
+        "kbeauty_fit": 90,
+        "b2b_role": 85,
+        "sourcing_intent": 69,
+        "market_relevance": 100,
+        "reachability": 95,
+        "evidence_quality": 91
+      },
+      "unknown_criteria": [],
+      "missing": []
+    },
+    "BUY-www-luminaglow-example": {
+      "qualification_score": 68,
+      "qualified": false,
+      "confidence": 0.74,
+      "dimension_scores": {
+        "kbeauty_fit": 75,
+        "b2b_role": 85,
+        "sourcing_intent": 31,
+        "market_relevance": 100,
+        "reachability": 50,
+        "evidence_quality": 82
+      },
+      "unknown_criteria": [
+        "B-SI1",
+        "B-SI2",
+        "B-SI3"
+      ],
+      "missing": [
+        "Declared sourcing intent",
+        "Public sourcing signals",
+        "Recency of the sourcing action"
+      ]
+    },
+    "BUY-britsun-example": {
+      "qualification_score": 96,
+      "qualified": true,
+      "confidence": 1.0,
+      "dimension_scores": {
+        "kbeauty_fit": 90,
+        "b2b_role": 92,
+        "sourcing_intent": 100,
+        "market_relevance": 100,
+        "reachability": 100,
+        "evidence_quality": 100
+      },
+      "unknown_criteria": [],
+      "missing": []
+    },
+    "BUY-albionbeautyhall-example": {
+      "qualification_score": 55,
+      "qualified": false,
+      "confidence": 0.74,
+      "dimension_scores": {
+        "kbeauty_fit": 12,
+        "b2b_role": 69,
+        "sourcing_intent": 48,
+        "market_relevance": 78,
+        "reachability": 65,
+        "evidence_quality": 82
+      },
+      "unknown_criteria": [
+        "B-KF1"
+      ],
+      "missing": [
+        "Korean product carriage"
+      ]
+    },
+    "BUY-palefade-example": {
+      "qualification_score": 72,
+      "qualified": true,
+      "confidence": 0.26,
+      "dimension_scores": {
+        "kbeauty_fit": 83,
+        "b2b_role": 85,
+        "sourcing_intent": 46,
+        "market_relevance": 100,
+        "reachability": 70,
+        "evidence_quality": 46
+      },
+      "unknown_criteria": [],
+      "missing": []
+    },
+    "BUY-northgateimport-example": {
+      "qualification_score": 61,
+      "qualified": false,
+      "confidence": 0.19,
+      "dimension_scores": {
+        "kbeauty_fit": 75,
+        "b2b_role": 85,
+        "sourcing_intent": 28,
+        "market_relevance": 78,
+        "reachability": 85,
+        "evidence_quality": 20
+      },
+      "unknown_criteria": [
+        "B-SI2"
+      ],
+      "missing": [
+        "Public sourcing signals"
+      ]
+    },
+    "BUY-pacificglowdist-example": {
+      "qualification_score": 80,
+      "qualified": true,
+      "confidence": 1.0,
+      "dimension_scores": {
+        "kbeauty_fit": 90,
+        "b2b_role": 95,
+        "sourcing_intent": 94,
+        "market_relevance": 0,
+        "reachability": 95,
+        "evidence_quality": 100
+      },
+      "unknown_criteria": [],
+      "missing": []
+    },
+    "BUY-libertybeautysupply-example": {
+      "qualification_score": 66,
+      "qualified": false,
+      "confidence": 0.91,
+      "dimension_scores": {
+        "kbeauty_fit": 83,
+        "b2b_role": 82,
+        "sourcing_intent": 64,
+        "market_relevance": 0,
+        "reachability": 78,
+        "evidence_quality": 91
+      },
+      "unknown_criteria": [],
+      "missing": []
+    },
+    "BUY-cascademarket-example": {
+      "qualification_score": 32,
+      "qualified": false,
+      "confidence": 0.74,
+      "dimension_scores": {
+        "kbeauty_fit": 12,
+        "b2b_role": 21,
+        "sourcing_intent": 32,
+        "market_relevance": 0,
+        "reachability": 90,
+        "evidence_quality": 82
+      },
+      "unknown_criteria": [
+        "B-KF1",
+        "B-SI2"
+      ],
+      "missing": [
+        "Korean product carriage",
+        "Public sourcing signals"
+      ]
+    },
+    "BUY-sakurabeautytrading-example": {
+      "qualification_score": 82,
+      "qualified": true,
+      "confidence": 0.95,
+      "dimension_scores": {
+        "kbeauty_fit": 90,
+        "b2b_role": 95,
+        "sourcing_intent": 100,
+        "market_relevance": 0,
+        "reachability": 100,
+        "evidence_quality": 95
+      },
+      "unknown_criteria": [],
+      "missing": []
+    },
+    "BUY-kantoimport-example": {
+      "qualification_score": 36,
+      "qualified": false,
+      "confidence": 0.41,
+      "dimension_scores": {
+        "kbeauty_fit": 11,
+        "b2b_role": 73,
+        "sourcing_intent": 31,
+        "market_relevance": 0,
+        "reachability": 50,
+        "evidence_quality": 64
+      },
+      "unknown_criteria": [
+        "B-CR2",
+        "B-CR3",
+        "B-KF1",
+        "B-KF2",
+        "B-KF3",
+        "B-MR2",
+        "B-SI1",
+        "B-SI2",
+        "B-SI3"
+      ],
+      "missing": [
+        "Korean product carriage",
+        "K-Beauty positioning",
+        "Beauty category alignment",
+        "Wholesale capability",
+        "Procurement / buying function",
+        "Declared sourcing intent",
+        "Public sourcing signals",
+        "Recency of the sourcing action",
+        "Category match against the request"
+      ]
+    },
+    "BUY-lioncitybeauty-example": {
+      "qualification_score": 70,
+      "qualified": true,
+      "confidence": 1.0,
+      "dimension_scores": {
+        "kbeauty_fit": 90,
+        "b2b_role": 85,
+        "sourcing_intent": 60,
+        "market_relevance": 0,
+        "reachability": 95,
+        "evidence_quality": 100
+      },
+      "unknown_criteria": [],
+      "missing": []
+    },
+    "BUY-straitswholesale-example": {
+      "qualification_score": 52,
+      "qualified": false,
+      "confidence": 0.83,
+      "dimension_scores": {
+        "kbeauty_fit": 75,
+        "b2b_role": 82,
+        "sourcing_intent": 49,
+        "market_relevance": 0,
+        "reachability": 0,
+        "evidence_quality": 87
+      },
+      "unknown_criteria": [
+        "B-SI2"
+      ],
+      "missing": [
+        "Public sourcing signals"
+      ]
+    },
+    "BUY-rheinkosmetik-example": {
+      "qualification_score": 68,
+      "qualified": false,
+      "confidence": 0.91,
+      "dimension_scores": {
+        "kbeauty_fit": 83,
+        "b2b_role": 85,
+        "sourcing_intent": 63,
+        "market_relevance": 0,
+        "reachability": 93,
+        "evidence_quality": 91
+      },
+      "unknown_criteria": [],
+      "missing": []
+    },
+    "BUY-novadrift-example": {
+      "qualification_score": 74,
+      "qualified": true,
+      "confidence": 0.83,
+      "dimension_scores": {
+        "kbeauty_fit": 83,
+        "b2b_role": 85,
+        "sourcing_intent": 50,
+        "market_relevance": 68,
+        "reachability": 85,
+        "evidence_quality": 87
+      },
+      "unknown_criteria": [],
+      "missing": []
+    }
+  },
+  "excluded": {
+    "BUY-quietharbour-example": {
+      "company_name": "Quiet Harbour Trading Ltd",
+      "canonical_domain": "quietharbour.example",
+      "reason_summary": "no evidenced material claim",
+      "failed_rule_ids": []
+    }
+  }
+}

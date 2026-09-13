@@ -1,0 +1,84 @@
+{
+  "schema_version": "0.1.0",
+  "score_version": "unscored",
+  "rfq_id": "134",
+  "buyer_id": null,
+  "destination_country": "AE",
+  "product_category": "sunscreen",
+  "product_categories_extra": [],
+  "product_description": "SPF50+ PA++++ daily sunscreen, no white cast, stable in hot/humid GCC climate",
+  "product_forms": [],
+  "quantity": 5000,
+  "max_moq": 3000,
+  "moq_unit": "units",
+  "target_price": null,
+  "commercial_model": "private_label",
+  "required_certifications": [
+    "ISO22716"
+  ],
+  "preferred_certifications": [],
+  "timeline": "unknown",
+  "max_lead_time_days": null,
+  "required_seller_countries": [
+    "KR"
+  ],
+  "excluded_seller_countries": [],
+  "status": "matching",
+  "qualification_score": 0,
+  "confidence": 0,
+  "unknown_penalty_applied": [],
+  "evidence": [
+    {
+      "schema_version": "0.1.0",
+      "evidence_id": "EV-001",
+      "claim": "product_category",
+      "value": "sunscreen",
+      "source_url": "https://app.tradewith.example/rfqs/134",
+      "source_domain": "app.tradewith.example",
+      "source_type": "internal_record",
+      "source_tier": 2,
+      "is_official": false,
+      "observed_at": "2026-09-10T09:00:00Z",
+      "source_date": "2026-09-01",
+      "confidence": 0.9,
+      "quote_or_summary": "RFQ #134 product_category = sunscreen, destination_country = AE.",
+      "retrieval_method": "internal_api"
+    },
+    {
+      "schema_version": "0.1.0",
+      "evidence_id": "EV-002",
+      "claim": "max_moq",
+      "value": 3000,
+      "source_url": "https://app.tradewith.example/rfqs/134",
+      "source_domain": "app.tradewith.example",
+      "source_type": "internal_record",
+      "source_tier": 2,
+      "is_official": false,
+      "observed_at": "2026-09-10T09:00:00Z",
+      "source_date": "2026-09-01",
+      "confidence": 0.9,
+      "quote_or_summary": "RFQ #134 max_moq = 3000, required_certifications = [ISO22716].",
+      "retrieval_method": "internal_api"
+    },
+    {
+      "schema_version": "0.1.0",
+      "evidence_id": "EV-003",
+      "claim": "commercial_model",
+      "value": "private_label",
+      "source_url": "https://app.tradewith.example/rfqs/134",
+      "source_domain": "app.tradewith.example",
+      "source_type": "internal_record",
+      "source_tier": 2,
+      "is_official": false,
+      "observed_at": "2026-09-10T09:00:00Z",
+      "source_date": "2026-09-01",
+      "confidence": 0.9,
+      "quote_or_summary": "RFQ #134 commercial_model = private_label.",
+      "retrieval_method": "internal_api"
+    }
+  ],
+  "as_of": "2026-09-12",
+  "notes": [
+    "the operator wrote the destination as \"GCC\"; the agent expanded it to explicit alpha-2 codes before the query surface was built (BUILD-CONTRACT 8.7)"
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "__note__": "dedupe_companies.py over tests/fixtures/buyers.golden.json with the default --strict-country. Only the T06 www/non-www pair merges.",
+  "run": {
+    "script": "dedupe_companies.py",
+    "entity": "buyer",
+    "as_of": "2026-09-12",
+    "strict_country": true
+  },
+  "stats": {
+    "input_count": 20,
+    "output_count": 19,
+    "merge_count": 1
+  },
+  "merges": [
+    {
+      "survivor_id": "BUY-luminaglow-example",
+      "absorbed_ids": [
+        "BUY-www-luminaglow-example"
+      ],
+      "key": "canonical_domain"
+    }
+  ],
+  "merges_suggested": [],
+  "survivor": {
+    "buyer_id": "BUY-luminaglow-example",
+    "canonical_domain": "luminaglow.example",
+    "merged_from_includes": [
+      "BUY-www-luminaglow-example"
+    ],
+    "alias_domains_include": [
+      "www.luminaglow.example"
+    ],
+    "score_version": "unscored",
+    "qualification_score": 0,
+    "product_categories_include": [
+      "serum",
+      "skincare",
+      "sunscreen"
+    ],
+    "contact_channel_type_count": 3,
+    "evidence_id_count_min": 12
+  },
+  "must_not_merge": [
+    {
+      "ids": [
+        "BUY-gulfglow-example",
+        "BUY-dunesourcing-example"
+      ],
+      "why": "different known canonical_domain values (R8.4.2)"
+    },
+    {
+      "ids": [
+        "BUY-luminaglow-example",
+        "BUY-britsun-example"
+      ],
+      "why": "different companies, different domains"
+    }
+  ]
+}

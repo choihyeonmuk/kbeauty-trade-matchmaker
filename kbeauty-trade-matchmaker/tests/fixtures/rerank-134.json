@@ -1,0 +1,10 @@
+{
+  "SEL-hanbitcos-example": {
+    "delta": 2,
+    "rationale": "The seller's own product page describes an SPF50+ PA++++ hybrid filter formulated for hot, humid climates with no white cast, which is the exact formulation language of RFQ #134's product_description.",
+    "evidence_ids": [
+      "EV-102"
+    ],
+    "model_note": "allowed_inputs: product_description, formulation_and_texture_language"
+  }
+}

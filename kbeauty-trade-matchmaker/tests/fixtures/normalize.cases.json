@@ -1,0 +1,127 @@
+{
+  "note": "Pure string-transformation cases taken from BUILD-CONTRACT 8.1 and 8.3. These assert nothing about any real business; they exercise _common.canonical_domain and _common.normalize_company_name. The four IDN cases cover PRD 15.1 criterion 4 (local-language domain duplicates): a Unicode host, its www variant and its already-punycode spelling all fold to one canonical_domain, which is what lets dedupe_companies.py merge them. The hosted-platform cases (shared-hosting suffixes) cover the PSL PRIVATE section: Korean SMB factory sites and storefronts routinely live on shared hosting, and folding two tenants to the platform domain would make dedupe_companies.py merge two unrelated companies into one record.",
+  "canonical_domain": [
+    {
+      "input": "https://WWW.Company.co.kr/about?x=1",
+      "expected": "company.co.kr"
+    },
+    {
+      "input": "http://user:pw@shop.company.com:8443/path",
+      "expected": "company.com"
+    },
+    {
+      "input": "company.com",
+      "expected": "company.com"
+    },
+    {
+      "input": "www.company.com.",
+      "expected": "company.com"
+    },
+    {
+      "input": "https://a.b.example.co.uk/",
+      "expected": "example.co.uk"
+    },
+    {
+      "input": "https://brand.ae/contact",
+      "expected": "brand.ae"
+    },
+    {
+      "input": "https://sub.brand.com.ae",
+      "expected": "brand.com.ae"
+    },
+    {
+      "input": "https://www.www.example.com",
+      "expected": "example.com"
+    },
+    {
+      "input": "https://127.0.0.1/x",
+      "expected": null
+    },
+    {
+      "input": "not a url",
+      "expected": null
+    },
+    {
+      "input": "co.uk",
+      "expected": null
+    },
+    {
+      "input": "https://www.luminaglow.example/en/",
+      "expected": "luminaglow.example"
+    },
+    {
+      "input": "https://마이브랜드.kr/about",
+      "expected": "xn--hy1b45cw6b22g85n.kr"
+    },
+    {
+      "input": "https://www.마이브랜드.kr",
+      "expected": "xn--hy1b45cw6b22g85n.kr"
+    },
+    {
+      "input": "https://xn--hy1b45cw6b22g85n.kr/",
+      "expected": "xn--hy1b45cw6b22g85n.kr"
+    },
+    {
+      "input": "https://例え.jp/",
+      "expected": "xn--r8jz45g.jp"
+    },
+    {
+      "input": "https://alpha-cos.pages.dev/",
+      "expected": "alpha-cos.pages.dev"
+    },
+    {
+      "input": "https://beta-cos.pages.dev/oem",
+      "expected": "beta-cos.pages.dev"
+    },
+    {
+      "input": "https://shop1.cafe24.com/",
+      "expected": "shop1.cafe24.com"
+    },
+    {
+      "input": "https://shop2.cafe24.com/",
+      "expected": "shop2.cafe24.com"
+    },
+    {
+      "input": "https://brand.imweb.me/about",
+      "expected": "brand.imweb.me"
+    },
+    {
+      "input": "https://store.myshopify.com/collections/all",
+      "expected": "store.myshopify.com"
+    }
+  ],
+  "normalize_company_name": [
+    {
+      "input": "The ABC Beauty Co., Ltd.",
+      "expected": "abc beauty"
+    },
+    {
+      "input": "ABC Beauty Co.,Ltd",
+      "expected": "abc beauty"
+    },
+    {
+      "input": "ABC Beauty L.L.C.",
+      "expected": "abc beauty"
+    },
+    {
+      "input": "ABC Beauty FZ-LLC",
+      "expected": "abc beauty"
+    },
+    {
+      "input": "ＡＢＣ　Ｂｅａｕｔｙ Inc.",
+      "expected": "abc beauty"
+    },
+    {
+      "input": "(주)에이비씨 코스메틱",
+      "expected": "에이비씨 코스메틱"
+    },
+    {
+      "input": "가온코스 주식회사",
+      "expected": "가온코스"
+    },
+    {
+      "input": "ABC Trading LLC",
+      "expected": "abc"
+    }
+  ]
+}

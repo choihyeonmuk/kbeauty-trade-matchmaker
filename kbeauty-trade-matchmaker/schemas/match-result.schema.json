@@ -1,0 +1,1125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tradewith.example/kbeauty-trade-matchmaker/v0.1.0/match-result.schema.json",
+  "title": "MatchResult",
+  "description": "The complete, auditable output of one RFQ -> Seller matching run. PRD 6.4 (hard filter -> weighted score -> semantic rerank -> unknown handling), PRD 12.2 (Match Output rendering), PRD 13.2 (store score_version and keep deterministic components separate from AI explanation), PRD 15.3 (every seller carries match + component scores, hard-filter rejections state their reason, and a passing candidate carries at least two concrete rationale statements) and PRD test T10 (an empty result set is returned as an explicit no_match object, never as a silent empty list). Emitted by scripts/score_match.py; validated by scripts/validate_output.py. Korean gloss: RFQ-셀러 매칭 실행 1회의 전체 결과 문서.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "score_version",
+    "match_run_id",
+    "rfq_id",
+    "as_of",
+    "weights_used",
+    "threshold",
+    "summary",
+    "results",
+    "excluded",
+    "no_match",
+    "evidence_index",
+    "notes"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Version of this schema contract, e.g. \"0.1.0\".",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "score_version": {
+      "$ref": "#/$defs/score_version"
+    },
+    "match_run_id": {
+      "type": "string",
+      "description": "Stable id for this matching run, so a stored match can be re-computed and diffed after a rubric change (PRD 13.2). Recommended form: MR-<rfq_id>-<as_of>-<counter>, e.g. \"MR-134-2026-09-12-01\".",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:#-]{0,127}$"
+    },
+    "rfq_id": {
+      "type": "string",
+      "description": "rfq_id of the RFQ this run was scored against (rfq.schema.json). Korean gloss: 대상 RFQ 식별자.",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:#-]{0,127}$"
+    },
+    "buyer_id": {
+      "description": "buyer_id behind the RFQ, or null when the RFQ is operator-authored and unlinked (mirrors rfq.schema.json buyer_id).",
+      "oneOf": [
+        { "type": "string", "minLength": 1, "maxLength": 128 },
+        { "type": "null" }
+      ]
+    },
+    "as_of": {
+      "type": "string",
+      "format": "date",
+      "description": "The --as-of date this run was computed against. All recency arithmetic uses this date only; scripts never read the wall clock (PRD 14 Determinism).",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "rfq_constraints": {
+      "type": "object",
+      "description": "Read-only echo of the RFQ constraints that drove this run, so the PRD 12.2 header block (\"Destination / Product / MOQ <= 3,000 / Private Label: Required / ISO22716: Required\") can be rendered from the match document alone.",
+      "additionalProperties": false,
+      "properties": {
+        "destination_country": { "$ref": "#/$defs/country_code" },
+        "product_category": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,39}$" },
+        "product_categories_extra": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,39}$" },
+          "uniqueItems": true,
+          "maxItems": 30
+        },
+        "product_forms": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,39}$" },
+          "uniqueItems": true,
+          "maxItems": 30
+        },
+        "commercial_model": {
+          "type": "string",
+          "enum": ["branded", "private_label", "oem_odm", "either"]
+        },
+        "max_moq": {
+          "oneOf": [
+            { "type": "number", "minimum": 0 },
+            { "type": "null" }
+          ]
+        },
+        "max_lead_time_days": {
+          "oneOf": [
+            { "type": "number", "minimum": 0 },
+            { "type": "null" }
+          ]
+        },
+        "required_certifications": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{1,39}$" },
+          "uniqueItems": true,
+          "maxItems": 30
+        },
+        "preferred_certifications": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{1,39}$" },
+          "uniqueItems": true,
+          "maxItems": 30
+        },
+        "required_seller_countries": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z]{2}$" },
+          "uniqueItems": true,
+          "maxItems": 50
+        }
+      }
+    },
+    "weights_used": {
+      "description": "The six match weights actually applied, copied from scoring.config.json match.weights at run time. Stored so an old match can be re-derived after the config changes (PRD 13.2). Must sum to 1.0.",
+      "$ref": "#/$defs/weight_set"
+    },
+    "threshold": {
+      "type": "object",
+      "description": "Resolved qualification threshold for this run. Duplicated inside summary for rendering; kept here with its full derivation for audit (PRD Open Question 3: fixed 70 vs per-category percentile).",
+      "additionalProperties": false,
+      "required": ["mode", "value"],
+      "properties": {
+        "mode": { "$ref": "#/$defs/threshold_mode" },
+        "value": { "$ref": "#/$defs/score_0_100" },
+        "percentile": {
+          "type": "number",
+          "description": "The percentile requested when mode == \"percentile\" (e.g. 75).",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "population_size": {
+          "type": "integer",
+          "description": "Number of scored candidates the percentile was computed over. When it is below scoring.config.json thresholds.percentile_min_population the run falls back to the fixed threshold and says so in fallback_reason.",
+          "minimum": 0
+        },
+        "fallback_reason": {
+          "type": "string",
+          "description": "Why the requested mode was not used, when it was not used.",
+          "maxLength": 500
+        }
+      }
+    },
+    "summary": { "$ref": "#/$defs/match_summary" },
+    "results": {
+      "type": "array",
+      "description": "Qualified match candidates, already sorted by the deterministic tie-break in scoring.config.json determinism.tie_break: match_score descending, then canonical_domain ascending. MUST be empty when no_match.is_no_match is true (PRD test T10).",
+      "items": { "$ref": "#/$defs/match_candidate" },
+      "maxItems": 200
+    },
+    "excluded": {
+      "type": "array",
+      "description": "Sellers removed by the hard-filter stage, rendered as the PRD 12.2 \"Excluded\" block (\"- Seller X: MOQ minimum 10,000\"). Every entry states which rule failed and with what observed vs required value (PRD 15.3). Sellers that merely scored below the threshold are NOT listed here; they are counted in summary.passed_hard_filter minus summary.returned.",
+      "items": { "$ref": "#/$defs/excluded_candidate" },
+      "maxItems": 500
+    },
+    "no_match": { "$ref": "#/$defs/no_match_result" },
+    "evidence_index": {
+      "type": "array",
+      "description": "REQUIRED flat lookup table resolving every evidence_id referenced anywhere in this document to a clickable source URL, so a reviewer can re-verify a match without loading the seller documents (PRD 22 Definition of Done: evidence trace is human-clickable). Entries are copied by value from the seller/RFQ records. It MUST hold one entry, with a click-ready source_url, for every id referenced by any candidate's rationale, risks, rerank, component_details, contact_channels or evidence_ids (INV-22); the empty array is legal only when no candidate references any evidence id. A dangling id is a build blocker, not a warning.",
+      "items": { "$ref": "#/$defs/evidence_ref" },
+      "maxItems": 2000
+    },
+    "skill_version": {
+      "type": "string",
+      "description": "Version of the skill package that produced this document (PRD 14 Versioning).",
+      "maxLength": 64
+    },
+    "partial": {
+      "type": "boolean",
+      "description": "True when some candidates could not be fully evaluated (page fetch failures, adapter timeouts) and the run returned a partial result rather than aborting (PRD 14 Resilience). Details belong in notes.",
+      "default": false
+    },
+    "notes": {
+      "type": "array",
+      "description": "Operator-facing notes about the run as a whole: relaxations applied, adapters unavailable, category drift, \"확인 필요\" flags. Never used for per-candidate rationale.",
+      "items": { "type": "string", "maxLength": 1000 },
+      "maxItems": 50
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Escape hatch for runtime- or tenant-specific fields. Never read by any scoring script; never rendered in output.",
+      "additionalProperties": true
+    }
+  },
+  "allOf": [
+    {
+      "$comment": "PRD test T10: a no-match run must not also carry results, and must state a reason.",
+      "if": {
+        "required": ["no_match"],
+        "properties": {
+          "no_match": {
+            "required": ["is_no_match"],
+            "properties": { "is_no_match": { "const": true } }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "results": { "maxItems": 0 },
+          "no_match": {
+            "required": ["reason"],
+            "properties": { "reason": { "minLength": 1 } }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "score_version": {
+      "$comment": "Deliberately NARROWER than the shared BUILD-CONTRACT 3.7 definition. The two-branch form (rubric id OR \"unscored\") is correct for buyer/seller/rfq documents; a match-result exists only in the scored profile (BUILD-CONTRACT 3.1, INV-23), so the \"unscored\" branch is omitted here and the schema rejects it instead of leaving it to an invariant check.",
+      "type": "string",
+      "description": "Identifier of the scoring rubric that produced every number in this document, e.g. \"kbtm-score-0.1.0\" (scoring.config.json score_version). Stored with the result so scores can be recomputed after a rubric change (PRD 13.2). The literal \"unscored\" exists only for raw discovery records in buyer/seller/rfq documents and is INVALID here.",
+      "maxLength": 64,
+      "pattern": "^kbtm-score-[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "score_0_100": {
+      "type": "integer",
+      "description": "A deterministic score, integer 0..100, rounded half-up (scoring.config.json determinism.rounding).",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "points_0_100": {
+      "type": "number",
+      "description": "A point value on the 0..100 scale that may carry decimals (weighted contributions, criterion points). Rounded to determinism.decimal_places.weighted_contributions.",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "confidence_value": {
+      "type": "number",
+      "description": "How much the reviewer should trust this record, 0..1, two decimal places. Driven by evidence quality, coverage, staleness and unresolved conflicts; never by the score itself.",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "country_code": {
+      "description": "ISO-3166-1 alpha-2 country code, upper case, or the literal \"unknown\" (BUILD-CONTRACT.md 3.7, 8.7). \"unknown\" is a legal value and takes the unknown path; it never causes a hard-filter rejection. This is the shared definition that buyer/seller/rfq.schema.json inline verbatim.",
+      "oneOf": [
+        { "type": "string", "pattern": "^[A-Z]{2}$" },
+        { "const": "unknown" }
+      ]
+    },
+    "canonical_domain": {
+      "description": "Registrable domain from _common.canonical_domain(). PRIMARY entity merge key (PRD 13.2, test T06) and the secondary sort key for deterministic ordering. \"unknown\" when the company has no discoverable website.",
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
+          "maxLength": 253
+        },
+        { "const": "unknown" }
+      ]
+    },
+    "evidence_id_list": {
+      "type": "array",
+      "description": "evidence_id values resolvable in the referenced seller document's `evidence` array, in the RFQ document's `evidence` array, or in this document's optional evidence_index. Ids are never invented: an empty list means \"no source backs this statement\" and must be rendered as such.",
+      "items": { "type": "string", "minLength": 1, "maxLength": 128 },
+      "uniqueItems": true,
+      "maxItems": 50
+    },
+    "entity_status": {
+      "type": "string",
+      "description": "PRD 8 state machine. A seller inside a match run is normally MATCH_CANDIDATE, or READY_FOR_REVIEW once an outreach draft exists. The skill's own responsibility ends at READY_FOR_REVIEW; later states are owned by the TradeWith/CRM layer.",
+      "enum": [
+        "DISCOVERED",
+        "VERIFIED",
+        "QUALIFIED",
+        "MATCH_CANDIDATE",
+        "READY_FOR_REVIEW",
+        "APPROVED_FOR_OUTREACH",
+        "CONTACTED",
+        "REPLIED",
+        "RFQ_RECEIVED",
+        "PROPOSAL_RECEIVED",
+        "MATCHED",
+        "CLOSED"
+      ]
+    },
+    "threshold_mode": {
+      "type": "string",
+      "description": "PRD Open Question 3. \"fixed\" = a constant cut-off (default 70). \"percentile\" = the Nth percentile of this run's scored population (default 75th). Both modes are supported; the default lives in scoring.config.json thresholds.mode.",
+      "enum": ["fixed", "percentile"]
+    },
+    "weight_set": {
+      "type": "object",
+      "description": "The six PRD 6.4.2 match weights as fractions of 1.0: product_fit 0.30, model_fit 0.20, operation_fit 0.15, compliance_fit 0.15, market_fit 0.10, evidence_quality 0.10.",
+      "additionalProperties": false,
+      "required": [
+        "product_fit",
+        "model_fit",
+        "operation_fit",
+        "compliance_fit",
+        "market_fit",
+        "evidence_quality"
+      ],
+      "properties": {
+        "product_fit": { "type": "number", "minimum": 0, "maximum": 1 },
+        "model_fit": { "type": "number", "minimum": 0, "maximum": 1 },
+        "operation_fit": { "type": "number", "minimum": 0, "maximum": 1 },
+        "compliance_fit": { "type": "number", "minimum": 0, "maximum": 1 },
+        "market_fit": { "type": "number", "minimum": 0, "maximum": 1 },
+        "evidence_quality": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "component_scores": {
+      "type": "object",
+      "description": "The six PRD 6.4.2 match components, each an integer 0..100. Sourced verbatim from the seller's six dimension scores re-computed against this RFQ (scoring.config.json match.component_sources): product_fit<-product_fit, model_fit<-commercial_model, operation_fit<-operational_fit, compliance_fit<-compliance_readiness, market_fit<-export_readiness, evidence_quality<-evidence_quality. Korean gloss: 매칭 구성 점수.",
+      "additionalProperties": false,
+      "required": [
+        "product_fit",
+        "model_fit",
+        "operation_fit",
+        "compliance_fit",
+        "market_fit",
+        "evidence_quality"
+      ],
+      "properties": {
+        "product_fit": { "$ref": "#/$defs/score_0_100" },
+        "model_fit": { "$ref": "#/$defs/score_0_100" },
+        "operation_fit": { "$ref": "#/$defs/score_0_100" },
+        "compliance_fit": { "$ref": "#/$defs/score_0_100" },
+        "market_fit": { "$ref": "#/$defs/score_0_100" },
+        "evidence_quality": { "$ref": "#/$defs/score_0_100" }
+      }
+    },
+    "weighted_contributions": {
+      "type": "object",
+      "description": "component_scores[k] * weights_used[k], one entry per component, rounded to two decimals. Their sum equals base_score before final half-up rounding. Exposed so PRD 6.3's rule (\"점수와 함께 계산 근거를 노출한다\") holds for matching too.",
+      "additionalProperties": false,
+      "required": [
+        "product_fit",
+        "model_fit",
+        "operation_fit",
+        "compliance_fit",
+        "market_fit",
+        "evidence_quality"
+      ],
+      "properties": {
+        "product_fit": { "$ref": "#/$defs/points_0_100" },
+        "model_fit": { "$ref": "#/$defs/points_0_100" },
+        "operation_fit": { "$ref": "#/$defs/points_0_100" },
+        "compliance_fit": { "$ref": "#/$defs/points_0_100" },
+        "market_fit": { "$ref": "#/$defs/points_0_100" },
+        "evidence_quality": { "$ref": "#/$defs/points_0_100" }
+      }
+    },
+    "failed_rule": {
+      "type": "object",
+      "description": "One hard-filter rule that rejected a seller, with the numbers that caused it. PRD 15.3 requires the rejection reason to be explicit; PRD 12.2 renders `reason` directly.",
+      "additionalProperties": false,
+      "required": [
+        "rule_id",
+        "rule_name",
+        "reason",
+        "observed_value",
+        "required_value"
+      ],
+      "properties": {
+        "rule_id": {
+          "type": "string",
+          "description": "Rule identifier from scoring.config.json hard_filters, e.g. \"HF-03\".",
+          "pattern": "^HF-[0-9]{2}$"
+        },
+        "rule_name": {
+          "type": "string",
+          "description": "Human-readable rule name, copied from scoring.config.json hard_filters[].name.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "reason": {
+          "type": "string",
+          "description": "Renderable one-line explanation, e.g. \"MOQ minimum 10,000 exceeds RFQ max 3,000\". Korean gloss: 탈락 사유 한 줄.",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "observed_value": {
+          "description": "The value actually found on the seller record. null only when the field was genuinely absent; \"unknown\" when the record explicitly carries unknown. An unknown value must never by itself produce a hard-filter failure (PRD 6.4.4, test T04).",
+          "type": ["string", "number", "boolean", "array", "object", "null"]
+        },
+        "required_value": {
+          "description": "The value the RFQ demanded, for side-by-side rendering.",
+          "type": ["string", "number", "boolean", "array", "object", "null"]
+        },
+        "evidence_ids": { "$ref": "#/$defs/evidence_id_list" }
+      }
+    },
+    "hard_filter_result": {
+      "type": "object",
+      "description": "Outcome of PRD 6.4.1 stage 1 for one seller. passed == false means the seller is listed under `excluded` and carries no match_score meaning.",
+      "additionalProperties": false,
+      "required": ["passed", "failed_rules"],
+      "properties": {
+        "passed": {
+          "type": "boolean",
+          "description": "True when every applicable hard-filter rule passed."
+        },
+        "failed_rules": {
+          "type": "array",
+          "description": "All rules that failed, in scoring.config.json hard_filters order. Empty when passed is true.",
+          "items": { "$ref": "#/$defs/failed_rule" },
+          "maxItems": 20
+        },
+        "rules_evaluated": {
+          "type": "array",
+          "description": "rule_id values that were applicable and actually evaluated, so a reviewer can tell \"passed\" from \"not applicable\".",
+          "items": { "type": "string", "pattern": "^HF-[0-9]{2}$" },
+          "uniqueItems": true,
+          "maxItems": 20
+        },
+        "rules_skipped_unknown": {
+          "type": "array",
+          "description": "rule_id values that were skipped because the seller's input was unknown. Skipping is mandatory (PRD test T04: unknown MOQ is penalised, never hard-rejected); each skip must also appear in unknown_penalty_applied.",
+          "items": { "type": "string", "pattern": "^HF-[0-9]{2}$" },
+          "uniqueItems": true,
+          "maxItems": 20
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["passed"],
+            "properties": { "passed": { "const": true } }
+          },
+          "then": {
+            "properties": { "failed_rules": { "maxItems": 0 } }
+          }
+        }
+      ]
+    },
+    "unknown_penalty": {
+      "type": "object",
+      "description": "One criterion whose deciding inputs were all unknown. PRD 6.4.4 / test T04: unknown is neither a zero nor a rejection. The criterion receives round_half_up(criterion_max_points * (neutral_base / 100) * penalty_factor) instead of its full points, and the fact is surfaced to the reviewer as \"확인 필요\". Shape is shared with buyer.schema.json and seller.schema.json.",
+      "additionalProperties": false,
+      "required": [
+        "dimension",
+        "criterion_id",
+        "label",
+        "unknown_inputs",
+        "criterion_max_points",
+        "neutral_base",
+        "penalty_factor",
+        "applied_points"
+      ],
+      "properties": {
+        "dimension": {
+          "type": "string",
+          "description": "Dimension key the criterion belongs to, e.g. \"operation_fit\" on a match result or \"operational_fit\" on a seller record.",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "criterion_id": {
+          "type": "string",
+          "description": "Criterion identifier from scoring.config.json, e.g. \"S-OP1\".",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable criterion label, reused verbatim on the \"Missing:\" / \"확인 필요\" line.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "unknown_inputs": {
+          "type": "array",
+          "description": "Dotted field paths that were unknown or absent, e.g. [\"seller.moq\"].",
+          "items": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "uniqueItems": true,
+          "maxItems": 20
+        },
+        "criterion_max_points": {
+          "$ref": "#/$defs/points_0_100"
+        },
+        "neutral_base": {
+          "type": "number",
+          "description": "scoring.config.json unknown.neutral_base (50): the neutral midpoint an unknown criterion starts from instead of 0.",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "penalty_factor": {
+          "type": "number",
+          "description": "scoring.config.json unknown.penalty_factor (0.6): how much of the neutral base survives the penalty.",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "applied_points": {
+          "description": "round_half_up(criterion_max_points * (neutral_base / 100) * penalty_factor). Example: a 55-point criterion yields round_half_up(55 * 0.5 * 0.6) = round_half_up(16.5) = 17.",
+          "$ref": "#/$defs/points_0_100"
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional clarification, e.g. \"MOQ not published; hard filter HF-03 skipped.\"",
+          "maxLength": 500
+        }
+      }
+    },
+    "dimension_detail": {
+      "type": "object",
+      "description": "Per-criterion audit trail for one scored criterion, so a human can reconstruct every point (PRD 6.3). Shape is shared with buyer.schema.json and seller.schema.json.",
+      "additionalProperties": false,
+      "required": [
+        "dimension",
+        "criterion_id",
+        "label",
+        "max_points",
+        "earned_points"
+      ],
+      "properties": {
+        "dimension": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "criterion_id": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "label": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "max_points": { "$ref": "#/$defs/points_0_100" },
+        "earned_points": {
+          "type": "number",
+          "description": "Points actually credited, after the criterion's aggregation rule and after any unknown penalty. May be 0.",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "signals_fired": {
+          "type": "array",
+          "description": "Exact signal keys from scoring.config.json that fired for this criterion, e.g. [\"moq_at_or_below_max\"].",
+          "items": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "uniqueItems": true,
+          "maxItems": 30
+        },
+        "state": {
+          "type": "string",
+          "description": "\"scored\" = inputs known. \"unknown\" = all deciding inputs unknown, neutral-base penalty applied. \"inapplicable\" = the RFQ imposes no such constraint, so the criterion is dropped from the dimension denominator and renormalised.",
+          "enum": ["scored", "unknown", "inapplicable"],
+          "default": "scored"
+        },
+        "evidence_ids": { "$ref": "#/$defs/evidence_id_list" },
+        "note": { "type": "string", "maxLength": 500 }
+      }
+    },
+    "rerank_result": {
+      "type": "object",
+      "description": "PRD 6.4.3 semantic rerank. The agent may adjust a deterministic score by at most scoring.config.json match.rerank.max_delta points (+/-5) and MUST leave a written rationale with evidence ids. base_score + delta = match_score. Korean gloss: 정성 재평가 단계.",
+      "additionalProperties": false,
+      "required": ["applied", "delta", "rationale", "evidence_ids"],
+      "properties": {
+        "applied": {
+          "type": "boolean",
+          "description": "False means the deterministic score was left untouched; delta must then be 0."
+        },
+        "delta": {
+          "type": "integer",
+          "description": "Signed adjustment in WHOLE score points. A fractional delta is invalid, because match_score = clamp(base_score + delta, 0, 100) is an integer (SCORING-CONTRACT 5.6; determinism.decimal_places.match_score = 0). The binding limit is scoring.config.json match.rerank.max_delta (5); the wider bound here exists only so a config change does not invalidate stored documents.",
+          "minimum": -100,
+          "maximum": 100
+        },
+        "rationale": {
+          "type": "string",
+          "description": "Why the adjustment was made, in concrete terms tied to the seller's own wording. Required and non-empty when applied is true (match.rerank.require_rationale).",
+          "maxLength": 2000
+        },
+        "evidence_ids": {
+          "description": "Sources backing the rerank rationale. Required and non-empty when applied is true (match.rerank.require_evidence_ids).",
+          "$ref": "#/$defs/evidence_id_list"
+        },
+        "model_note": {
+          "type": "string",
+          "description": "Optional free note about how the rerank was produced. Never a substitute for rationale.",
+          "maxLength": 500
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["applied"],
+            "properties": { "applied": { "const": true } }
+          },
+          "then": {
+            "required": ["rationale", "evidence_ids"],
+            "properties": {
+              "rationale": { "minLength": 1 },
+              "evidence_ids": { "minItems": 1 }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["applied"],
+            "properties": { "applied": { "const": false } }
+          },
+          "then": {
+            "properties": { "delta": { "const": 0 } }
+          }
+        }
+      ]
+    },
+    "rationale_item": {
+      "type": "object",
+      "description": "One concrete reason this seller fits this RFQ. PRD 15.3 requires at least two of these on every passing candidate. Each statement must be a verified fact, never an inference presented as fact (PRD 11.1); ungrounded statements are a blocker, not a stylistic issue.",
+      "additionalProperties": false,
+      "required": ["statement", "evidence_ids"],
+      "properties": {
+        "statement": {
+          "type": "string",
+          "description": "One sentence naming the specific fit, e.g. \"Publishes ISO22716 certification for its Chungju plant, which RFQ #134 requires.\" Korean gloss: 구체적 적합 근거 한 문장.",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "evidence_ids": {
+          "description": "At least one source must back the statement (PRD 15.3, test T05, INV-20). Written as allOf rather than as a keyword beside $ref so the constraint survives any validator that implements $ref as whole-schema substitution.",
+          "allOf": [
+            { "$ref": "#/$defs/evidence_id_list" },
+            { "minItems": 1 }
+          ]
+        },
+        "component": {
+          "type": "string",
+          "description": "Which match component this rationale explains, when it maps cleanly to one.",
+          "enum": [
+            "product_fit",
+            "model_fit",
+            "operation_fit",
+            "compliance_fit",
+            "market_fit",
+            "evidence_quality"
+          ]
+        }
+      }
+    },
+    "risk_item": {
+      "type": "object",
+      "description": "A caveat the reviewer must see before outreach, e.g. PRD 12.2's \"UAE registration status not confirmed\". Risks that come from ABSENCE of evidence legitimately carry an empty evidence_ids list; risks asserted as facts do not.",
+      "additionalProperties": false,
+      "required": ["statement", "severity", "evidence_ids"],
+      "properties": {
+        "statement": {
+          "type": "string",
+          "description": "One sentence stating the risk. Korean gloss: 위험/확인 필요 항목.",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "severity": {
+          "type": "string",
+          "description": "\"high\" = blocks outreach until verified. \"medium\" = must be raised in the first message. \"low\" = note only.",
+          "enum": ["low", "medium", "high"]
+        },
+        "evidence_ids": {
+          "description": "Sources for the risk. Empty is valid and correct when the risk IS the missing evidence.",
+          "$ref": "#/$defs/evidence_id_list"
+        },
+        "category": {
+          "type": "string",
+          "description": "Coarse risk type, for filtering in the UI.",
+          "enum": [
+            "regulatory",
+            "compliance",
+            "capacity",
+            "moq",
+            "lead_time",
+            "evidence_gap",
+            "staleness",
+            "conflict",
+            "reachability",
+            "commercial",
+            "other"
+          ],
+          "default": "other"
+        }
+      }
+    },
+    "match_candidate": {
+      "type": "object",
+      "description": "One seller that passed the hard filter and was scored against the RFQ. PRD 12.2 renders it as \"1. Seller A - Match 94/100\" followed by its component lines, risks and evidence.",
+      "additionalProperties": false,
+      "required": [
+        "seller_id",
+        "seller_name",
+        "canonical_domain",
+        "match_score",
+        "base_score",
+        "component_scores",
+        "weighted_contributions",
+        "hard_filter",
+        "unknown_penalty_applied",
+        "rerank",
+        "rationale",
+        "risks",
+        "confidence",
+        "evidence_ids",
+        "company_type",
+        "oem_odm",
+        "missing"
+      ],
+      "properties": {
+        "seller_id": {
+          "type": "string",
+          "description": "seller_id of the matched seller (seller.schema.json).",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "seller_name": {
+          "type": "string",
+          "description": "company_name copied from the seller record, for rendering without a second lookup.",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "canonical_domain": {
+          "description": "Copied from the seller record. Also the secondary sort key for deterministic ordering.",
+          "$ref": "#/$defs/canonical_domain"
+        },
+        "website": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://[^\\s]+$",
+          "description": "Display carry-over, copied by value from the seller record at match time (BUILD-CONTRACT 6.3). Never feeds the match arithmetic.",
+          "maxLength": 2048
+        },
+        "company_type": {
+          "type": "string",
+          "description": "Display carry-over from the seller record. Required by the BUILD-CONTRACT 10.3 `Type:` line (company_type_display, rendered per 10.2). Never feeds the match arithmetic.",
+          "enum": [
+            "manufacturer",
+            "brand",
+            "oem_odm",
+            "distributor",
+            "other",
+            "unknown"
+          ]
+        },
+        "oem_odm": {
+          "description": "Display carry-over from the seller record. Only company_type_display reads it (it appends \" / OEM-ODM\"); the model_fit arithmetic reads the seller document, never this copy.",
+          "oneOf": [
+            { "type": "boolean" },
+            { "const": "unknown" }
+          ]
+        },
+        "contact_channels": {
+          "type": "array",
+          "description": "Display carry-over from the seller record. Required by the BUILD-CONTRACT 10.3 `Contact:` line (primary_contact_display, ranked per B-RE1). Company-level channels only (INV-31). Absent = unknown; present-and-empty = verified none.",
+          "items": { "$ref": "#/$defs/contact_channel" },
+          "maxItems": 20
+        },
+        "rank": {
+          "type": "integer",
+          "description": "1-based display rank. When present it must equal this item's index in results plus one.",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "match_score": {
+          "description": "PRD 6.4.2 final score, integer 0..100: round_half_up(base_score_raw) + rerank.delta, clamped to 0..100. Korean gloss: 최종 매칭 점수.",
+          "$ref": "#/$defs/score_0_100"
+        },
+        "base_score": {
+          "description": "The deterministic weighted score BEFORE the semantic rerank, integer 0..100. Stored separately so the deterministic component and the AI explanation stay separable (PRD 13.2) and so PRD 14 Determinism is testable.",
+          "$ref": "#/$defs/score_0_100"
+        },
+        "component_scores": { "$ref": "#/$defs/component_scores" },
+        "weighted_contributions": { "$ref": "#/$defs/weighted_contributions" },
+        "component_details": {
+          "type": "array",
+          "description": "Per-criterion audit trail behind component_scores, emitted by score_match.py.",
+          "items": { "$ref": "#/$defs/dimension_detail" },
+          "maxItems": 40
+        },
+        "hard_filter": { "$ref": "#/$defs/hard_filter_result" },
+        "unknown_penalty_applied": {
+          "type": "array",
+          "description": "Every criterion that took the neutral-base penalty instead of a zero (PRD 6.4.4, test T04). When its length exceeds scoring.config.json unknown.max_unknown_dimensions_before_flag, the candidate must also carry a risk_item of category \"evidence_gap\".",
+          "items": { "$ref": "#/$defs/unknown_penalty" },
+          "maxItems": 40
+        },
+        "rerank": { "$ref": "#/$defs/rerank_result" },
+        "rationale": {
+          "type": "array",
+          "description": "Concrete fit reasons. PRD 15.3: at least two entries on any candidate whose hard_filter.passed is true.",
+          "items": { "$ref": "#/$defs/rationale_item" },
+          "maxItems": 20
+        },
+        "risks": {
+          "type": "array",
+          "description": "Caveats for the reviewer. May be empty when nothing material is unverified.",
+          "items": { "$ref": "#/$defs/risk_item" },
+          "maxItems": 20
+        },
+        "confidence": { "$ref": "#/$defs/confidence_value" },
+        "evidence_ids": {
+          "description": "Union of every evidence_id cited by this candidate's rationale, risks and rerank, rendered as the PRD 12.2 \"Evidence: ...\" line.",
+          "$ref": "#/$defs/evidence_id_list"
+        },
+        "qualified": {
+          "type": "boolean",
+          "description": "match_score >= threshold.value. Candidates below the threshold may still be returned when the operator asked for a fixed top-N; this flag keeps the distinction visible."
+        },
+        "seller_qualification_score": {
+          "description": "The seller's own standalone qualification score (PRD 6.3), copied for context. Never mixed into match_score.",
+          "$ref": "#/$defs/score_0_100"
+        },
+        "status": { "$ref": "#/$defs/entity_status" },
+        "missing": {
+          "type": "array",
+          "description": "Human-readable labels of material facts still unknown for this seller, rendered as \"Missing:\" / \"확인 필요\". Derived from unknown_penalty_applied.",
+          "items": { "type": "string", "maxLength": 200 },
+          "maxItems": 40
+        },
+        "notes": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 1000 },
+          "maxItems": 20
+        },
+        "extensions": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "allOf": [
+        {
+          "$comment": "PRD 15.3: a candidate that cleared the hard filter must justify itself with at least two concrete reasons.",
+          "if": {
+            "required": ["hard_filter"],
+            "properties": {
+              "hard_filter": {
+                "required": ["passed"],
+                "properties": { "passed": { "const": true } }
+              }
+            }
+          },
+          "then": {
+            "required": ["rationale"],
+            "properties": { "rationale": { "minItems": 2 } }
+          }
+        }
+      ]
+    },
+    "excluded_candidate": {
+      "type": "object",
+      "description": "One seller removed at the hard-filter stage. Rendered as the PRD 12.2 \"Excluded\" bullet: \"- Seller X: MOQ minimum 10,000\". Excluded sellers are never silently dropped (PRD 15.3).",
+      "additionalProperties": false,
+      "required": [
+        "seller_id",
+        "seller_name",
+        "canonical_domain",
+        "reason_summary",
+        "failed_rules"
+      ],
+      "properties": {
+        "seller_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "seller_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "canonical_domain": { "$ref": "#/$defs/canonical_domain" },
+        "website": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://[^\\s]+$",
+          "maxLength": 2048
+        },
+        "reason_summary": {
+          "type": "string",
+          "description": "The single renderable line for the Excluded block, normally the first failed rule's reason, e.g. \"MOQ minimum 10,000\". Korean gloss: 제외 사유 요약.",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "failed_rules": {
+          "type": "array",
+          "description": "Every hard-filter rule this seller failed, with observed vs required values. At least one.",
+          "items": { "$ref": "#/$defs/failed_rule" },
+          "minItems": 1,
+          "maxItems": 20
+        },
+        "partial_component_scores": {
+          "description": "Component scores computed before exclusion, when the run scored first and filtered second. Optional and advisory only: an excluded seller has no match_score.",
+          "$ref": "#/$defs/component_scores"
+        },
+        "unknown_penalty_applied": {
+          "type": "array",
+          "description": "Unknown criteria observed on this seller, so an operator can see that exclusion was driven by a KNOWN violating value and not by missing data (PRD test T04).",
+          "items": { "$ref": "#/$defs/unknown_penalty" },
+          "maxItems": 40
+        },
+        "evidence_ids": { "$ref": "#/$defs/evidence_id_list" },
+        "seller_qualification_score": { "$ref": "#/$defs/score_0_100" },
+        "notes": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 1000 },
+          "maxItems": 20
+        }
+      }
+    },
+    "relaxation_suggestion": {
+      "type": "object",
+      "description": "A concrete, operator-actionable way to widen a no-match run. PRD test T10 requires the empty result to be explained, not hidden; suggestions are derived from the hard-filter rules that rejected the most sellers.",
+      "additionalProperties": false,
+      "required": ["constraint", "statement"],
+      "properties": {
+        "constraint": {
+          "type": "string",
+          "description": "Dotted RFQ field path that would have to move, e.g. \"rfq.max_moq\" or \"rfq.required_certifications\".",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "statement": {
+          "type": "string",
+          "description": "The renderable suggestion line, e.g. \"Raise max_moq from 3,000 to 5,000 to admit 4 more sellers.\" Korean gloss: 조건 완화 제안 문장.",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "rule_id": {
+          "type": "string",
+          "description": "The hard-filter rule this relaxation would disarm.",
+          "pattern": "^HF-[0-9]{2}$"
+        },
+        "current_value": {
+          "type": ["string", "number", "boolean", "array", "object", "null"]
+        },
+        "suggested_value": {
+          "type": ["string", "number", "boolean", "array", "object", "null"]
+        },
+        "expected_additional_candidates": {
+          "type": "integer",
+          "description": "How many sellers already seen in this run would pass if the constraint moved as suggested. Counted, never estimated.",
+          "minimum": 0
+        }
+      }
+    },
+    "no_match_result": {
+      "type": "object",
+      "description": "PRD test T10. Always present. is_no_match false is the normal case and means results carries at least one candidate. is_no_match true means the run deliberately returns zero qualified sellers WITH a reason, so an empty list can never be mistaken for a failed run.",
+      "additionalProperties": false,
+      "required": ["is_no_match", "reason", "relaxation_suggestions"],
+      "properties": {
+        "is_no_match": {
+          "type": "boolean",
+          "description": "True when no seller both passed the hard filter and reached the threshold."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why nothing qualified, naming the binding constraint, e.g. \"0 of 18 sellers hold the required ISO22716 certification on a verified certification page.\" Empty string is allowed only when is_no_match is false. Korean gloss: 적격 매칭 없음 사유.",
+          "maxLength": 1000
+        },
+        "relaxation_suggestions": {
+          "type": "array",
+          "description": "Ordered, most promising first. May be empty when no relaxation would help.",
+          "items": { "$ref": "#/$defs/relaxation_suggestion" },
+          "maxItems": 20
+        },
+        "binding_rule_ids": {
+          "type": "array",
+          "description": "Hard-filter rules that rejected the most sellers in this run, most frequent first.",
+          "items": { "type": "string", "pattern": "^HF-[0-9]{2}$" },
+          "uniqueItems": true,
+          "maxItems": 20
+        },
+        "nearest_misses": {
+          "type": "array",
+          "description": "seller_id values that came closest, so the operator has somewhere to look. Advisory only; these sellers stay out of results.",
+          "items": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "uniqueItems": true,
+          "maxItems": 20
+        }
+      }
+    },
+    "match_summary": {
+      "type": "object",
+      "description": "Counters for the PRD 12.1/12.2 Summary block. candidates_considered >= passed_hard_filter >= returned must hold.",
+      "additionalProperties": false,
+      "required": [
+        "candidates_considered",
+        "passed_hard_filter",
+        "returned",
+        "threshold_used",
+        "threshold_mode"
+      ],
+      "properties": {
+        "candidates_considered": {
+          "type": "integer",
+          "description": "Sellers fed into the matching run, after entity dedupe (PRD DISC-04, test T06).",
+          "minimum": 0
+        },
+        "passed_hard_filter": {
+          "type": "integer",
+          "description": "Sellers that cleared PRD 6.4.1 stage 1.",
+          "minimum": 0
+        },
+        "returned": {
+          "type": "integer",
+          "description": "Length of results. Equals 0 when no_match.is_no_match is true.",
+          "minimum": 0
+        },
+        "excluded_count": {
+          "type": "integer",
+          "description": "Length of excluded. candidates_considered - passed_hard_filter.",
+          "minimum": 0
+        },
+        "qualified_count": {
+          "type": "integer",
+          "description": "Sellers in results whose match_score >= threshold_used.",
+          "minimum": 0
+        },
+        "threshold_used": {
+          "description": "The effective numeric cut-off applied in this run (default 70).",
+          "$ref": "#/$defs/score_0_100"
+        },
+        "threshold_mode": { "$ref": "#/$defs/threshold_mode" },
+        "top_n_requested": {
+          "type": "integer",
+          "description": "The `top` argument the operator passed, e.g. 10 in /kbeauty-match rfq=\"#134\" top=10.",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "reranked_count": {
+          "type": "integer",
+          "description": "How many candidates had rerank.applied true.",
+          "minimum": 0
+        },
+        "unknown_flagged_count": {
+          "type": "integer",
+          "description": "Candidates whose unknown_penalty_applied length exceeded unknown.max_unknown_dimensions_before_flag.",
+          "minimum": 0
+        },
+        "score_range": {
+          "type": "object",
+          "description": "min/max match_score across results, for percentile-mode transparency.",
+          "additionalProperties": false,
+          "required": ["min", "max"],
+          "properties": {
+            "min": { "$ref": "#/$defs/score_0_100" },
+            "max": { "$ref": "#/$defs/score_0_100" }
+          }
+        }
+      }
+    },
+    "contact_channel": {
+      "type": "object",
+      "description": "One official, company-level contact channel (BUILD-CONTRACT.md 3.6). Named individuals' addresses, direct-dial numbers, personal social handles and any pattern-guessed address MUST NOT be stored here or anywhere else (PRD 11.3, INV-11, INV-31). Shape is shared with buyer.schema.json and seller.schema.json.",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Channel type, aligned with the B-RE1 signal keys in scoring.config.json. Korean gloss: 연락 채널 유형.",
+          "enum": [
+            "partnership_form",
+            "wholesale_form",
+            "form",
+            "contact_page",
+            "corporate_email",
+            "phone",
+            "linkedin",
+            "messenger",
+            "other"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "description": "An absolute URL for the form/page/profile types, a role address on the company domain for corporate_email, or the company switchboard number as published for phone.",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "label": {
+          "type": "string",
+          "description": "Optional display label as printed by the company, e.g. \"Brand Partnership\". Never a person's name or job title.",
+          "maxLength": 200
+        },
+        "evidence_ids": {
+          "$ref": "#/$defs/evidence_id_list"
+        }
+      }
+    },
+    "evidence_ref": {
+      "type": "object",
+      "description": "Compact, by-value copy of an evidence item so this document is self-contained for review. The authoritative full record stays in the seller/RFQ document's `evidence` array (evidence.schema.json).",
+      "additionalProperties": false,
+      "required": ["evidence_id", "claim", "source_url", "source_type", "observed_at"],
+      "properties": {
+        "evidence_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "claim": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "source_url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://[^\\s]+$",
+          "maxLength": 2048
+        },
+        "source_type": {
+          "type": "string",
+          "enum": [
+            "official_site",
+            "official_directory",
+            "trade_show",
+            "third_party",
+            "social",
+            "internal_record"
+          ]
+        },
+        "source_tier": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "is_official": { "type": "boolean" },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+        },
+        "source_date": {
+          "oneOf": [
+            {
+              "type": "string",
+              "format": "date",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+            },
+            { "const": "unknown" }
+          ]
+        },
+        "owner_id": {
+          "type": "string",
+          "description": "seller_id or rfq_id of the document this evidence item belongs to, so the id namespace is unambiguous.",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "stale": { "type": "boolean", "default": false }
+      }
+    }
+  }
+}
