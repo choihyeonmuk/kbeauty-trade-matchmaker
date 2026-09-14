@@ -1,6 +1,6 @@
 # K-Beauty Trade Matchmaker
 
-[English README](README.md) · [프로젝트 페이지](https://choihyeonmuk.github.io/kbeauty-trade-matchmaker/)
+[English README](README.md) · [프로젝트 페이지](https://choihyeonmuk.github.io/kbeauty-trade-matchmaker/) · [LinkedIn으로 문의](https://www.linkedin.com/in/hm-choi)
 
 **해외 K-Beauty Buyer와 한국 Seller를 공개 정보 기반으로 발굴·검증·점수화·매칭하고, 사람이 검토할 아웃리치 초안까지만 만드는 재사용형 Agent Skill.**
 
@@ -137,6 +137,16 @@ kbeauty-trade-matchmaker/
 
 ## 6. 설치
 
+### 6.0 claude.ai에서 쓰기 — 터미널 없이
+
+1. 최신 릴리스에서 [`kbeauty-trade-matchmaker.zip`](https://github.com/choihyeonmuk/kbeauty-trade-matchmaker/releases/latest/download/kbeauty-trade-matchmaker.zip)을 받는다. 압축은 풀지 않는다.
+2. claude.ai **설정 → 기능**에서 *클라우드 코드 실행 및 파일 생성*이 켜져 있는지 확인하고, **설정 → 사용자 지정 → 스킬 → 추가 → 스킬 업로드**로 ZIP을 올린 뒤 저장한다.
+3. 새 채팅에서 웹 검색을 켜고 평소 말투로 요청한다. 예: "UAE에서 선크림을 취급하는 K-뷰티 유통사 후보 5곳을 찾아줘". 후보 5곳 기준 10–15분 걸린다.
+
+2026-09-14 유료 플랜에서 끝까지 동작을 확인했다 — 스킬 이름을 말하지 않아도 호출됐고, 스킬 실행 중 웹 검색과 페이지 조회가 됐으며, 점수 스크립트가 샌드박스에서 실행됐다. **무료 플랜의 사용량으로 한 번의 조사가 끝까지 되는지는 아직 확인하지 못했다.** 화면별 안내는 [한국어 설치 가이드](https://choihyeonmuk.github.io/kbeauty-trade-matchmaker/install-ko.html)에 있다. 막히면 [LinkedIn으로 문의](https://www.linkedin.com/in/hm-choi).
+
+### 개발자용 설치 스크립트
+
 `install.sh`는 POSIX `sh` 스크립트이며 네트워크도 sudo도 쓰지 않고, 선택한 대상 디렉터리 바깥에는 아무것도 쓰지 않는다. **먼저 `--dry-run`으로 계획을 확인하는 것을 권한다.**
 
 ```bash
@@ -227,7 +237,7 @@ path = "/path/to/kbeauty-trade-matchmaker/SKILL.md"
 enabled = false
 ```
 
-**ChatGPT 표면 주의.** 단독 스킬 폴더는 **ChatGPT 데스크톱 앱, Codex CLI, IDE 확장**에서만 보인다. ChatGPT **웹·모바일**의 Chat/Work에서 쓰려면 스킬을 **플러그인으로 패키징**해야 한다. 이 패키지는 v0.1.0에서 단독 폴더로만 배포하며 플러그인 패키징은 범위 밖이다.
+**ChatGPT 표면 주의.** 단독 스킬 폴더는 **ChatGPT 데스크톱 앱, Codex CLI, IDE 확장**에서만 보인다. ChatGPT **웹·모바일**의 Chat/Work에서 쓰려면 스킬을 **플러그인으로 패키징**해야 한다. 이 패키지는 v0.1.1에서 단독 폴더로만 배포하며 플러그인 패키징은 범위 밖이다.
 
 > **2026-09-13 기준 공식 문서.** 설치 전에 재확인하고, 아래와 어긋나면 **공식 문서가 맞다.**
 > - Agent Skills 오픈 표준(규범): https://agentskills.io/specification
@@ -368,7 +378,7 @@ PRD가 열어 둔 여섯 가지다. 각 항목은 **아직 사람이 결정할 �
 
 | 버전 | 현재 값 | 무엇을 설명하나 | 어디에 사는가 |
 |---|---|---|---|
-| `skill_version` | `0.1.0` | 패키지 자체 — 프롬프트, references, scripts, templates, tests | `SKILL.md` 본문, 이 README, `match-result.skill_version` |
+| `skill_version` | `0.1.1` | 패키지 자체 — 프롬프트, references, scripts, templates, tests | `SKILL.md` 본문, 이 README, `match-result.skill_version` |
 | `schema_version` | `0.1.0` | **모양** 계약 — 필드 이름, enum, required 목록 | 모든 문서, `schemas/*.json` |
 | `score_version` | `kbtm-score-0.1.0` | **루브릭** — 가중치, criterion, 신호, 페널티, 임계값, 하드 필터, evidence 함수 | `schemas/scoring.config.json`, 점수가 매겨진 모든 문서 |
 
@@ -376,7 +386,7 @@ PRD가 열어 둔 여섯 가지다. 각 항목은 **아직 사람이 결정할 �
 
 ```bash
 python3 scripts/validate_output.py --version
-# validate_output.py skill_version=0.1.0 schema_version=0.1.0 score_version=kbtm-score-0.1.0
+# validate_output.py skill_version=0.1.1 schema_version=0.1.0 score_version=kbtm-score-0.1.0
 ```
 
 루브릭이 바뀌면 저장된 점수는 **정의상 낡은 것**이 된다. 원본 레코드를 그대로 보관하기 때문에(evidence·쿼리 표면·`as_of`를 함께 저장한다) 웹을 다시 긁지 않고 재계산할 수 있다. 과거 결과를 **재현**하려면 원래의 `--as-of`를, 최신 상태로 **갱신**하려면 새 `--as-of`를 넘긴다. 서로 다른 `score_version`의 결과를 한 목록에서 비교하거나 순위를 매기는 것은 금지이며, `validate_output.py`가 이를 잡아낸다.

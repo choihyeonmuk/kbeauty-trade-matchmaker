@@ -252,7 +252,7 @@
     },
     "missing": {
       "type": "array",
-      "description": "Human-readable labels of material facts still unknown; rendered as \"Missing:\" / \"확인 필요\".",
+      "description": "Human-readable labels of the facts still to confirm; rendered as \"Missing:\" / \"확인 필요\". The de-duplicated unknown_penalty_applied labels first, then the scoring.config.json verification_gaps that apply to this record; BUILD-CONTRACT.md 5.1.",
       "items": { "type": "string", "maxLength": 200 },
       "maxItems": 40
     },

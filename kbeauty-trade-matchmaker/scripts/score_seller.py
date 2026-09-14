@@ -1104,6 +1104,13 @@ def _score_record(record, config, as_of, query, cond, schema, skipped_rules):
             % ("; ".join(missing),)
         )
 
+    # Verification gaps follow the penalty labels and the flag note above, which names only
+    # unpublished scoring inputs (SCORING-CONTRACT 0.4, scoring.config.json verification_gaps).
+    for label in _common.verification_gaps(config, ENTITY, record, penalties,
+                                           ctx.categories, _query_categories(ctx.query)):
+        if label not in missing:
+            missing.append(label)
+
     confidence = _confidence(ctx, dimension_scores.get("evidence_quality", 0))
 
     notes = [note for note in (record.get("notes") or []) if isinstance(note, str)]

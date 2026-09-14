@@ -257,7 +257,7 @@
     },
     "missing": {
       "type": "array",
-      "description": "Human-readable labels of the material facts still unknown, rendered on the \"Missing:\" line of PRD 12.1 output. Derived from unknown_penalty_applied; BUILD-CONTRACT.md 10.1.",
+      "description": "Human-readable labels of the facts still to confirm, rendered on the \"Missing:\" / \"확인 필요\" line of PRD 12.1 output. The de-duplicated unknown_penalty_applied labels first, then the scoring.config.json verification_gaps that apply to this record; BUILD-CONTRACT.md 5.1, 10.1.",
       "items": { "type": "string", "maxLength": 200 },
       "maxItems": 40
     },

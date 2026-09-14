@@ -4,9 +4,9 @@
 
 The same folder runs unmodified in **Claude Code** and **OpenAI Codex**. Python is **standard library only** (3.9–3.14); there is nothing to `pip install`.
 
-[Project page](https://choihyeonmuk.github.io/kbeauty-trade-matchmaker/) · [한국어 README](README.ko.md)
+[Project page](https://choihyeonmuk.github.io/kbeauty-trade-matchmaker/) · [한국어 README](README.ko.md) · [Contact on LinkedIn](https://www.linkedin.com/in/hm-choi)
 
-> **Status: v0.1.0.** The pipeline is tested against 175 cases on fictional fixtures and was trialled once against the live web. The scoring rubric is **not yet validated against real outcomes**: scores are reproducible and traceable, not yet known to be predictive. RFQ Matching and Outreach Draft have not been run on live data. Read [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) before trusting a score.
+> **Status: v0.1.1.** The pipeline is tested against 179 cases on fictional fixtures and was trialled once against the live web. The scoring rubric is **not yet validated against real outcomes**: scores are reproducible and traceable, not yet known to be predictive. RFQ Matching and Outreach Draft have not been run on live data. Read [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) before trusting a score.
 
 ---
 
@@ -212,6 +212,16 @@ Storage is minimal: the claim, URL, observation time and a short quote; never wh
 
 ## Installation
 
+### claude.ai, no terminal
+
+1. Download [`kbeauty-trade-matchmaker.zip`](https://github.com/choihyeonmuk/kbeauty-trade-matchmaker/releases/latest/download/kbeauty-trade-matchmaker.zip) from the latest release. Keep it zipped.
+2. In claude.ai, open Settings → Capabilities and make sure code execution is on. Then open Customize → Skills, choose Upload skill, drop in the ZIP and save.
+3. Turn on web search in a new chat and ask in plain language, for example "Find 5 K-Beauty distributors in the UAE that carry sunscreen." Five companies take about 10 to 15 minutes.
+
+Verified end to end on a paid plan on 2026-09-14: the skill was invoked without being named, ran web search and page fetches inside the skill, and executed the scoring scripts in the sandbox. Whether a free plan has enough usage for a full run has not been checked. Korean step-by-step guide: [https://choihyeonmuk.github.io/kbeauty-trade-matchmaker/install-ko.html](https://choihyeonmuk.github.io/kbeauty-trade-matchmaker/install-ko.html). Stuck? [Message me on LinkedIn](https://www.linkedin.com/in/hm-choi).
+
+### Claude Code and Codex installer
+
 `install.sh` is POSIX `sh`, uses no network and no sudo, and writes nothing outside the target directory. **Run `--dry-run` first.**
 
 ```bash
@@ -257,7 +267,7 @@ sh kbeauty-trade-matchmaker/install.sh --runtime codex --project /path/to/your-r
 
 - Codex scans `.agents/skills` in every directory from the working directory up to the repository root. `~/.codex/skills` is deprecated but still supported; use `~/.agents/skills` for new installs.
 - Invoke explicitly with `$kbeauty-trade-matchmaker` or `/skills` in the CLI and IDE extension, or `@` in ChatGPT. Implicit invocation is decided by the `description`.
-- A standalone skill folder is visible in the **ChatGPT desktop app, Codex CLI and IDE extension** only. ChatGPT **web and mobile** need the skill packaged as a plugin, which v0.1.0 does not include.
+- A standalone skill folder is visible in the **ChatGPT desktop app, Codex CLI and IDE extension** only. ChatGPT **web and mobile** need the skill packaged as a plugin, which v0.1.1 does not include.
 - `AGENTS.md` is not a way to install skills. It is a separate Codex feature for always-on repository instructions.
 
 > **Checked against official documentation on 2026-09-13.** If anything here disagrees with the current docs, the docs are right.
@@ -351,7 +361,7 @@ Six questions remain open. Each has a default in this implementation, and every 
 
 | Version | Value | Describes | Lives in |
 |---|---|---|---|
-| `skill_version` | `0.1.0` | The package: prompts, references, scripts, templates, tests | `SKILL.md` body, `match-result.skill_version` |
+| `skill_version` | `0.1.1` | The package: prompts, references, scripts, templates, tests | `SKILL.md` body, `match-result.skill_version` |
 | `schema_version` | `0.1.0` | The shape contract: field names, enums, required lists | Every document, `schemas/*.json` |
 | `score_version` | `kbtm-score-0.1.0` | The rubric: weights, criteria, signals, penalties, thresholds, hard filters | `scoring.config.json`, every scored document |
 
