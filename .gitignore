@@ -39,6 +39,7 @@ tradewith-data/
 
 # Agent/tooling runtime state (not part of the skill package)
 .omc/
+.wrangler/
 
 # Scratch output from manual runs
 out/

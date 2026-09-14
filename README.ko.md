@@ -1,6 +1,6 @@
 # K-Beauty Trade Matchmaker
 
-[English README](README.md) · [프로젝트 페이지](https://choihyeonmuk.github.io/kbeauty-trade-matchmaker/) · [LinkedIn으로 문의](https://www.linkedin.com/in/hm-choi)
+[English README](README.md) · [프로젝트 페이지](https://kbeauty.tradewith.kr/) · [LinkedIn으로 문의](https://www.linkedin.com/in/hm-choi)
 
 **해외 K-Beauty Buyer와 한국 Seller를 공개 정보 기반으로 발굴·검증·점수화·매칭하고, 사람이 검토할 아웃리치 초안까지만 만드는 재사용형 Agent Skill.**
 
@@ -143,7 +143,7 @@ kbeauty-trade-matchmaker/
 2. claude.ai **설정 → 기능**에서 *클라우드 코드 실행 및 파일 생성*이 켜져 있는지 확인하고, **설정 → 사용자 지정 → 스킬 → 추가 → 스킬 업로드**로 ZIP을 올린 뒤 저장한다.
 3. 새 채팅에서 웹 검색을 켜고 평소 말투로 요청한다. 예: "UAE에서 선크림을 취급하는 K-뷰티 유통사 후보 5곳을 찾아줘". 후보 5곳 기준 10–15분 걸린다.
 
-2026-09-14 유료 플랜에서 끝까지 동작을 확인했다 — 스킬 이름을 말하지 않아도 호출됐고, 스킬 실행 중 웹 검색과 페이지 조회가 됐으며, 점수 스크립트가 샌드박스에서 실행됐다. **무료 플랜의 사용량으로 한 번의 조사가 끝까지 되는지는 아직 확인하지 못했다.** 화면별 안내는 [한국어 설치 가이드](https://choihyeonmuk.github.io/kbeauty-trade-matchmaker/install-ko.html)에 있다. 막히면 [LinkedIn으로 문의](https://www.linkedin.com/in/hm-choi).
+2026-09-14 유료 플랜에서 끝까지 동작을 확인했다 — 스킬 이름을 말하지 않아도 호출됐고, 스킬 실행 중 웹 검색과 페이지 조회가 됐으며, 점수 스크립트가 샌드박스에서 실행됐다. **무료 플랜의 사용량으로 한 번의 조사가 끝까지 되는지는 아직 확인하지 못했다.** 화면별 안내는 [한국어 설치 가이드](https://kbeauty.tradewith.kr/install-ko.html)에 있다. 막히면 [LinkedIn으로 문의](https://www.linkedin.com/in/hm-choi).
 
 ### 개발자용 설치 스크립트
 

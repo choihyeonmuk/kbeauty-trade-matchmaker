@@ -4,7 +4,7 @@
 
 The same folder runs unmodified in **Claude Code** and **OpenAI Codex**. Python is **standard library only** (3.9–3.14); there is nothing to `pip install`.
 
-[Project page](https://choihyeonmuk.github.io/kbeauty-trade-matchmaker/) · [한국어 README](README.ko.md) · [Contact on LinkedIn](https://www.linkedin.com/in/hm-choi)
+[Project page](https://kbeauty.tradewith.kr/) · [한국어 README](README.ko.md) · [Contact on LinkedIn](https://www.linkedin.com/in/hm-choi)
 
 > **Status: v0.1.1.** The pipeline is tested against 179 cases on fictional fixtures and was trialled once against the live web. The scoring rubric is **not yet validated against real outcomes**: scores are reproducible and traceable, not yet known to be predictive. RFQ Matching and Outreach Draft have not been run on live data. Read [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) before trusting a score.
 
@@ -218,7 +218,7 @@ Storage is minimal: the claim, URL, observation time and a short quote; never wh
 2. In claude.ai, open Settings → Capabilities and make sure code execution is on. Then open Customize → Skills, choose Upload skill, drop in the ZIP and save.
 3. Turn on web search in a new chat and ask in plain language, for example "Find 5 K-Beauty distributors in the UAE that carry sunscreen." Five companies take about 10 to 15 minutes.
 
-Verified end to end on a paid plan on 2026-09-14: the skill was invoked without being named, ran web search and page fetches inside the skill, and executed the scoring scripts in the sandbox. Whether a free plan has enough usage for a full run has not been checked. Korean step-by-step guide: [https://choihyeonmuk.github.io/kbeauty-trade-matchmaker/install-ko.html](https://choihyeonmuk.github.io/kbeauty-trade-matchmaker/install-ko.html). Stuck? [Message me on LinkedIn](https://www.linkedin.com/in/hm-choi).
+Verified end to end on a paid plan on 2026-09-14: the skill was invoked without being named, ran web search and page fetches inside the skill, and executed the scoring scripts in the sandbox. Whether a free plan has enough usage for a full run has not been checked. Korean step-by-step guide: [https://kbeauty.tradewith.kr/install-ko.html](https://kbeauty.tradewith.kr/install-ko.html). Stuck? [Message me on LinkedIn](https://www.linkedin.com/in/hm-choi).
 
 ### Claude Code and Codex installer
 
