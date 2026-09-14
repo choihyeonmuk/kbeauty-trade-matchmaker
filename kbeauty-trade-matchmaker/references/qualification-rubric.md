@@ -165,7 +165,7 @@ dimension.
 (`unknown.partial_unknown_behaviour = "omit_signal_and_record_missing"`), the criterion stays
 `scored`, the signals that need the unknown input simply do not fire, **no** `unknown_penalty_applied[]`
 entry is emitted, and the unknown field is appended to the record's `notes[]` — **never** to
-`missing[]`, which is derived mechanically from `unknown_penalty_applied[]`.
+`missing[]`, which is derived mechanically from `unknown_penalty_applied[]` labels followed by the configured `verification_gaps` (an unpublished minimum order, or a requested category evidenced only at a broader level).
 
 **Flagging.** When a record's `unknown_penalty_applied[]` count exceeds the entity's limit, the record
 additionally carries an `evidence_gap` risk/note and is rendered with a **확인 필요 / needs
@@ -1322,13 +1322,15 @@ Rendered (see `references/matching-rules.md` and the discovery output contract):
    Type: Distributor / Wholesaler
    Why: carries 6 named Korean brands + open call for suppliers dated 2026-07-15 + operates its own distributor network
    Contact: Partnership Form — https://gulfglow.example/brand-partnership
-   Missing: none
+   Missing: Published minimum order
 ```
 
-`Missing: none` is load-bearing: **no** criterion took the unknown path, so
-`unknown_penalty_applied` is empty and `missing[]`, derived from it, is empty too. The one unknown
-*source date* is an evidence-quality fact, already priced at ×0.92 inside `evidence_quality`; it is
-not a missing material claim.
+`Missing: Published minimum order` is load-bearing: **no** criterion took the unknown path, so
+`unknown_penalty_applied` is empty and no penalty label reaches `missing[]`; the one line comes from
+`verification_gaps` (SCORING-CONTRACT §0.4), because the record publishes no `buyer_moq` and no
+penalty entry already names `buyer.buyer_moq`. It changes no score. The one unknown *source date* is
+an evidence-quality fact, already priced at ×0.92 inside `evidence_quality`; it is not a missing
+material claim.
 
 ### 4.2 Seller — Korean sunscreen manufacturer, scored against RFQ #134
 
@@ -1377,7 +1379,7 @@ Before you accept a scored record, confirm every line:
 - [ ] Every non-`"unknown"` material claim has at least one evidence item whose `claim` is that key.
 - [ ] Nothing absent was written as `false`, `0`, `""`, `null` or `"N/A"`.
 - [ ] Every criterion that took the unknown path has a matching `unknown_penalty_applied[]` entry, and its label appears in `missing[]`.
-- [ ] No `missing[]` line exists without a backing penalty entry (a **partial** unknown belongs in `notes[]`).
+- [ ] Every `missing[]` line is either a penalty label or a configured `verification_gaps` label (a **partial** unknown not named there belongs in `notes[]`).
 - [ ] Every `inapplicable` criterion appears in `dimension_details[]` with `state: "inapplicable"` and `earned_points: 0`, so the renormalisation is auditable.
 - [ ] `qualification_score` reproduces from the recorded `dimension_scores` and the config weights.
 - [ ] `confidence` did not read the qualification score, and a stale record is rendered **LOW** even when its score is high.

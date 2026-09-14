@@ -52,7 +52,9 @@
         "evidence_quality": 94
       },
       "unknown_criteria": [],
-      "missing": []
+      "missing": [
+        "Published minimum order"
+      ]
     },
     "BUY-dunesourcing-example": {
       "qualification_score": 84,
@@ -67,7 +69,9 @@
         "evidence_quality": 100
       },
       "unknown_criteria": [],
-      "missing": []
+      "missing": [
+        "Published minimum order"
+      ]
     },
     "BUY-marinaretail-example": {
       "qualification_score": 53,
@@ -87,7 +91,8 @@
       ],
       "missing": [
         "Procurement / buying function",
-        "Public sourcing signals"
+        "Public sourcing signals",
+        "Published minimum order"
       ]
     },
     "BUY-desertbulk-example": {
@@ -106,7 +111,8 @@
         "B-SI2"
       ],
       "missing": [
-        "Public sourcing signals"
+        "Public sourcing signals",
+        "Published minimum order"
       ]
     },
     "BUY-luminaglow-example": {
@@ -122,7 +128,9 @@
         "evidence_quality": 91
       },
       "unknown_criteria": [],
-      "missing": []
+      "missing": [
+        "Published minimum order"
+      ]
     },
     "BUY-www-luminaglow-example": {
       "qualification_score": 53,
@@ -144,7 +152,8 @@
       "missing": [
         "Declared sourcing intent",
         "Public sourcing signals",
-        "Recency of the sourcing action"
+        "Recency of the sourcing action",
+        "Published minimum order"
       ]
     },
     "BUY-britsun-example": {
@@ -160,7 +169,9 @@
         "evidence_quality": 100
       },
       "unknown_criteria": [],
-      "missing": []
+      "missing": [
+        "Published minimum order"
+      ]
     },
     "BUY-albionbeautyhall-example": {
       "qualification_score": 43,
@@ -178,7 +189,8 @@
         "B-KF1"
       ],
       "missing": [
-        "Korean product carriage"
+        "Korean product carriage",
+        "Published minimum order"
       ]
     },
     "BUY-palefade-example": {
@@ -194,7 +206,9 @@
         "evidence_quality": 46
       },
       "unknown_criteria": [],
-      "missing": []
+      "missing": [
+        "Published minimum order"
+      ]
     },
     "BUY-northgateimport-example": {
       "qualification_score": 50,
@@ -212,7 +226,8 @@
         "B-SI2"
       ],
       "missing": [
-        "Public sourcing signals"
+        "Public sourcing signals",
+        "Published minimum order"
       ]
     },
     "BUY-pacificglowdist-example": {
@@ -228,7 +243,9 @@
         "evidence_quality": 100
       },
       "unknown_criteria": [],
-      "missing": []
+      "missing": [
+        "Published minimum order"
+      ]
     },
     "BUY-libertybeautysupply-example": {
       "qualification_score": 66,
@@ -243,7 +260,9 @@
         "evidence_quality": 91
       },
       "unknown_criteria": [],
-      "missing": []
+      "missing": [
+        "Published minimum order"
+      ]
     },
     "BUY-cascademarket-example": {
       "qualification_score": 32,
@@ -263,7 +282,8 @@
       ],
       "missing": [
         "Korean product carriage",
-        "Public sourcing signals"
+        "Public sourcing signals",
+        "Published minimum order"
       ]
     },
     "BUY-sakurabeautytrading-example": {
@@ -279,7 +299,9 @@
         "evidence_quality": 95
       },
       "unknown_criteria": [],
-      "missing": []
+      "missing": [
+        "Published minimum order"
+      ]
     },
     "BUY-kantoimport-example": {
       "qualification_score": 36,
@@ -327,7 +349,9 @@
         "evidence_quality": 100
       },
       "unknown_criteria": [],
-      "missing": []
+      "missing": [
+        "Published minimum order"
+      ]
     },
     "BUY-straitswholesale-example": {
       "qualification_score": 52,
@@ -345,7 +369,8 @@
         "B-SI2"
       ],
       "missing": [
-        "Public sourcing signals"
+        "Public sourcing signals",
+        "Published minimum order"
       ]
     },
     "BUY-rheinkosmetik-example": {
@@ -361,7 +386,9 @@
         "evidence_quality": 91
       },
       "unknown_criteria": [],
-      "missing": []
+      "missing": [
+        "Published minimum order"
+      ]
     },
     "BUY-novadrift-example": {
       "qualification_score": 63,
@@ -376,7 +403,9 @@
         "evidence_quality": 87
       },
       "unknown_criteria": [],
-      "missing": []
+      "missing": [
+        "Published minimum order"
+      ]
     }
   },
   "excluded": {

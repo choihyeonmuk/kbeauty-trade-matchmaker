@@ -32,7 +32,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PACKAGE_ROOT = os.path.dirname(SCRIPT_DIR)
 SCHEMA_DIR = os.path.join(PACKAGE_ROOT, "schemas")
 
-SKILL_VERSION = "0.1.0"
+SKILL_VERSION = "0.1.1"
 SCHEMA_VERSION = "0.1.0"
 UNKNOWN = "unknown"
 
@@ -1619,6 +1619,44 @@ def category_relation(a_slugs, b_slugs):
                 if pa == pb or pb in CATEGORY_ADJACENCY.get(pa, frozenset()):
                     best = "adjacent"
     return best
+
+
+def verification_gaps(config, entity, record, penalties, record_categories=None,
+                      query_categories=None):
+    """Labels of the configured verification gaps that apply to one scored record.
+
+    SCORING-CONTRACT 0.4 / scoring.config.json verification_gaps. missing[] carries the
+    penalty labels first and these after them: facts a counterparty needs before first
+    contact that no criterion took the unknown path for. A gap never changes a score,
+    never rejects and never emits an unknown_penalty_applied entry. Returns labels in
+    config order; the caller de-duplicates against the penalty labels.
+    """
+    spec = (config.get("verification_gaps") or {}).get(entity) or []
+    covered = set()
+    for entry in penalties or []:
+        if isinstance(entry, dict):
+            for path in entry.get("unknown_inputs") or []:
+                covered.add(path)
+    labels = []
+    for gap in spec:
+        if not isinstance(gap, dict):
+            continue
+        field = gap.get("field")
+        if field:
+            value = record.get(field) if isinstance(record, dict) else None
+            if (value is None or is_unknown(value)) and "%s.%s" % (entity, field) not in covered:
+                labels.append(gap["label"])
+            continue
+        if gap.get("kind") == "requested_categories":
+            if not query_categories or record_categories is None:
+                continue
+            relation = category_relation(record_categories, query_categories)
+            if relation == "exact":
+                continue
+            base = gap["label_broader"] if relation == "parent" else gap["label_not_evidenced"]
+            requested = ", ".join(slug.replace("_", " ") for slug in query_categories)
+            labels.append("%s: %s" % (base, requested))
+    return labels
 
 
 def normalize_certification(token):

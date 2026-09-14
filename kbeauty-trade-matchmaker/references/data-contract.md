@@ -272,7 +272,7 @@ fields. When a role genuinely matters, record the **role only** (`"export manage
 | `qualified` | boolean | | — | `qualification_score >= the resolved threshold` |
 | `evidence` | array of `evidence` | ✔ | — | embedded by value. **Two distinct states:** evidence present but **no** item with `is_official: true` on a material claim → scored, ranked, rendered with the ` — unverified` marker (PRD 15.1 criterion 3). **No** evidence item on any material claim → `evidence_quality = 0` and the record is routed to `excluded[]` by the DISC-06 bar before scoring |
 | `conflicts` | array of `conflict` | | — | a recorded conflict is a **resolved** one |
-| `missing` | array of string | | — | derived: de-duplicated `label` values of `unknown_penalty_applied[]` in **first-appearance order** |
+| `missing` | array of string | | — | derived: de-duplicated `label` values of `unknown_penalty_applied[]` in **first-appearance order**, then the `verification_gaps` from `scoring.config.json` that apply (an unpublished minimum order, or a requested category evidenced only at a broader level) |
 | `merged_from` | array of string | | — | absorbed `buyer_id` values |
 | `alias_domains` | array of string | | — | other host forms for the same entity (`www.`, IDN/punycode pairs) |
 | `source_query` | object `{country?, product_categories?, keywords?, category_drift?}` | | — | echo of the discovery query. `category_drift` is **per candidate**, set `true` only on candidates first seen after a widening pass, and is treated as `false` when absent — never as unknown |

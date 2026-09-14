@@ -1742,7 +1742,11 @@ def phase_field_regressions(report, allow_missing):
         for name in ("FR-01 no --query degrades loudly",
                      "FR-02 canonical_domain never merges shared hosting",
                      "FR-03 a bare GMP is never promoted to CGMP",
-                     "FR-04 zero K-Beauty evidence cannot qualify"):
+                     "FR-04 zero K-Beauty evidence cannot qualify",
+                     "FR-05 an unpublished minimum order reaches missing[]",
+                     "FR-06 requested category evidence reaches missing[]",
+                     "FR-07 seller minimum order reaches missing[]",
+                     "FR-08 Korean labels are complete"):
             (report.skip if allow_missing else report.fail)("field regression: %s" % name, note)
         return
 
@@ -2318,6 +2322,120 @@ def phase_field_regressions(report, allow_missing):
     report.check("field regression: FR-04c declaring the K-Beauty dimension unknown is not a "
                  "way past the vertical gate", not problems, "\n".join(problems[:10]))
 
+
+    # -- FR-05 .. FR-08 --------------------------------------------------------
+    # Live claude.ai run (2026-09-14): five UAE buyers rendered "Missing: none" although
+    # three published no minimum order and one gated its catalogue behind a login.
+    # missing[] carried only penalty labels, and neither fact takes the unknown path.
+    config = read_json(os.path.join(PKG_ROOT, "schemas", "scoring.config.json"))
+    moq_label = "Published minimum order"
+    problems = []
+    code, out, _err = run_script("score_buyer.py", [
+        "--input", os.path.join(FIXTURES, "buyers.golden.json"),
+        "--query", os.path.join(FIXTURES, "query-buyer-uk-sunscreen.json"),
+        "--as-of", AS_OF])
+    try:
+        uk = json.loads(out) if code == 0 else {}
+    except ValueError:
+        uk = {}
+    by_id = dict((r.get("buyer_id"), r) for r in uk.get("records", []))
+    if not by_id:
+        problems.append("score_buyer.py over the UK sunscreen query: exit %d, no records" % code)
+    covered_seen = False
+    for rid, record in sorted(by_id.items()):
+        missing = record.get("missing") or []
+        penalties = record.get("unknown_penalty_applied") or []
+        penalty_labels = []
+        for entry in penalties:
+            if entry.get("label") not in penalty_labels:
+                penalty_labels.append(entry.get("label"))
+        if missing[:len(penalty_labels)] != penalty_labels:
+            problems.append("%s: missing[] does not start with the penalty labels" % rid)
+        if any(entry.get("label") == moq_label for entry in penalties):
+            problems.append("%s: a verification gap emitted a penalty entry" % rid)
+        covered = any("buyer.buyer_moq" in (entry.get("unknown_inputs") or [])
+                      for entry in penalties)
+        covered_seen = covered_seen or covered
+        published = record.get("buyer_moq") not in (None, "unknown")
+        want = not covered and not published
+        if (moq_label in missing) != want:
+            problems.append("%s: %r in missing[] is %s, expected %s"
+                            % (rid, moq_label, moq_label in missing, want))
+        if missing.count(moq_label) > 1:
+            problems.append("%s: %r is listed twice" % (rid, moq_label))
+    if by_id and not covered_seen:
+        problems.append("no golden record exercises the penalty-covered path any more")
+    report.check("field regression: FR-05 an unpublished minimum order reaches missing[] once, "
+                 "after the penalty labels, and never as a penalty", not problems,
+                 "\n".join(problems[:10]))
+
+    problems = []
+    requested = [_common.normalize_category("sunscreen")]
+    shown = ", ".join(slug.replace("_", " ") for slug in requested)
+    for rid, record in sorted(by_id.items()):
+        cats = record.get("product_categories")
+        lines = [m for m in (record.get("missing") or []) if m.startswith("Requested category")]
+        expected_lines = []
+        if isinstance(cats, list):
+            tokens = [tok for tok in (_common.normalize_category(c) for c in cats
+                                      if isinstance(c, str)) if tok]
+            if tokens or not cats:
+                relation = _common.category_relation(tokens, requested)
+                if relation == "parent":
+                    expected_lines = ["Requested category confirmed only at a broader level: %s" % shown]
+                elif relation != "exact":
+                    expected_lines = ["Requested category not evidenced: %s" % shown]
+        if lines != expected_lines:
+            problems.append("%s: requested-category lines %r, expected %r"
+                            % (rid, lines, expected_lines))
+    pairs = sorted((child, parent) for child, parent in _common.CATEGORY_PARENTS.items()
+                   if isinstance(child, str) and isinstance(parent, str))
+    if pairs:
+        child, parent = pairs[0]
+        got = _common.verification_gaps(config, "buyer", {"buyer_moq": 12}, [], [parent], [child])
+        want = ["Requested category confirmed only at a broader level: %s"
+                % child.replace("_", " ")]
+        if got != want:
+            problems.append("parent-level match %s -> %s: got %r, expected %r"
+                            % (parent, child, got, want))
+    else:
+        problems.append("_common.CATEGORY_PARENTS is empty; the parent path is untested")
+    report.check("field regression: FR-06 a requested category matched only broadly, or not at "
+                 "all, reaches missing[] with the requested slug", not problems,
+                 "\n".join(problems[:10]))
+
+    problems = []
+    seller_cases = (
+        ({}, [], ["Minimum order quantity"]),
+        ({"moq": "unknown"}, [], ["Minimum order quantity"]),
+        ({"moq": 3000}, [], []),
+        ({}, [{"label": "MOQ against the buyer ceiling", "unknown_inputs": ["seller.moq"]}], []),
+    )
+    for record, penalties, want in seller_cases:
+        got = _common.verification_gaps(config, "seller", record, penalties,
+                                        ["sunscreen"], ["sunscreen"])
+        if got != want:
+            problems.append("seller %r, penalty inputs %r: got %r, expected %r"
+                            % (record, [e["unknown_inputs"] for e in penalties], got, want))
+    report.check("field regression: FR-07 an unpublished seller MOQ reaches missing[] unless a "
+                 "penalty already names it", not problems, "\n".join(problems[:10]))
+
+    problems = []
+    with open(os.path.join(PKG_ROOT, "references", "output-format.md"), encoding="utf-8") as fh:
+        render_doc = fh.read()
+    for label in ("Summary", "Query", "Candidates found", "Qualified", "As of", "Score version",
+                  "Top Candidates", "Website", "Country", "Type", "Why", "MOQ",
+                  "Certifications", "Export markets", "Contact", "Evidence", "Missing",
+                  "Excluded / low fit", "Recommended next action", "Destination", "Product",
+                  "Commercial model", "Required", "Threshold", "Matches", "Product Fit",
+                  "Model Fit", "Compliance", "Market Fit", "Evidence Quality", "Risks",
+                  "Excluded", "No qualified match"):
+        if "`%s`→`" % label not in render_doc:
+            problems.append("no fixed Korean label for %r" % label)
+    if "never a mix" not in render_doc:
+        problems.append("the rule against mixing Korean and English labels is missing")
+    report.check("field regression: FR-08 every rendered label has a fixed Korean mapping and "
+                 "the map forbids mixing languages", not problems, "\n".join(problems[:10]))
 
 def phase_safety(report):
     hits = []

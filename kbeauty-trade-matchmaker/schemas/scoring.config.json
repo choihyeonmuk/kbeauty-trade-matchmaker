@@ -54,6 +54,16 @@
     "partial_unknown_note": "When only SOME inputs of a criterion are unknown, the criterion is still scored from the known inputs, the signals that depend on the unknown input simply do not fire, and the unknown field is appended to the record's `notes` array. It does NOT enter `missing`, which is derived solely from unknown_penalty_applied (BUILD-CONTRACT.md 5.1, INV-03). No unknown_penalty entry is emitted for a partial unknown.",
     "never_hard_reject_on_unknown": true
   },
+  "verification_gaps": {
+    "note": "missing[] lists the penalty labels first (unknown_penalty_applied, first-appearance order), then these gaps in the order given. A gap names a commercial fact a counterparty needs before first contact that no scoring criterion took the unknown path for, so without it the Missing line reads none while the fact is unpublished; PRD 12.1's own example, 'Missing: exact annual import volume', is such an unscored gap. A field gap applies when the record's field is absent or \"unknown\" and no unknown_penalty_applied entry already lists '<entity>.<field>' in unknown_inputs. A requested_categories gap applies when the query names product_categories, the record's categories are known, and category_relation is not exact: parent renders label_broader, anything weaker renders label_not_evidenced, each followed by ': ' and the requested slugs. Gaps never change a score, never reject, and never emit an unknown_penalty_applied entry. Found in a live claude.ai run on 2026-09-14, where three buyers with no published minimum order and one with a login-gated catalogue all rendered 'Missing: none'.",
+    "buyer": [
+      { "field": "buyer_moq", "label": "Published minimum order" },
+      { "kind": "requested_categories", "label_broader": "Requested category confirmed only at a broader level", "label_not_evidenced": "Requested category not evidenced" }
+    ],
+    "seller": [
+      { "field": "moq", "label": "Minimum order quantity" }
+    ]
+  },
   "evidence": {
     "no_evidence_score": 0,
     "no_evidence_note": "Two different states, often confused. (1) UNVERIFIED - the record HAS evidence but no item with is_official true on a material claim (third-party or directory sourcing only). It is scored, ranked and rendered with the literal \" - unverified\" appended to its header line (references/output-format.md unverified_marker). It is NOT rejected: that is PRD 15.1 criterion 3. (2) NO EVIDENCED MATERIAL CLAIM - the record carries no evidence item on any material claim at all, usually because no page could be opened. It scores 0 on evidence quality, and the discovery scorers route it to excluded[] BEFORE scoring under the DISC-06 evidence bar (evidence quality outranks result count), with a reason that says which sub-case it was. Padding the ranked list with a record that evidences nothing is the failure DISC-06 exists to prevent.",
