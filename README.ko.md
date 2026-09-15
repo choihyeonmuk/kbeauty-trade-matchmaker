@@ -143,7 +143,7 @@ kbeauty-trade-matchmaker/
 2. claude.ai **설정 → 기능**에서 *클라우드 코드 실행 및 파일 생성*이 켜져 있는지 확인하고, **설정 → 사용자 지정 → 스킬 → 추가 → 스킬 업로드**로 ZIP을 올린 뒤 저장한다.
 3. 새 채팅에서 웹 검색을 켜고 평소 말투로 요청한다. 예: "UAE에서 선크림을 취급하는 K-뷰티 유통사 후보 5곳을 찾아줘". 후보 5곳 기준 10–15분 걸린다.
 
-2026-09-14 유료 플랜에서 끝까지 동작을 확인했다 — 스킬 이름을 말하지 않아도 호출됐고, 스킬 실행 중 웹 검색과 페이지 조회가 됐으며, 점수 스크립트가 샌드박스에서 실행됐다. **무료 플랜의 사용량으로 한 번의 조사가 끝까지 되는지는 아직 확인하지 못했다.** 화면별 안내는 [한국어 설치 가이드](https://kbeauty.tradewith.kr/install-ko.html)에 있다. 막히면 [LinkedIn으로 문의](https://www.linkedin.com/in/hm-choi).
+2026-09-14 유료 플랜에서 끝까지 동작을 확인했다 — 스킬 이름을 말하지 않아도 호출됐고, 스킬 실행 중 웹 검색과 페이지 조회가 됐으며, 점수 스크립트가 샌드박스에서 실행됐다. **무료 플랜의 사용량으로 한 번의 조사가 끝까지 되는지는 아직 확인하지 못했다.** 화면별 안내는 [한국어 설치 가이드](https://kbeauty.tradewith.kr/install-ko)에 있다. 막히면 [LinkedIn으로 문의](https://www.linkedin.com/in/hm-choi).
 
 ### 개발자용 설치 스크립트
 
@@ -202,7 +202,7 @@ cp -R kbeauty-trade-matchmaker <project>/.claude/skills/
 - **`SKILL.md`는 이미 규격을 완전히 만족한다 — 키를 더하는 것은 개선이 아니라 회귀다.** Agent Skills 오픈 표준이 인정하는 frontmatter 필드는 정확히 **6개**다: `name`, `description`(둘 다 필수)과 선택 필드 `license`, `compatibility`, `metadata`, 그리고 실험적 `allowed-tools`(2026-09-13 확인 — https://agentskills.io/specification). Claude Code는 호스트 전용 키를 더 받아주지만, **Claude Code 밖(claude.ai·Skills API)에서는 이 6개만 허용된다**(2026-09-13 확인 — https://code.claude.com/docs/en/skills). 즉 Claude Code 전용 키가 **하나라도** 있으면 그 폴더는 업로드 자체가 막힌다. 이 패키지는 필수 2개(`name`, `description`)만 싣는 **최대 이식 형태**다.
 - 표준이 못박은 한계값(2026-09-13 확인 — https://agentskills.io/specification): `name` 1–64자, 소문자 `[a-z0-9]`와 하이픈만, 앞뒤 하이픈 금지, `--` 금지, **부모 디렉터리 이름과 일치**. `description` 1–1024자. `compatibility`는 쓸 경우 500자 이하. 본문은 **500줄 미만·약 5,000토큰 미만**을 유지한다. Anthropic 제품 문서는 여기에 두 가지를 더한다 — `name`·`description`에 XML 태그 금지, `name`에 예약어 "anthropic"/"claude" 금지(2026-09-13 확인 — https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview).
 - 버전 3종(`skill_version` / `schema_version` / `score_version`)은 frontmatter가 아니라 `SKILL.md` **본문**에 적혀 있다 — 표준에 `version` frontmatter 키는 **존재하지 않으며**(버전 문자열의 유일한 정규 자리는 `metadata.version`이다), 최상위 `version`을 추가하면 claude.ai / Skills API 업로드가 막히고 이 패키지의 테스트도 실패한다.
-- 표면(surface)끼리 **동기화되지 않는다.** Claude Code(파일 시스템), claude.ai(설정 → Features에서 zip 업로드), Skills API(`/v1/skills`)는 같은 폴더를 각각 따로 올려야 한다.
+- 표면(surface)끼리 **동기화되지 않는다.** Claude Code(파일 시스템), claude.ai(설정 → 사용자 지정 → 스킬에서 zip 업로드), Skills API(`/v1/skills`)는 같은 폴더를 각각 따로 올려야 한다.
 
 ### 6.2 OpenAI Codex / ChatGPT Skills
 
