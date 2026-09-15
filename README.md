@@ -162,7 +162,7 @@ kbeauty-trade-matchmaker/
     └── fixtures/                 # Golden inputs and expected outputs; all companies fictional
 ```
 
-The repository root also holds `docs/BUILD-CONTRACT.md` and `docs/SCORING-CONTRACT.md`, the implementation contracts. **`docs/` is not installed.** Only the `kbeauty-trade-matchmaker/` folder is; the contract content the runtime needs is bundled in `references/data-contract.md` and `references/output-format.md`. The product requirements document the contracts cite is internal and not published; the contracts restate the requirements they depend on.
+Only the `kbeauty-trade-matchmaker/` folder is installed. The contract content the runtime needs is bundled in `references/data-contract.md` and `references/output-format.md`.
 
 ---
 
