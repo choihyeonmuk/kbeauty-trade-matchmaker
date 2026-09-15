@@ -86,13 +86,13 @@ kbeauty-trade-matchmaker/
 ├── references/                   # progressive disclosure — 필요할 때만 열리는 참조 문서
 │   ├── buyer-discovery.md        # 바이어 쿼리 확장, 국가별 검색 패턴, 중단 조건
 │   ├── seller-discovery.md       # 한국 셀러 쿼리 확장, OEM/ODM·MOQ 페이지 패턴, 협회/박람회 디렉터리
-│   ├── qualification-rubric.md   # 점수 차원의 서술형 설명 (숫자는 SCORING-CONTRACT가 진실)
+│   ├── qualification-rubric.md   # 점수 차원의 서술형 설명 (숫자는 scoring.config.json이 기준)
 │   ├── matching-rules.md         # 하드 필터 → 가중 점수 → 재정렬 → unknown 처리, HF-00..HF-08 표
 │   ├── calibration-notes.md      # 두 번의 실측 트라이얼이 무엇을 재고 무엇을 바꿨는가, 무엇이 미검증인가
 │   ├── evidence-policy.md        # fact vs inference vs unknown, 출처 tier, observed_at 규율, 충돌 처리
 │   ├── outreach-guidelines.md    # draft-only 규칙, 근거 기반 개인화, CTA 정책, 금지 표현, 리뷰 체크리스트
 │   ├── compliance-notes.md       # 관할별 다이렉트 마케팅 주의, 데이터 최소화, robots/ToS 경계
-│   ├── data-contract.md          # 스키마·정규화 계약의 동봉 요약본 (docs/ 없이도 동작)
+│   ├── data-contract.md          # 스키마·정규화 계약의 동봉 요약본
 │   ├── output-format.md          # 출력 렌더링 계약 10.1–10.5 + 한국어 라벨 맵 (동봉본)
 │   └── runtime-adapters.md       # 이식성 계층 — 벤더 도구 이름이 등장하는 유일한 파일
 ├── schemas/                      # 데이터 계약 (JSON Schema 부분집합, 자체 validator로 검증)
@@ -121,7 +121,7 @@ kbeauty-trade-matchmaker/
     └── fixtures/                 # golden 입력과 expected/ 출력 (실제 개인정보 없음)
 ```
 
-저장소 루트에는 이 README와 함께 `docs/`가 있다. 공개되는 것은 구현 계약 두 건 — `docs/BUILD-CONTRACT.md`와 `docs/SCORING-CONTRACT.md` — 이며, 두 계약이 인용하는 제품 정의(PRD)와 실측 트라이얼 원자료는 내부 문서라 이 저장소에 포함되지 않는다. 계약이 PRD 조항 번호를 인용하는 곳은 그 조항의 요구사항을 계약 본문이 이미 다시 적어 두었으므로, PRD 없이도 읽을 수 있다. **`docs/`는 배포 대상이 아니다** — 설치되는 것은 `kbeauty-trade-matchmaker/` 폴더뿐이고, 런타임이 필요로 하는 계약 내용은 `references/data-contract.md`(스키마·정규화)와 `references/output-format.md`(출력 렌더링)에 동봉되어 있다. 그래서 패키지 안의 어떤 파일도 런타임 에이전트에게 `docs/…` 경로를 열라고 지시하지 않는다.
+설치되는 것은 `kbeauty-trade-matchmaker/` 폴더뿐이고, 런타임이 필요로 하는 계약 내용은 `references/data-contract.md`(스키마·정규화)와 `references/output-format.md`(출력 렌더링)에 동봉되어 있다.
 
 ---
 
