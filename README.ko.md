@@ -1,6 +1,6 @@
 # K-Beauty Trade Matchmaker
 
-[English README](README.md) · [프로젝트 페이지](https://kbeauty.tradewith.kr/) · [LinkedIn으로 문의](https://www.linkedin.com/in/hm-choi)
+[English](README.md) · [한국어](README.ko.md) · [मराठी](README.mr.md) · [हिन्दी](README.hi.md) · [Bahasa Indonesia](README.id.md) · [Türkçe](README.tr.md) · [프로젝트 페이지](https://kbeauty.tradewith.kr/) · [LinkedIn으로 문의](https://www.linkedin.com/in/hm-choi)
 
 **해외 K-Beauty Buyer와 한국 Seller를 공개 정보 기반으로 발굴·검증·점수화·매칭하고, 사람이 검토할 아웃리치 초안까지만 만드는 재사용형 Agent Skill.**
 

@@ -4,7 +4,7 @@
 
 The same folder runs unmodified in **Claude Code** and **OpenAI Codex**. Python is **standard library only** (3.9–3.14); there is nothing to `pip install`.
 
-[Project page](https://kbeauty.tradewith.kr/) · [한국어 README](README.ko.md) · [Contact on LinkedIn](https://www.linkedin.com/in/hm-choi)
+[English](README.md) · [한국어](README.ko.md) · [मराठी](README.mr.md) · [हिन्दी](README.hi.md) · [Bahasa Indonesia](README.id.md) · [Türkçe](README.tr.md) · [Project page](https://kbeauty.tradewith.kr/) · [Contact on LinkedIn](https://www.linkedin.com/in/hm-choi)
 
 > **Status: v0.1.1.** The pipeline is tested against 179 cases on fictional fixtures and was trialled once against the live web. The scoring rubric is **not yet validated against real outcomes**: scores are reproducible and traceable, not yet known to be predictive. RFQ Matching and Outreach Draft have not been run on live data. Read [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) before trusting a score.
 
