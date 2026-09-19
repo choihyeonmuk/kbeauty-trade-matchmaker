@@ -226,6 +226,13 @@ needs no unknown-penalty pairing.
 
 Message: `Required certification {required_value} not held (verified list: {observed_value})`
 
+**The RFQ's list is the RFQ's.** A destination market may make a certification effectively
+mandatory in its own right — Indonesia's halal regime is the live example
+(`references/compliance-notes.md` §5.1) — but the agent **never adds a token to
+`required_certifications` that the RFQ did not state**. Doing so would hard-filter sellers on a
+constraint the buyer never set. Raise it as a `risks[]` entry and a question for the human instead,
+and leave HF-04 to price what the RFQ actually asked for.
+
 #### HF-05 — Excluded destination market
 
 ```

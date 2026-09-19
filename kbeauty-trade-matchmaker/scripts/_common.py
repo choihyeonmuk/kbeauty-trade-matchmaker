@@ -32,7 +32,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PACKAGE_ROOT = os.path.dirname(SCRIPT_DIR)
 SCHEMA_DIR = os.path.join(PACKAGE_ROOT, "schemas")
 
-SKILL_VERSION = "0.1.1"
+SKILL_VERSION = "0.2.0"
 SCHEMA_VERSION = "0.1.0"
 UNKNOWN = "unknown"
 
@@ -44,7 +44,9 @@ ABSENT = object()
 #: and "trading llc" before "llc".
 LEGAL_SUFFIXES = (
     "trading llc",
+    "private limited",
     "co ltd",
+    "pvt ltd",
     "fz llc",
     "l l c",
     "s a s",
@@ -68,6 +70,45 @@ LEGAL_SUFFIXES = (
     "주식회사",
     "유한회사",
     "합자회사",
+)
+
+#: Legal-form tokens stripped only from the END of a company name, longest-first.
+#: These are trailing-only in the languages that use them, and several are ordinary
+#: words or short fragments that would eat a real leading token if they were tried at
+#: the start: Indonesian "Tbk" is a listing marker that always trails; Turkish "aş" is
+#: also the noun "aş" and the stem of "aşmak", "a ş" is a single letter plus a single
+#: letter, and "tic" (abbreviated "ticaret") is a three-letter fragment. Restricting
+#: them to the tail is what keeps "Tic Tac Beauty" and "Aş Kozmetik" intact.
+#:
+#: "llp" and "pvt" sit here for the same reason. Indian and Singaporean names put them
+#: at the tail ("Aurora Beauty Pvt Ltd", "Sunbright LLP"), and the compound forms
+#: "pvt ltd" / "private limited" are still stripped from both ends by LEGAL_SUFFIXES,
+#: so nothing that used to normalise stops doing so. Tried at the START they would eat
+#: the first real token of "LLP Cosmetics" or "Pvt Beauty" - brand names in which the
+#: leading three letters are not a legal form at all - and BUILD-CONTRACT 8.4 prefers a
+#: missed merge to a wrong one.
+LEGAL_FORMS_TRAILING = (
+    "sanayi ve ticaret",
+    "san ve tic",
+    "anonim şirketi",
+    "limited şirketi",
+    "ltd şti",
+    "a ş",
+    "şti",
+    "tbk",
+    "aş",
+    "tic",
+    "llp",
+    "pvt",
+)
+
+#: Legal-form tokens stripped only from the START of a company name. Indonesian
+#: company names put the form first ("PT Cantik Indonesia", "CV Sinar Kosmetik"), and
+#: both tokens are two letters that a tail-side strip could take off a real brand name
+#: (a trailing "PT" or "CV" in a non-Indonesian name is not a legal form).
+LEGAL_FORMS_LEADING = (
+    "pt",
+    "cv",
 )
 
 #: Multi-part public suffixes embedded by BUILD-CONTRACT 8.2, matched longest-tail
@@ -528,6 +569,9 @@ SCHEMA_NAMES = (
     "evidence",
     "match-result",
     "discovery-result",
+    # A MEASUREMENT document, not a scored one: scripts/acceptance_report.py emits it and
+    # no scorer reads it (references/calibration-notes.md section 7).
+    "acceptance-report",
 )
 
 _DATE_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
@@ -911,22 +955,44 @@ def domain_subdomain(url_or_host):
         return None
 
 
-def _strip_edge_tokens(tokens, vocabulary):
-    """Strip vocabulary tokens from both ends, longest match first, until stable."""
+def _strip_edge_tokens(tokens, vocabulary, edge="both"):
+    """Strip vocabulary tokens from `edge`, longest match first, until stable.
+
+    `edge` is "both" (the default, BUILD-CONTRACT 8.3 step 5), "end" or "start".
+    """
     changed = True
     while changed and tokens:
         changed = False
         for phrase in vocabulary:
             parts = phrase.split(" ")
             size = len(parts)
-            if size <= len(tokens) and tokens[-size:] == parts:
+            if size > len(tokens):
+                continue
+            if edge in ("both", "end") and tokens[-size:] == parts:
                 tokens = tokens[:-size]
                 changed = True
                 break
-            if size <= len(tokens) and tokens[:size] == parts:
+            if edge in ("both", "start") and tokens[:size] == parts:
                 tokens = tokens[size:]
                 changed = True
                 break
+    return tokens
+
+
+def _strip_legal_forms(tokens):
+    """Apply the three legal-form vocabularies until none of them changes anything.
+
+    They have to interleave rather than run once each: "PT Cantik Kosmetik Tbk" needs a
+    leading and a trailing strip, and "X Kozmetik San. ve Tic. Ltd. Sti." only exposes
+    its "san ve tic" tail after "ltd şti" has come off.
+    """
+    while tokens:
+        before = tokens
+        tokens = _strip_edge_tokens(tokens, LEGAL_SUFFIXES)
+        tokens = _strip_edge_tokens(tokens, LEGAL_FORMS_TRAILING, edge="end")
+        tokens = _strip_edge_tokens(tokens, LEGAL_FORMS_LEADING, edge="start")
+        if tokens == before:
+            break
     return tokens
 
 
@@ -939,9 +1005,14 @@ def normalize_company_name(name):
         for marker in ("（주）", "(주)", "㈜", "（유）", "(유)", "（사）", "(사)"):
             text = text.replace(marker, " ")
         text = text.casefold()
+        # Default casefolding maps Turkish "İ" (U+0130) to "i" + U+0307 COMBINING DOT
+        # ABOVE, and U+0307 is not a \w character, so the next line would split
+        # "ANONİM ŞİRKETİ" into ["anoni", "m", "şi", "rketi"] and no legal form would
+        # ever match. Fold the pair back to a bare "i" first.
+        text = text.replace("i" + "\u0307", "i")
         text = re.sub(r"[^\w\s]|_", " ", text, flags=re.UNICODE)
         tokens = text.split()
-        tokens = _strip_edge_tokens(tokens, LEGAL_SUFFIXES)
+        tokens = _strip_legal_forms(tokens)
         tokens = _strip_edge_tokens(tokens, ("the",))
         return " ".join(tokens)
     except Exception:
@@ -1840,3 +1911,213 @@ def evidence_quality(record, claim_set, as_of, config=None):
         + inferred_penalty
     )
     return int(max(0, min(100, round_half_up(raw))))
+
+
+# --------------------------------------------------------------------------
+# Calibration review vocabularies and free-text personal-data detectors
+# (scripts/make_review_sheet.py, scripts/acceptance_report.py)
+#
+# These are VOCABULARIES and shapes, not tunable numbers, so INV-29 is unaffected -
+# the same ground on which FREE_MAIL_DOMAINS and EXPORT_REGION_COUNTRIES live here.
+# Every tunable number the two calibration scripts use (minimum sample, score-band
+# edges, threshold-sweep range) is read from scoring.config.json "calibration".
+# --------------------------------------------------------------------------
+
+#: The ten columns of a review sheet, in order. The last five are left empty for the
+#: operator; the first five are copied from the scored document.
+REVIEW_SHEET_COLUMNS = (
+    "record_id",
+    "entity_type",
+    "company_name",
+    "website",
+    "country",
+    "verdict",
+    "reason_code",
+    "note",
+    "reviewer_role",
+    "reviewed_on",
+)
+
+#: The columns the operator fills in. A blind sheet ships them empty.
+REVIEW_OPERATOR_COLUMNS = ("verdict", "reason_code", "note", "reviewer_role", "reviewed_on")
+
+#: Columns appended by `make_review_sheet.py --no-blind` only. They are exactly the
+#: three facts that would anchor a reviewer on the rubric, which is why the default
+#: sheet carries none of them.
+REVIEW_UNBLINDED_COLUMNS = ("rank", "score", "qualified")
+
+#: The `verdict` vocabulary. `unsure` is counted and reported separately, never folded
+#: into either side of the Human Acceptance Rate (PRD 17).
+REVIEW_VERDICTS = ("accept", "reject", "unsure")
+
+#: The verdict that REQUIRES a reason_code.
+REVIEW_VERDICT_NEEDS_REASON = "reject"
+
+#: The `reason_code` vocabulary. Optional on `accept` / `unsure`, required on `reject`.
+REVIEW_REASON_CODES = (
+    "wrong_company_type",
+    "wrong_vertical",
+    "wrong_market",
+    "inactive_or_unreachable",
+    "duplicate",
+    "evidence_wrong",
+    "other",
+)
+
+#: The literal a sheet carries when the scored document does not hold the value at all.
+#: Never blank: a blank cell means "the operator has not filled this in" (INV-02).
+REVIEW_UNKNOWN_CELL = UNKNOWN
+
+#: The literal a BLIND sheet carries in a column that would otherwise tell an excluded
+#: record from a returned one. Distinct from REVIEW_UNKNOWN_CELL on purpose: "unknown"
+#: is a fact about the record, "not_shown" is a fact about the sheet.
+REVIEW_NEUTRAL_CELL = "not_shown"
+
+#: Leading characters a spreadsheet reads as the start of a FORMULA rather than text.
+#: A company name and a website come off a harvested public page, so either can begin
+#: with one; `=cmd|'/c calc'!A1` in a company name is a working attack on the operator
+#: who opens the sheet. Prefixing with an apostrophe is the standard neutralisation and
+#: is visible to the reader, which is why the sheet does not silently drop the value.
+CSV_FORMULA_LEAD = ("=", "+", "-", "@", "\t", "\r")
+CSV_FORMULA_GUARD = "'"
+
+_EMAIL_LIKE_RE = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")
+#: The "a [at] b.example" family an operator types to dodge a naive scanner.
+#:
+#: The "at" MUST be delimited - bracketed, or whitespace on both sides - or the scan
+#: fires on the middle of "notification" and refuses a BPOM number. The whitespace form
+#: additionally requires the local part to look like a mailbox (a dot, digit, or one of
+#: `_%+-`) rather than an ordinary word, so the legitimate note "found at
+#: gulfglow.example" passes while "sourcing.lead at gulfglow.example" does not. The
+#: bracketed form needs no such guard: nobody writes "[at]" by accident.
+_EMAIL_OBFUSCATED_RE = re.compile(
+    r"(?:[A-Za-z0-9._%+\-]+(?:\s*[\[({<]\s*(?:at|골뱅이)\s*[\])}>]\s*)"
+    r"|[A-Za-z0-9._%+\-]*[0-9._%+\-][A-Za-z0-9._%+\-]*\s+(?:at|골뱅이)\s+)"
+    r"[A-Za-z0-9\-]+(?:\s*[\[({<]\s*(?:dot|점)\s*[\])}>]\s*|\s*\.\s*)"
+    r"[A-Za-z0-9.\-]*[A-Za-z]{2,}",
+    re.IGNORECASE,
+)
+#: Substrings removed before the telephone scan, because each is a long digit run that
+#: is definitively not a number anybody dials.
+_URL_ANYWHERE_RE = re.compile(r"(?:https?://|www\.)\S+", re.IGNORECASE)
+#: A telephone number written INSIDE a URL ("www.x.example/010-1234-5678",
+#: "...?tel=01012345678"). URLs are scrubbed before the telephone pass so that a
+#: registry URL ending in a numeric id is not refused, which would otherwise let a
+#: number glued to a URL walk past the scan. Only a separator-formatted trunk-prefix
+#: number or a tel/phone/mobile query label counts here; a bare id run does not.
+_PHONE_IN_URL_RE = re.compile(
+    r"(?:(?<![0-9])0[0-9]{1,3}[-.][0-9]{3,4}[-.][0-9]{4}(?![0-9])"
+    r"|(?:tel|phone|mobile|whatsapp)[=:/][+]?[0-9][0-9\-.]{6,})",
+    re.IGNORECASE,
+)
+_ISO_DATE_ANYWHERE_RE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+
+#: A telephone SIGNAL, not merely a long number. Registration numbers, notification
+#: numbers, certificate numbers, year ranges and money amounts are all long digit runs
+#: that operators are explicitly told to record (a CDSCO registration certificate
+#: number, a BPOM notification number, a registry URL), so a digit count alone refuses
+#: the notes the protocol asks for. One of three things must be true instead:
+#:   * an international prefix "+" immediately in front of the run;
+#:   * a trunk-prefix "0" starting a run of at least 9 digits;
+#:   * an explicit telephone label within _PHONE_LABEL_WINDOW characters in front.
+_PHONE_RUN_RE = re.compile(r"(?<![0-9])(\+?)([0-9][0-9 ()./\-]{5,}[0-9])(?![0-9])")
+_PHONE_LABEL_RE = re.compile(
+    r"(?:tel|phone|mobile|cell|whatsapp|fax|hp|휴대|휴대폰|전화|연락처|핸드폰)"
+    r"[\s.:：/\-]*$",
+    re.IGNORECASE,
+)
+_PHONE_LABEL_WINDOW = 24
+_PHONE_MIN_DIGITS = 7
+_PHONE_TRUNK_MIN_DIGITS = 9
+
+
+def personal_data_hits(text):
+    """Labels of the personal-data shapes present in one free-text cell.
+
+    INV-31 and INV-25 forbid a personal address, a direct dial or a named individual
+    anywhere this package produces or consumes, notes included. A reviewer typing a
+    contact into the `note` or `reviewer_role` column of a review sheet is the one path
+    by which such a value could enter the calibration loop, so acceptance_report.py
+    refuses the sheet rather than aggregating it. Returns [] for a clean cell; never
+    raises.
+
+    The scan is deliberately asymmetric between the two shapes it looks for. An "@"
+    inside a word is almost never anything but an address, so email detection is broad
+    and also catches the "a (at) b.example" obfuscation. A long run of digits, by
+    contrast, is usually NOT a telephone number in this vertical: the discovery
+    playbooks tell an operator to record a CDSCO registration certificate number, a BPOM
+    notification number, an ISO certificate number, a registry URL and a trading period,
+    and every one of those is a longer digit run than a phone number. Refusing those
+    would refuse the notes the protocol asks for, so a telephone needs a telephone
+    SIGNAL - a "+", a trunk-prefix "0" on a long enough run, or a nearby tel/phone/전화
+    label - and a bare number passes. Input is NFKC-normalised first, so full-width
+    digits cannot walk past the scan.
+    """
+    if not isinstance(text, str) or not text.strip():
+        return []
+    normalised = unicodedata.normalize("NFKC", text)
+    hits = []
+    if _EMAIL_LIKE_RE.search(normalised) or _EMAIL_OBFUSCATED_RE.search(normalised):
+        hits.append("an email address")
+    for url in _URL_ANYWHERE_RE.findall(normalised):
+        if _PHONE_IN_URL_RE.search(url):
+            hits.append("a phone-number-like string")
+            return hits
+    scrubbed = _URL_ANYWHERE_RE.sub(" ", normalised)
+    scrubbed = _ISO_DATE_ANYWHERE_RE.sub(" ", scrubbed)
+    for match in _PHONE_RUN_RE.finditer(scrubbed):
+        run = match.group(2)
+        digits = [char for char in run if char.isdigit()]
+        if len(digits) < _PHONE_MIN_DIGITS:
+            continue
+        if match.group(1) == "+":
+            hits.append("a phone-number-like string")
+            break
+        if run[0] == "0" and len(digits) >= _PHONE_TRUNK_MIN_DIGITS:
+            hits.append("a phone-number-like string")
+            break
+        start = max(0, match.start() - _PHONE_LABEL_WINDOW)
+        if _PHONE_LABEL_RE.search(scrubbed[start:match.start()]):
+            hits.append("a phone-number-like string")
+            break
+    return hits
+
+
+def csv_safe_cell(value):
+    """One CSV cell with any spreadsheet formula lead neutralised.
+
+    A leading "=", "+", "-", "@", tab or carriage return makes a spreadsheet evaluate
+    the cell instead of showing it, and `company_name` / `website` come straight off a
+    harvested public page. The apostrophe prefix is the standard fix and leaves the
+    original text readable.
+    """
+    if not isinstance(value, str) or not value:
+        return value
+    if value[0] in CSV_FORMULA_LEAD:
+        return CSV_FORMULA_GUARD + value
+    return value
+
+
+def csv_needs_formula_guard(value):
+    """True when csv_safe_cell would change this value."""
+    return isinstance(value, str) and bool(value) and value[0] in CSV_FORMULA_LEAD
+
+
+def blind_order_key(record_id):
+    """The sha256 hex digest that orders a blind review sheet.
+
+    Sorting on it shuffles the rows out of rank order deterministically, so the same
+    document always produces the same sheet (INV-13) while the reviewer reads the
+    candidates in an order that carries no information about the rubric.
+    """
+    import hashlib
+
+    return hashlib.sha256(str(record_id).encode("utf-8")).hexdigest()
+
+
+def calibration_config(config):
+    """The `calibration` block of scoring.config.json, or a ConfigError."""
+    block = config.get("calibration") if isinstance(config, dict) else None
+    if not isinstance(block, dict):
+        raise ConfigError("scoring config carries no 'calibration' block")
+    return block

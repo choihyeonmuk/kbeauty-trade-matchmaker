@@ -42,7 +42,10 @@ Options:
 from __future__ import annotations
 
 import argparse
+import csv
 import glob
+import hashlib
+import io
 import json
 import os
 import re
@@ -509,6 +512,7 @@ FIXTURE_KINDS = [
     ("sellers.golden.json", "seller", "records", "seller_id"),
     ("rfq.134.json", "rfq", None, "rfq_id"),
     ("rfq.no-match.json", "rfq", None, "rfq_id"),
+    ("rfq.id-halal.json", "rfq", None, "rfq_id"),
 ]
 
 
@@ -630,6 +634,12 @@ def phase_fixture_validation(report, validate):
                      env["records"] == sellers,
                      "embedded seller records differ from sellers.golden.json")
 
+    # the ID/halal envelope carries its own six-seller set, so only the RFQ is shared
+    env = read_json(os.path.join(FIXTURES, "match-id-halal.input.json"))
+    report.check("fixtures: match-id-halal.input.json embeds rfq.id-halal.json unchanged",
+                 env["rfq"] == read_json(os.path.join(FIXTURES, "rfq.id-halal.json")),
+                 "embedded RFQ differs from the standalone fixture")
+
 
 # ---------------------------------------------------------------------------
 # 3. script pipeline
@@ -717,6 +727,7 @@ class Pipeline(object):
         self.sellers = None
         self.match_134 = None
         self.match_nomatch = None
+        self.match_idhalal = None
 
 
 def run_discovery(report, pipeline, attr, script, input_name, query_name, expected_name,
@@ -1000,6 +1011,8 @@ def phase_pipeline(report, pipeline, allow_missing):
               ["--rerank-input", os.path.join(FIXTURES, "rerank-134.json")])
     run_match(report, pipeline, "match_nomatch", "match-no-match.input.json",
               "match-no-match.expected.json", [])
+    run_match(report, pipeline, "match_idhalal", "match-id-halal.input.json",
+              "match-id-halal.expected.json", [])
 
     # --- RFQ readiness (SCORING-CONTRACT 2.9 / BUILD-CONTRACT 5.4) ------------
     readiness = read_json(os.path.join(EXPECTED, "rfq.readiness.expected.json"))
@@ -1618,6 +1631,65 @@ def extra_cases(report, pipeline, allow_missing):
                     problems.append("%s: exited %d but reported no INV-19 failure"
                                     % (kind, code))
         report.check(case, not problems, "\n".join(problems))
+
+    case = ("E20 S-CP3 prices an ID/BPOM notification registered > in_progress > absent")
+    if not pipeline.match_idhalal:
+        unavailable(case)
+    else:
+        scored = index_by(pipeline.match_idhalal.get("results", []), "seller_id")
+        ladder = ["SEL-ahyeonlab-example", "SEL-durimcos-example", "SEL-maruhwabio-example"]
+        fits = [(scored.get(sid) or {}).get("component_scores", {}).get("compliance_fit")
+                for sid in ladder]
+        order = [c["seller_id"] for c in pipeline.match_idhalal.get("results", [])]
+        problems = []
+        if None in fits:
+            problems.append("one of %s is absent from results[]" % ladder)
+        elif not (fits[0] > fits[1] > fits[2]):
+            problems.append("compliance_fit %s is not strictly decreasing across %s"
+                            % (fits, ladder))
+        if order[:3] != ladder:
+            problems.append("ranked order %s, expected %s" % (order[:3], ladder))
+        absent = scored.get("SEL-maruhwabio-example") or {}
+        if "S-CP3" not in [u.get("criterion_id")
+                           for u in absent.get("unknown_penalty_applied", [])]:
+            problems.append("an absent regulatory_registrations array must take the S-CP3 "
+                            "unknown penalty, not read as 'none found'")
+        report.check(case, not problems, "\n".join(problems))
+
+    case = "E21 HALAL required: HF-04 rejects only the verified list that lacks the token"
+    if not pipeline.match_idhalal:
+        unavailable(case)
+    else:
+        excluded = index_by(pipeline.match_idhalal.get("excluded", []), "seller_id")
+        scored = index_by(pipeline.match_idhalal.get("results", []), "seller_id")
+        problems = []
+        rejected = excluded.get("SEL-cheonglimoem-example") or {}
+        if [f["rule_id"] for f in rejected.get("failed_rules", [])][:1] != ["HF-04"]:
+            problems.append("an exhaustive official list without HALAL must fail HF-04: %r"
+                            % [f["rule_id"] for f in rejected.get("failed_rules", [])])
+        unverified = scored.get("SEL-baraecos-example") or {}
+        hf = unverified.get("hard_filter", {})
+        if not unverified:
+            problems.append("the unverified-list seller must stay in results[]")
+        elif ("HF-04" in (hf.get("rules_evaluated") or [])
+              or "HF-04" in (hf.get("rules_skipped_unknown") or [])):
+            problems.append("HF-04 is not applicable to an unverified list, so it belongs in "
+                            "neither array: %r / %r" % (hf.get("rules_evaluated"),
+                                                        hf.get("rules_skipped_unknown")))
+        elif unverified.get("component_scores", {}).get("compliance_fit", 100) >= (
+                (scored.get("SEL-maruhwabio-example") or {})
+                .get("component_scores", {}).get("compliance_fit", 0)):
+            problems.append("a missing HALAL must be penalised below a held one")
+        report.check(case, not problems, "\n".join(problems))
+
+    case = "E22 a seller that excludes ID is rejected by HF-05, not down-ranked"
+    if not pipeline.match_idhalal:
+        unavailable(case)
+    else:
+        excluded = index_by(pipeline.match_idhalal.get("excluded", []), "seller_id")
+        entry = excluded.get("SEL-hanaraexport-example") or {}
+        rules = [f["rule_id"] for f in entry.get("failed_rules", [])]
+        report.check(case, rules[:1] == ["HF-05"], "failed_rules = %r" % rules)
 
     case = "E14 INV-35 a partial run degrades instead of aborting"
     for attr, name in (("buyers_uae", "score_buyer.py"), ("sellers", "score_seller.py"),
@@ -2437,6 +2509,648 @@ def phase_field_regressions(report, allow_missing):
     report.check("field regression: FR-08 every rendered label has a fixed Korean mapping and "
                  "the map forbids mixing languages", not problems, "\n".join(problems[:10]))
 
+
+# ---------------------------------------------------------------------------
+# 4c. calibration tooling - the labelled-set loop
+#
+# make_review_sheet.py turns a scored run into a blind CSV an operator fills in;
+# acceptance_report.py joins the filled sheets back and measures PRD 17's Human
+# Acceptance Rate against the score the rubric gave. Neither script can change a
+# score, so nothing here touches score_version. The protocol these cases enforce is
+# references/calibration-notes.md section 7.
+# ---------------------------------------------------------------------------
+CAL_SCRIPTS = ["make_review_sheet.py", "acceptance_report.py"]
+REVIEWS_BUYERS = os.path.join(FIXTURES, "reviews.buyers.uae.csv")
+REVIEWS_MATCH = os.path.join(FIXTURES, "reviews.match-134.csv")
+
+
+def _read_text(path):
+    with open(path, encoding="utf-8", newline="") as fh:
+        return fh.read()
+
+
+def _write_temp_text(text, prefix, suffix=".csv"):
+    handle, path = tempfile.mkstemp(suffix=suffix, prefix=prefix)
+    with os.fdopen(handle, "w", encoding="utf-8", newline="") as fh:
+        fh.write(text)
+    return path
+
+
+def _csv_rows(text):
+    return list(csv.DictReader(io.StringIO(text)))
+
+
+def _rewrite_review(text, record_id, changes):
+    """Return `text` with one row's columns replaced; for the refusal cases."""
+    reader = csv.DictReader(io.StringIO(text))
+    columns = list(reader.fieldnames)
+    rows = list(reader)
+    for row in rows:
+        if row["record_id"] == record_id:
+            row.update(changes)
+    out = io.StringIO()
+    writer = csv.DictWriter(out, fieldnames=columns, lineterminator="\n")
+    writer.writeheader()
+    for row in rows:
+        writer.writerow(row)
+    return out.getvalue()
+
+
+def _refusal(report, name, args, expect, label):
+    """One refusal path: exit 1, exactly one ERROR: line, and it says why."""
+    code, out, err = run_script(name, args)
+    error_lines = [ln for ln in err.splitlines() if ln.startswith("ERROR:")]
+    problems = []
+    if code != 1:
+        problems.append("exit %d, expected 1" % code)
+    if len(error_lines) != 1:
+        problems.append("%d 'ERROR:' lines, R7.3.3 requires exactly 1" % len(error_lines))
+    if "Traceback (most recent call last)" in err:
+        problems.append("raw traceback escaped main()")
+    if not any(expect in ln for ln in error_lines):
+        problems.append("no ERROR line carries %r; got %s" % (expect, error_lines[:1]))
+    report.check("calibration: refuses %s" % label, not problems, "\n".join(problems))
+
+
+def _sheet_shape(value):
+    """How a review-sheet cell READS: filled, or one of the three stand-ins."""
+    if value in ("", None):
+        return "empty"
+    if value == "unknown":
+        return "unknown"
+    if value == "not_shown":
+        return "not_shown"
+    return "filled"
+
+
+def _calibration_blind_partition(report, buyers_out, match_path, match_out, temp):
+    """H1: no single column may tell an excluded row from a returned one.
+
+    `discovery-result.excluded[]` has no `country` field, so before the fix the excluded
+    rows were exactly the rows whose country cell read "unknown" - a blind sheet that
+    told the reviewer which candidates the rubric had already thrown away. The assertion
+    is generic rather than country-specific: for EVERY column, the set of cell shapes on
+    the excluded rows must overlap the set on the returned rows.
+    """
+    for label, scored_text, scored_path in (
+            ("buyer", buyers_out, None), ("match", match_out, match_path)):
+        document = json.loads(scored_text)
+        if scored_path is None:
+            scored_path = _write_temp_text(scored_text, "kbtm-cal-part-", ".json")
+            temp.append(scored_path)
+        if "results" in document:
+            returned_ids = set(r["seller_id"] for r in document["results"])
+            excluded_ids = set(r["seller_id"] for r in document["excluded"])
+        else:
+            returned_ids = set(r["buyer_id"] for r in document["records"])
+            excluded_ids = set(r["id"] for r in document["excluded"])
+        code, sheet, err = run_script("make_review_sheet.py", [
+            "--input", scored_path, "--as-of", AS_OF, "--include-excluded"])
+        if code != 0:
+            report.fail("calibration: H1 blind sheet (%s) builds" % label, err.strip()[:300])
+            continue
+        rows = _csv_rows(sheet)
+        columns = sheet.splitlines()[0].split(",")
+        partitioning = []
+        for column in columns:
+            shapes_returned = set(_sheet_shape(r[column]) for r in rows
+                                  if r["record_id"] in returned_ids)
+            shapes_excluded = set(_sheet_shape(r[column]) for r in rows
+                                  if r["record_id"] in excluded_ids)
+            if not shapes_returned or not shapes_excluded:
+                continue
+            if not (shapes_returned & shapes_excluded):
+                partitioning.append("%s: returned=%s excluded=%s"
+                                    % (column, sorted(shapes_returned),
+                                       sorted(shapes_excluded)))
+        report.check("calibration: H1 no column of the blind %s sheet separates excluded "
+                     "from returned rows" % label, not partitioning,
+                     "\n".join(partitioning))
+        if label == "buyer":
+            report.check("calibration: H1 the discovery country column is neutralised "
+                         "for every row",
+                         all(r["country"] == "not_shown" for r in rows),
+                         "country values: %s"
+                         % sorted(set(r["country"] for r in rows))[:5])
+            report.check("calibration: H1 the neutralisation is announced on stderr",
+                         "not_shown" in err and "country" in err, err.strip()[:200])
+    # A sheet with no excluded rows keeps its real country column: there is no second
+    # population to separate, and blanking it would lose information for nothing.
+    plain_path = _write_temp_text(buyers_out, "kbtm-cal-plain-", ".json")
+    temp.append(plain_path)
+    code, sheet, _err = run_script("make_review_sheet.py", [
+        "--input", plain_path, "--as-of", AS_OF])
+    countries = set(r["country"] for r in _csv_rows(sheet))
+    report.check("calibration: H1 without --include-excluded the country column is real",
+                 code == 0 and "not_shown" not in countries and "AE" in countries,
+                 "countries: %s" % sorted(countries)[:6])
+
+
+def _calibration_formula_injection(report, buyers_out, temp):
+    """H3: a harvested company name may not become a spreadsheet formula."""
+    document = json.loads(buyers_out)
+    document["records"][0]["company_name"] = "=cmd|'/c calc'!A1"
+    document["records"][1]["company_name"] = "@SUM(1+1)*cmd"
+    path = _write_temp_json(document, "kbtm-cal-formula-")
+    temp.append(path)
+    code, sheet, err = run_script("make_review_sheet.py", [
+        "--input", path, "--as-of", AS_OF])
+    rows = index_by(_csv_rows(sheet), "record_id")
+    problems = []
+    if code != 0:
+        problems.append("exit %d: %s" % (code, err.strip()[:200]))
+    for record, want in ((document["records"][0], "'=cmd|'/c calc'!A1"),
+                         (document["records"][1], "'@SUM(1+1)*cmd")):
+        got = rows.get(record["buyer_id"], {}).get("company_name")
+        if got != want:
+            problems.append("%s: company_name is %r, expected %r"
+                            % (record["buyer_id"], got, want))
+    report.check("calibration: H3 a formula-leading company name is escaped, not executed",
+                 not problems, "\n".join(problems))
+
+    # The join key is never escaped, so an id that would need it is refused outright.
+    document = json.loads(buyers_out)
+    document["records"][0]["buyer_id"] = "=BUY-evil-example"
+    path = _write_temp_json(document, "kbtm-cal-formula-id-")
+    temp.append(path)
+    _refusal(report, "make_review_sheet.py", ["--input", path, "--as-of", AS_OF],
+             "starts with a spreadsheet formula character",
+             "a record_id that would need a formula guard")
+
+
+def _calibration_detector_edges(report, buyers_path, base, temp):
+    """M5: the personal-data scan must pass the notes the protocol asks operators for."""
+    allowed = [
+        "CDSCO registration certificate 1234567890 issued 2024",
+        "BPOM notification NA18200100123",
+        "active 2019 - 2024, ISO 22716 cert 9001-2015",
+        "registry https://cdsco.example/rc/1234567890123",
+        "annual turnover 15 000 000 KRW over 2020/2021/2022",
+    ]
+    text = base
+    for index, note in enumerate(allowed):
+        text = _rewrite_review(
+            text, sorted(index_by(_csv_rows(base), "record_id"))[index], {"note": note})
+    path = _write_temp_text(text, "kbtm-cal-allowed-")
+    temp.append(path)
+    code, out, err = run_script("acceptance_report.py", [
+        "--scored", buyers_path, "--reviews", path, "--as-of", AS_OF])
+    report.check("calibration: M5 registration numbers, certificate numbers, year ranges "
+                 "and registry URLs are not read as personal data",
+                 code == 0 and bool(out.strip()),
+                 "exit %d\n%s" % (code, err.strip()[:400]))
+
+    for label, changes, expect in (
+            ("an obfuscated email in a note",
+             {"note": "ask their buyer, name [at] gulfglow.example"},
+             "contains an email address"),
+            ("a full-width phone number in a note",
+             {"note": "ＴＥＬ ０１０１２３４５６７８"},
+             "contains a phone-number-like string"),
+            ("a phone number glued to a URL in a note",
+             {"note": "see www.gulfglow.example/010-1234-5678"},
+             "contains a phone-number-like string")):
+        path = _write_temp_text(
+            _rewrite_review(base, "BUY-gulfglow-example", changes), "kbtm-cal-m5-")
+        temp.append(path)
+        _refusal(report, "acceptance_report.py",
+                 ["--scored", buyers_path, "--reviews", path, "--as-of", AS_OF],
+                 expect, label)
+
+
+def _calibration_report_edges(report, buyers_path, buyers_out, match_path, base, temp):
+    """M4 / M6 / M7 / L10 / L15: the report's own edges."""
+    code, match_report, err = run_script("acceptance_report.py", [
+        "--scored", match_path, "--reviews", REVIEWS_MATCH, "--as-of", AS_OF])
+    if code != 0:
+        report.fail("calibration: M4 the match report builds", err.strip()[:300])
+        return
+    golden = json.loads(match_report)
+    sweep = index_by(golden["threshold_sweep"], "threshold")
+    report.check("calibration: M4 recall counts accepted-but-EXCLUDED records in its "
+                 "denominator", sweep[50]["recall"] == 0.8 and sweep[85]["recall"] == 0.6,
+                 "recall@50=%s recall@85=%s (5 accepted records, 4 of them returned)"
+                 % (sweep[50]["recall"], sweep[85]["recall"]))
+    report.check("calibration: M4 a match report says its sub-threshold sweep rows are "
+                 "unmeasurable",
+                 any("threshold_sweep rows below 70" in n for n in golden["notes"]),
+                 "notes[] carries no such line")
+    _bcode, buyer_report, _berr = run_script("acceptance_report.py", [
+        "--scored", buyers_path, "--reviews", REVIEWS_BUYERS, "--as-of", AS_OF])
+    buyer_golden = json.loads(buyer_report)
+    report.check("calibration: M4 a discovery report does NOT, because it returns its "
+                 "below-threshold records",
+                 not any("threshold_sweep rows below" in n for n in buyer_golden["notes"]),
+                 "a discovery report claimed its sweep was unmeasurable")
+
+    # M6: qualified absent is not qualified false.
+    document = json.loads(buyers_out)
+    for record in document["records"]:
+        if record["buyer_id"] == "BUY-gulfglow-example":
+            del record["qualified"]
+    path = _write_temp_json(document, "kbtm-cal-qunknown-")
+    temp.append(path)
+    code, out, err = run_script("acceptance_report.py", [
+        "--scored", path, "--reviews", REVIEWS_BUYERS, "--as-of", AS_OF])
+    parsed = json.loads(out) if code == 0 else {}
+    buckets = parsed.get("by_qualified", {})
+    report.check("calibration: M6 a record with no qualified flag lands in "
+                 "qualified_unknown, never qualified_false",
+                 code == 0
+                 and buckets.get("qualified_unknown", {}).get("n") == 1
+                 and buckets.get("qualified_unknown", {}).get("accept") == 1
+                 and buckets.get("qualified_true", {}).get("n") == 6
+                 and buckets.get("qualified_false", {}).get("n") == 12,
+                 "exit %d buckets=%s\n%s"
+                 % (code, dict((k, v.get("n")) for k, v in buckets.items()),
+                    err.strip()[:300]))
+
+    # M7: a spreadsheet's trailing blank line is a blank line, not a broken sheet.
+    padded = base + ",,,,,,,,,\n"
+    path = _write_temp_text(padded, "kbtm-cal-blankrow-")
+    temp.append(path)
+    code, out, err = run_script("acceptance_report.py", [
+        "--scored", buyers_path, "--reviews", path, "--as-of", AS_OF])
+    _base_code, baseline, _base_err = run_script("acceptance_report.py", [
+        "--scored", buyers_path, "--reviews", REVIEWS_BUYERS, "--as-of", AS_OF])
+    report.check("calibration: M7 a trailing all-empty CSV row is skipped, not fatal",
+                 code == 0 and out == baseline,
+                 "exit %d\n%s" % (code, err.strip()[:300]))
+
+    # L10: a report that fails its own schema is not written anywhere.
+    bad_dir = tempfile.mkdtemp(prefix="kbtm-cal-badschema-")
+    schema_path = os.path.join(bad_dir, "acceptance-report.schema.json")
+    with open(schema_path, "w", encoding="utf-8") as fh:
+        json.dump({"$schema": "https://json-schema.org/draft/2020-12/schema",
+                   "type": "object", "required": ["a_field_no_report_has"]}, fh)
+    out_path = os.path.join(bad_dir, "report.json")
+    code, out, err = run_script("acceptance_report.py", [
+        "--scored", buyers_path, "--reviews", REVIEWS_BUYERS, "--as-of", AS_OF,
+        "--schema-dir", bad_dir, "--output", out_path])
+    problems = []
+    if code != 1:
+        problems.append("exit %d, expected 1" % code)
+    if out.strip():
+        problems.append("stdout is not empty")
+    if os.path.exists(out_path):
+        problems.append("--output was written anyway")
+    if "nothing was written" not in err:
+        problems.append("stderr does not say nothing was written")
+    report.check("calibration: L10 a report that fails its schema is not written at all",
+                 not problems, "\n".join(problems))
+    try:
+        os.unlink(schema_path)
+        os.rmdir(bad_dir)
+    except OSError:
+        pass
+
+    # L15: an all-accept sheet leaves the reject class empty, so every AUC is null.
+    rows = _csv_rows(base)
+    columns = base.splitlines()[0].split(",")
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=columns, lineterminator="\n")
+    writer.writeheader()
+    for row in rows:
+        if row["verdict"]:
+            row["verdict"], row["reason_code"] = "accept", ""
+        writer.writerow(row)
+    path = _write_temp_text(buffer.getvalue(), "kbtm-cal-allaccept-")
+    temp.append(path)
+    code, out, err = run_script("acceptance_report.py", [
+        "--scored", buyers_path, "--reviews", path, "--as-of", AS_OF])
+    parsed = json.loads(out) if code == 0 else {}
+    discrimination = parsed.get("discrimination", {})
+    overall = discrimination.get("overall", {})
+    dimensions = discrimination.get("by_dimension", [])
+    report.check("calibration: L15 an empty reject class yields a null AUC with a stated "
+                 "reason, and distinct_values is still reported",
+                 code == 0
+                 and overall.get("auc") is None
+                 and "no rejected record" in (overall.get("reason") or "")
+                 and overall.get("distinct_values") == 17
+                 and bool(dimensions)
+                 and all(d["auc"] is None and d["reason"] for d in dimensions)
+                 and any(d["distinct_values"] == 2 for d in dimensions),
+                 "exit %d overall=%s\n%s" % (code, overall, err.strip()[:300]))
+
+
+def _calibration_no_match(report, temp):
+    """L15: a no_match match run returns nothing, so the report measures exclusions only."""
+    code, out, err = run_script("score_match.py", [
+        "--input", os.path.join(FIXTURES, "match-no-match.input.json"),
+        "--as-of", AS_OF, "--pretty"])
+    if code != 0:
+        report.fail("calibration: L15 the no-match run is scoreable", err.strip()[:300])
+        return
+    scored_path = _write_temp_text(out, "kbtm-cal-nomatch-", ".json")
+    temp.append(scored_path)
+    document = json.loads(out)
+    report.check("calibration: L15 the no-match fixture really returns nothing",
+                 document["results"] == [] and bool(document["excluded"]),
+                 "results=%d excluded=%d"
+                 % (len(document["results"]), len(document["excluded"])))
+
+    code, sheet, err = run_script("make_review_sheet.py", [
+        "--input", scored_path, "--as-of", AS_OF, "--include-excluded"])
+    report.check("calibration: L15 a no-match run still yields a review sheet of its "
+                 "exclusions", code == 0 and len(_csv_rows(sheet)) == len(document["excluded"]),
+                 "exit %d, %d rows" % (code, len(_csv_rows(sheet or ""))))
+    rows = _csv_rows(sheet)
+    first = rows[0]["record_id"]
+    filled = _rewrite_review(sheet, first, {
+        "verdict": "accept", "reason_code": "", "note": "",
+        "reviewer_role": "trade operator", "reviewed_on": AS_OF})
+    reviews_path = _write_temp_text(filled, "kbtm-cal-nomatch-rev-")
+    temp.append(reviews_path)
+    code, out, err = run_script("acceptance_report.py", [
+        "--scored", scored_path, "--reviews", reviews_path, "--as-of", AS_OF])
+    parsed = json.loads(out) if code == 0 else {}
+    summary = parsed.get("summary", {})
+    report.check("calibration: L15 a no-match report succeeds, reports null rates and "
+                 "measures false exclusions only",
+                 code == 0
+                 and summary.get("returned") == 0
+                 and summary.get("human_acceptance_rate") is None
+                 and summary.get("review_coverage") is None
+                 and len(parsed.get("false_exclusions") or []) == 1
+                 and any("measures false exclusions only" in n
+                         for n in parsed.get("notes") or []),
+                 "exit %d summary=%s\n%s" % (code, summary, err.strip()[:300]))
+
+    # A document with no record at all, returned or excluded, has nothing to measure.
+    empty = json.loads(_read_text(scored_path))
+    empty["excluded"] = []
+    empty_path = _write_temp_json(empty, "kbtm-cal-empty-")
+    temp.append(empty_path)
+    _refusal(report, "acceptance_report.py",
+             ["--scored", empty_path, "--reviews", reviews_path, "--as-of", AS_OF],
+             "carry no record at all", "a scored document with no record at all")
+
+
+def phase_calibration(report, allow_missing):
+    absent = [n for n in CAL_SCRIPTS if not os.path.isfile(os.path.join(SCRIPT_DIR, n))]
+    if absent or missing_scripts():
+        note = "scripts absent: %s" % ", ".join(absent or missing_scripts())
+        if allow_missing:
+            report.skip("calibration: tooling cases", note)
+            return
+        report.fail("calibration: tooling cases", note)
+        return
+
+    temp = []
+    try:
+        # --- the two scored runs the sheets were cut from --------------------------
+        code, buyers_out, err = run_script("score_buyer.py", [
+            "--input", os.path.join(FIXTURES, "buyers.golden.json"),
+            "--query", os.path.join(FIXTURES, "query-buyer-uae-kbeauty.json"),
+            "--as-of", AS_OF, "--pretty"])
+        if code != 0:
+            report.fail("calibration: the UAE buyer run is scoreable", err.strip()[:400])
+            return
+        code, match_out, err = run_script("score_match.py", [
+            "--input", os.path.join(FIXTURES, "match-134.input.json"),
+            "--as-of", AS_OF, "--pretty"])
+        if code != 0:
+            report.fail("calibration: the match-134 run is scoreable", err.strip()[:400])
+            return
+        buyers_path = _write_temp_text(buyers_out, "kbtm-cal-buyers-", ".json")
+        match_path = _write_temp_text(match_out, "kbtm-cal-match-", ".json")
+        temp.extend([buyers_path, match_path])
+
+        # --- make_review_sheet.py golden output ------------------------------------
+        code, blind, err = run_script("make_review_sheet.py", [
+            "--input", buyers_path, "--as-of", AS_OF, "--include-excluded"])
+        report.check("calibration: make_review_sheet.py (buyer run, blind) exits 0", code == 0,
+                     "exit %d\n%s" % (code, err.strip()[:400]))
+        golden_blind = _read_text(os.path.join(
+            EXPECTED, "review-sheet.buyers.uae.blind.csv"))
+        report.check("calibration: the blind buyer sheet matches its golden byte for byte",
+                     blind == golden_blind, "generated sheet differs from the expected fixture")
+
+        code, ranked, err = run_script("make_review_sheet.py", [
+            "--input", match_path, "--as-of", AS_OF, "--no-blind"])
+        report.check("calibration: make_review_sheet.py (match run, --no-blind) exits 0",
+                     code == 0, "exit %d\n%s" % (code, err.strip()[:400]))
+        golden_ranked = _read_text(os.path.join(
+            EXPECTED, "review-sheet.match-134.ranked.csv"))
+        report.check("calibration: the ranked match sheet matches its golden byte for byte",
+                     ranked == golden_ranked, "generated sheet differs from the expected fixture")
+
+        # --- the blind sheet leaks neither the score nor the ranking ---------------
+        header = blind.splitlines()[0].split(",")
+        leaked = [c for c in ("rank", "score", "qualified") if c in header]
+        report.check("calibration: a blind sheet carries no rank/score/qualified column",
+                     not leaked, "leaked columns: %s" % leaked)
+        scored_doc = json.loads(buyers_out)
+        scores = set(str(r["qualification_score"]) for r in scored_doc["records"])
+        cells = set()
+        for row in _csv_rows(blind):
+            cells.update(v for v in row.values() if v)
+        report.check("calibration: no blind sheet cell carries a qualification score",
+                     not (scores & cells), "score values present: %s" % sorted(scores & cells))
+
+        rank_order = [r["buyer_id"] for r in scored_doc["records"]]
+        blind_order = [r["record_id"] for r in _csv_rows(blind)]
+        report.check("calibration: blind row order is independent of rank",
+                     blind_order[:len(rank_order)] != rank_order,
+                     "the blind sheet reproduced the ranked order, so it anchors the reviewer")
+        expected_order = sorted(
+            blind_order,
+            key=lambda rid: (hashlib.sha256(rid.encode("utf-8")).hexdigest(), rid))
+        report.check("calibration: blind row order is the sha256 order of the record ids",
+                     blind_order == expected_order,
+                     "expected %s\n     got %s" % (expected_order[:4], blind_order[:4]))
+
+        # --- --include-excluded ----------------------------------------------------
+        excluded_ids = set(e["id"] for e in scored_doc["excluded"])
+        code, without, _err = run_script("make_review_sheet.py", [
+            "--input", buyers_path, "--as-of", AS_OF])
+        ids_without = set(r["record_id"] for r in _csv_rows(without))
+        ids_with = set(blind_order)
+        report.check("calibration: --include-excluded lists excluded[] and the default does not",
+                     bool(excluded_ids) and not (excluded_ids & ids_without)
+                     and excluded_ids <= ids_with,
+                     "excluded=%s with=%s without=%s"
+                     % (sorted(excluded_ids), len(ids_with), len(ids_without)))
+
+        # --- INV-13 determinism ------------------------------------------------------
+        code2, blind2, _err = run_script("make_review_sheet.py", [
+            "--input", buyers_path, "--as-of", AS_OF, "--include-excluded"])
+        report.check("calibration: INV-13 make_review_sheet.py is byte-identical on a re-run",
+                     code2 == 0 and blind2 == blind, "second run differed")
+
+        # --- acceptance_report.py golden output --------------------------------------
+        for label, scored_path, reviews_path, expected_name in (
+                ("buyer", buyers_path, REVIEWS_BUYERS,
+                 "acceptance.buyers.uae.expected.json"),
+                ("match", match_path, REVIEWS_MATCH,
+                 "acceptance.match-134.expected.json")):
+            code, out, err = run_script("acceptance_report.py", [
+                "--scored", scored_path, "--reviews", reviews_path,
+                "--as-of", AS_OF, "--pretty"])
+            report.check("calibration: acceptance_report.py (%s) exits 0" % label, code == 0,
+                         "exit %d\n%s" % (code, err.strip()[:600]))
+            expected_text = _read_text(os.path.join(EXPECTED, expected_name))
+            report.check("calibration: the %s acceptance report matches its golden byte for byte"
+                         % label, out == expected_text,
+                         "generated report differs from %s" % expected_name)
+            code2, out2, _err = run_script("acceptance_report.py", [
+                "--scored", scored_path, "--reviews", reviews_path,
+                "--as-of", AS_OF, "--pretty"])
+            report.check("calibration: INV-13 acceptance_report.py (%s) is byte-identical on a "
+                         "re-run" % label, code2 == code and out2 == out, "second run differed")
+            vcode, _vout, verr = run_script("validate_output.py", [
+                "--input", os.path.join(EXPECTED, expected_name),
+                "--schema", "acceptance-report", "--invariants", "--strict"])
+            report.check("calibration: the %s acceptance report validates --strict" % label,
+                         vcode == 0, verr.strip()[:400])
+
+        # --- the report states plainly what it does and does not measure --------------
+        report_doc = json.loads(_read_text(os.path.join(
+            EXPECTED, "acceptance.buyers.uae.expected.json")))
+        notes_blob = " ".join(report_doc["notes"])
+        report.check("calibration: the report says it measures Human Acceptance Rate only",
+                     "Human Acceptance Rate" in notes_blob and "RFQ Conversion" in notes_blob,
+                     "notes[] does not state the limit of the measurement")
+
+        # --- insufficient sample -------------------------------------------------------
+        summary = report_doc["summary"]
+        problems = []
+        if summary["insufficient_sample"] is not True:
+            problems.append("insufficient_sample is not true at min_sample %s"
+                            % summary["min_sample"])
+        if not any("insufficient sample" in n for n in report_doc["notes"]):
+            problems.append("notes[] carries no insufficient-sample line")
+        if not any("cannot" in n.lower() and "threshold" in n.lower()
+                   for n in report_doc["notes"]):
+            problems.append("the insufficient-sample note does not say a threshold change is "
+                            "unjustified")
+        report.check("calibration: a small sample is flagged and refuses to be evidence",
+                     not problems, "\n".join(problems))
+        code, out, _err = run_script("acceptance_report.py", [
+            "--scored", buyers_path, "--reviews", REVIEWS_BUYERS,
+            "--as-of", AS_OF, "--min-sample", "5"])
+        relaxed = json.loads(out) if code == 0 else {}
+        report.check("calibration: --min-sample lowers the bar and clears the flag",
+                     code == 0 and relaxed.get("summary", {}).get(
+                         "insufficient_sample") is False,
+                     "exit %d, insufficient_sample=%s"
+                     % (code, relaxed.get("summary", {}).get("insufficient_sample")))
+
+        # --- refusal paths ---------------------------------------------------------------
+        base = _read_text(REVIEWS_BUYERS)
+        cases = [
+            ("an unknown verdict", {"verdict": "maybe"}, "is not one of"),
+            ("an unknown reason_code", {"verdict": "reject", "reason_code": "vibes"},
+             "reason_code 'vibes' is not one of"),
+            ("a reject with no reason_code", {"verdict": "reject", "reason_code": ""},
+             "requires a reason_code"),
+            ("a malformed reviewed_on", {"reviewed_on": "12/09/2026"},
+             "is not a YYYY-MM-DD date"),
+            ("an impossible reviewed_on", {"reviewed_on": "2026-02-31"},
+             "not a valid calendar date"),
+            ("a reviewed_on later than as_of", {"reviewed_on": "2026-12-01"},
+             "later than the report's as_of"),
+            ("an email address in a note",
+             {"note": "ask their buyer at sourcing.lead@gulfglow.example"},
+             "contains an email address"),
+            ("a phone number in reviewer_role",
+             {"reviewer_role": "trade operator +82 10 1234 5678"},
+             "contains a phone-number-like string"),
+        ]
+        for label, changes, expect in cases:
+            path = _write_temp_text(
+                _rewrite_review(base, "BUY-gulfglow-example", changes), "kbtm-cal-bad-")
+            temp.append(path)
+            _refusal(report, "acceptance_report.py",
+                     ["--scored", buyers_path, "--reviews", path, "--as-of", AS_OF],
+                     expect, label)
+
+        # a second row for the same id with a different verdict
+        rows = _csv_rows(base)
+        columns = base.splitlines()[0].split(",")
+        clash = io.StringIO()
+        writer = csv.DictWriter(clash, fieldnames=columns, lineterminator="\n")
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
+        extra = dict((c, "") for c in columns)
+        extra.update({"record_id": "BUY-gulfglow-example", "entity_type": "buyer",
+                      "verdict": "reject", "reason_code": "other",
+                      "reviewer_role": "trade operator", "reviewed_on": AS_OF})
+        writer.writerow(extra)
+        path = _write_temp_text(clash.getvalue(), "kbtm-cal-dup-")
+        temp.append(path)
+        _refusal(report, "acceptance_report.py",
+                 ["--scored", buyers_path, "--reviews", path, "--as-of", AS_OF],
+                 "conflicting verdicts", "a duplicate record_id with conflicting verdicts")
+
+        # a review row that joins to nothing
+        orphan = _rewrite_review(base, "BUY-gulfglow-example",
+                                 {"record_id": "BUY-ghost-example"})
+        path = _write_temp_text(orphan, "kbtm-cal-orphan-")
+        temp.append(path)
+        _refusal(report, "acceptance_report.py",
+                 ["--scored", buyers_path, "--reviews", path, "--as-of", AS_OF],
+                 "matches no record in the scored document",
+                 "a review row that matches no scored record")
+
+        # two rubric versions in one report (the INV-23 principle)
+        other = json.loads(buyers_out)
+        other["score_version"] = "kbtm-score-0.9.9"
+        other_path = _write_temp_json(other, "kbtm-cal-otherver-")
+        temp.append(other_path)
+        _refusal(report, "acceptance_report.py",
+                 ["--scored", buyers_path, "--scored", other_path,
+                  "--reviews", REVIEWS_BUYERS, "--as-of", AS_OF],
+                 "refusing to mix score_version", "two score_versions in one report")
+
+        # discovery and match populations in one report
+        _refusal(report, "acceptance_report.py",
+                 ["--scored", buyers_path, "--scored", match_path,
+                  "--reviews", REVIEWS_BUYERS, "--as-of", AS_OF],
+                 "refusing to mix", "a discovery and a match document in one report")
+
+        # the same record reaching the report twice
+        _refusal(report, "acceptance_report.py",
+                 ["--scored", buyers_path, "--scored", buyers_path,
+                  "--reviews", REVIEWS_BUYERS, "--as-of", AS_OF],
+                 "appears in two --scored documents",
+                 "one record_id carried by two --scored documents")
+
+        # a duplicate row whose verdict agrees but whose reason_code does not
+        rows = _csv_rows(base)
+        columns = base.splitlines()[0].split(",")
+        clash = io.StringIO()
+        writer = csv.DictWriter(clash, fieldnames=columns, lineterminator="\n")
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
+        extra = dict((c, "") for c in columns)
+        extra.update({"record_id": "BUY-marinaretail-example", "entity_type": "buyer",
+                      "verdict": "reject", "reason_code": "duplicate",
+                      "reviewer_role": "trade operator", "reviewed_on": AS_OF})
+        writer.writerow(extra)
+        path = _write_temp_text(clash.getvalue(), "kbtm-cal-dupreason-")
+        temp.append(path)
+        _refusal(report, "acceptance_report.py",
+                 ["--scored", buyers_path, "--reviews", path, "--as-of", AS_OF],
+                 "conflicting reason_codes",
+                 "a duplicate record_id with conflicting reason_codes")
+
+        _calibration_blind_partition(report, buyers_out, match_path, match_out, temp)
+        _calibration_formula_injection(report, buyers_out, temp)
+        _calibration_detector_edges(report, buyers_path, base, temp)
+        _calibration_report_edges(report, buyers_path, buyers_out, match_path, base, temp)
+        _calibration_no_match(report, temp)
+    finally:
+        for path in temp:
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+
+
 def phase_safety(report):
     hits = []
     for path in package_files():
@@ -2579,6 +3293,7 @@ MANIFEST = [
     "schemas/match-result.schema.json",
     "schemas/scoring.config.json",
     "schemas/discovery-result.schema.json",
+    "schemas/acceptance-report.schema.json",
     "scripts/_common.py",
     "scripts/normalize_company.py",
     "scripts/dedupe_companies.py",
@@ -2586,6 +3301,8 @@ MANIFEST = [
     "scripts/score_seller.py",
     "scripts/score_match.py",
     "scripts/validate_output.py",
+    "scripts/make_review_sheet.py",
+    "scripts/acceptance_report.py",
     "templates/buyer_outreach.md",
     "templates/seller_outreach.md",
     "templates/legal_notices.md",
@@ -2601,7 +3318,11 @@ PORTABILITY_PATTERNS = [r"WebSearch", r"WebFetch", r"web\.run", r"browser\.", r"
                         r"claude", r"anthropic", r"openai", r"codex", r"gpt-", r"chatgpt"]
 
 # The six CLI scripts of BUILD-CONTRACT 7.1; R7.3.2 / R7.3.3 / INV-35 apply to each.
-CLI_SCRIPTS = [n for n in PIPELINE_SCRIPTS if n != "_common.py"]
+# make_review_sheet.py joins them because it takes the same --input: the same 0xff byte
+# must reach the same clean exit 2. acceptance_report.py does not, because it takes no
+# --input at all (--scored / --reviews are repeatable), so an --input there is an unknown
+# flag and argparse's own exit 2 is the correct answer (R7.1.4).
+CLI_SCRIPTS = [n for n in PIPELINE_SCRIPTS if n != "_common.py"] + ["make_review_sheet.py"]
 
 
 def _read_frontmatter(text):
@@ -2650,6 +3371,22 @@ def phase_package(report):
                 break
     report.check("package: INV-36 SKILL.md names no provider-specific tool, model or API",
                  not hits, "\n".join(hits[:10]))
+
+    # ---- BUILD-CONTRACT 12.1: one skill_version, stated in three places -------------
+    # It lives in the BODY of SKILL.md (never the frontmatter - 2.2 row 1), in
+    # _common.SKILL_VERSION and in the adapter. A bump that reaches two of the three
+    # ships a package that reports a version it is not.
+    versions = {}
+    match = re.search(r"`skill_version ([0-9]+\.[0-9]+\.[0-9]+)`", skill_text)
+    versions["SKILL.md body"] = match.group(1) if match else None
+    for rel in ("scripts/_common.py", "adapters/tradewith_adapter.py"):
+        path = os.path.join(PKG_ROOT, rel)
+        text = open(path, encoding="utf-8").read() if os.path.isfile(path) else ""
+        found = re.search(r'^SKILL_VERSION = "([0-9]+\.[0-9]+\.[0-9]+)"', text, re.MULTILINE)
+        versions[rel] = found.group(1) if found else None
+    report.check("package: BUILD-CONTRACT 12.1 skill_version agrees everywhere it is stated",
+                 len(set(versions.values())) == 1 and None not in versions.values(),
+                 "; ".join("%s=%s" % (k, v) for k, v in sorted(versions.items())))
 
     # ---- BUILD-CONTRACT 2.2 row 1 frontmatter shape --------------------------------
     pairs = _read_frontmatter(skill_text)
@@ -2854,6 +3591,7 @@ def main(argv=None):
     phase_pipeline(report, pipeline, args.allow_missing_scripts)
     phase_cases(report, pipeline, args.allow_missing_scripts)
     phase_field_regressions(report, args.allow_missing_scripts)
+    phase_calibration(report, args.allow_missing_scripts)
     phase_safety(report)
     phase_package(report)
     phase_adapter_guards(report)

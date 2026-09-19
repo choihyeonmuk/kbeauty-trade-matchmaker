@@ -1,0 +1,1565 @@
+{
+  "schema_version": "0.1.0",
+  "as_of": "2026-09-12",
+  "rfq": {
+    "schema_version": "0.1.0",
+    "score_version": "unscored",
+    "rfq_id": "ID-701",
+    "buyer_id": null,
+    "destination_country": "ID",
+    "product_category": "serum",
+    "product_categories_extra": [],
+    "product_description": "Brightening facial serum for the Indonesian market, halal certified, private-label under the buyer's own brand",
+    "product_forms": [],
+    "quantity": 20000,
+    "max_moq": null,
+    "moq_unit": "units",
+    "target_price": null,
+    "commercial_model": "private_label",
+    "required_certifications": [
+      "HALAL"
+    ],
+    "preferred_certifications": [
+      "ISO22716"
+    ],
+    "timeline": "unknown",
+    "max_lead_time_days": null,
+    "required_seller_countries": [
+      "KR"
+    ],
+    "excluded_seller_countries": [],
+    "status": "matching",
+    "qualification_score": 0,
+    "confidence": 0,
+    "unknown_penalty_applied": [],
+    "evidence": [
+      {
+        "schema_version": "0.1.0",
+        "evidence_id": "EV-001",
+        "claim": "product_category",
+        "value": "serum",
+        "source_url": "https://app.tradewith.example/rfqs/ID-701",
+        "source_domain": "app.tradewith.example",
+        "source_type": "internal_record",
+        "source_tier": 2,
+        "is_official": false,
+        "observed_at": "2026-09-11T10:00:00Z",
+        "source_date": "2026-09-05",
+        "confidence": 0.9,
+        "quote_or_summary": "RFQ #ID-701 product_category = serum, destination_country = ID.",
+        "retrieval_method": "internal_api"
+      },
+      {
+        "schema_version": "0.1.0",
+        "evidence_id": "EV-002",
+        "claim": "required_certifications",
+        "value": [
+          "HALAL"
+        ],
+        "source_url": "https://app.tradewith.example/rfqs/ID-701",
+        "source_domain": "app.tradewith.example",
+        "source_type": "internal_record",
+        "source_tier": 2,
+        "is_official": false,
+        "observed_at": "2026-09-11T10:00:00Z",
+        "source_date": "2026-09-05",
+        "confidence": 0.9,
+        "quote_or_summary": "RFQ #ID-701 required_certifications = [HALAL], preferred = [ISO22716].",
+        "retrieval_method": "internal_api"
+      },
+      {
+        "schema_version": "0.1.0",
+        "evidence_id": "EV-003",
+        "claim": "commercial_model",
+        "value": "private_label",
+        "source_url": "https://app.tradewith.example/rfqs/ID-701",
+        "source_domain": "app.tradewith.example",
+        "source_type": "internal_record",
+        "source_tier": 2,
+        "is_official": false,
+        "observed_at": "2026-09-11T10:00:00Z",
+        "source_date": "2026-09-05",
+        "confidence": 0.9,
+        "quote_or_summary": "RFQ #ID-701 commercial_model = private_label, quantity = 20,000 units.",
+        "retrieval_method": "internal_api"
+      }
+    ],
+    "as_of": "2026-09-12",
+    "notes": [
+      "the buyer stated HALAL itself; the agent never adds a required certification the RFQ did not state, however the destination market's own rules read (references/compliance-notes.md 5.1)"
+    ]
+  },
+  "query": {
+    "region_countries": [
+      "ID",
+      "MY",
+      "SG",
+      "TH",
+      "VN",
+      "PH"
+    ],
+    "adjacent_region_countries": [],
+    "country_name": "Indonesia",
+    "vertical": "K-Beauty"
+  },
+  "records": [
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-ahyeonlab-example",
+      "company_name": "Ahyeon Lab Co., Ltd.",
+      "website": "https://ahyeonlab.example/",
+      "canonical_domain": "ahyeonlab.example",
+      "country": "KR",
+      "company_type": "oem_odm",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "notes": [
+        "halal certificate issued by a Korean certification body; the body is named on the company's own certification page (evidence EV-106)"
+      ],
+      "product_categories": [
+        "serum",
+        "skincare"
+      ],
+      "product_forms": [
+        "serum",
+        "essence"
+      ],
+      "oem_odm": true,
+      "private_label": true,
+      "brand_export": false,
+      "moq": 5000,
+      "moq_unit": "units",
+      "lead_time_days": 45,
+      "monthly_capacity_units": 400000,
+      "certifications": [
+        "ISO22716",
+        "CGMP",
+        "HALAL"
+      ],
+      "certifications_verified": true,
+      "export_markets": [
+        "MY",
+        "VN",
+        "SG"
+      ],
+      "excluded_markets": [],
+      "english_site": true,
+      "overseas_partner_signal": true,
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "export@ahyeonlab.example"
+        },
+        {
+          "type": "contact_page",
+          "value": "https://ahyeonlab.example/contact"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active",
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-101",
+          "claim": "company_type",
+          "value": "oem_odm",
+          "source_url": "https://ahyeonlab.example/about",
+          "source_domain": "ahyeonlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Contract manufacturer of skincare serums and ampoules for overseas brand owners.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-102",
+          "claim": "product_categories",
+          "value": [
+            "serum",
+            "skincare"
+          ],
+          "source_url": "https://ahyeonlab.example/products/serum",
+          "source_domain": "ahyeonlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Brightening serum line, filled and packed in-house.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:named_product_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-103",
+          "claim": "oem_odm",
+          "value": true,
+          "source_url": "https://ahyeonlab.example/oem",
+          "source_domain": "ahyeonlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "OEM and ODM contract manufacturing for overseas brand owners.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:published_oem_odm_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-104",
+          "claim": "private_label",
+          "value": true,
+          "source_url": "https://ahyeonlab.example/oem",
+          "source_domain": "ahyeonlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Private-label production under the customer's own brand is available.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-105",
+          "claim": "moq",
+          "value": 5000,
+          "source_url": "https://ahyeonlab.example/oem",
+          "source_domain": "ahyeonlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Minimum order quantity 5,000 units per SKU.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:published_moq_or_pricing_terms"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-106",
+          "claim": "certifications",
+          "value": [
+            "ISO22716",
+            "CGMP",
+            "HALAL"
+          ],
+          "source_url": "https://ahyeonlab.example/quality",
+          "source_domain": "ahyeonlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-03-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Certification page, with certificate numbers.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-107",
+          "claim": "export_markets",
+          "value": [
+            "MY",
+            "VN",
+            "SG"
+          ],
+          "source_url": "https://ahyeonlab.example/global",
+          "source_domain": "ahyeonlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-04-11",
+          "confidence": 0.9,
+          "quote_or_summary": "Export markets: Malaysia, Vietnam, Singapore.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-108",
+          "claim": "contact_channels",
+          "value": "export@ahyeonlab.example",
+          "source_url": "https://ahyeonlab.example/contact",
+          "source_domain": "ahyeonlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Export sales enquiries: export@ahyeonlab.example",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-109",
+          "claim": "english_site",
+          "value": true,
+          "source_url": "https://ahyeonlab.example/en/",
+          "source_domain": "ahyeonlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Full English site with an English product catalogue.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:export_inquiry_channel"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-110",
+          "claim": "regulatory_registrations",
+          "value": {
+            "market": "ID",
+            "scheme": "BPOM cosmetic notification (notifikasi kosmetika)",
+            "registration_status": "registered"
+          },
+          "source_url": "https://ahyeonlab.example/global/indonesia",
+          "source_domain": "ahyeonlab.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-05-30",
+          "confidence": 0.9,
+          "quote_or_summary": "Our Indonesian notification holder has completed BPOM notification for the serum line.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "regulatory_registrations": [
+        {
+          "market": "ID",
+          "scheme": "BPOM cosmetic notification (notifikasi kosmetika)",
+          "registration_status": "registered",
+          "evidence_ids": [
+            "EV-110"
+          ]
+        }
+      ]
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-durimcos-example",
+      "company_name": "Durim Cosmetic Co., Ltd.",
+      "website": "https://durimcos.example/",
+      "canonical_domain": "durimcos.example",
+      "country": "KR",
+      "company_type": "oem_odm",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "notes": [
+        "registration_status is written as in_progress, never as registered (references/compliance-notes.md 5.3)"
+      ],
+      "product_categories": [
+        "serum",
+        "skincare"
+      ],
+      "product_forms": [
+        "serum",
+        "essence"
+      ],
+      "oem_odm": true,
+      "private_label": true,
+      "brand_export": false,
+      "moq": 5000,
+      "moq_unit": "units",
+      "lead_time_days": 45,
+      "monthly_capacity_units": 400000,
+      "certifications": [
+        "ISO22716",
+        "CGMP",
+        "HALAL"
+      ],
+      "certifications_verified": true,
+      "export_markets": [
+        "MY",
+        "VN",
+        "SG"
+      ],
+      "excluded_markets": [],
+      "english_site": true,
+      "overseas_partner_signal": true,
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "export@durimcos.example"
+        },
+        {
+          "type": "contact_page",
+          "value": "https://durimcos.example/contact"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active",
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-201",
+          "claim": "company_type",
+          "value": "oem_odm",
+          "source_url": "https://durimcos.example/about",
+          "source_domain": "durimcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Contract manufacturer of skincare serums and ampoules for overseas brand owners.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-202",
+          "claim": "product_categories",
+          "value": [
+            "serum",
+            "skincare"
+          ],
+          "source_url": "https://durimcos.example/products/serum",
+          "source_domain": "durimcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Brightening serum line, filled and packed in-house.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:named_product_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-203",
+          "claim": "oem_odm",
+          "value": true,
+          "source_url": "https://durimcos.example/oem",
+          "source_domain": "durimcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "OEM and ODM contract manufacturing for overseas brand owners.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:published_oem_odm_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-204",
+          "claim": "private_label",
+          "value": true,
+          "source_url": "https://durimcos.example/oem",
+          "source_domain": "durimcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Private-label production under the customer's own brand is available.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-205",
+          "claim": "moq",
+          "value": 5000,
+          "source_url": "https://durimcos.example/oem",
+          "source_domain": "durimcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Minimum order quantity 5,000 units per SKU.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:published_moq_or_pricing_terms"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-206",
+          "claim": "certifications",
+          "value": [
+            "ISO22716",
+            "CGMP",
+            "HALAL"
+          ],
+          "source_url": "https://durimcos.example/quality",
+          "source_domain": "durimcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-03-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Certification page, with certificate numbers.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-207",
+          "claim": "export_markets",
+          "value": [
+            "MY",
+            "VN",
+            "SG"
+          ],
+          "source_url": "https://durimcos.example/global",
+          "source_domain": "durimcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-04-11",
+          "confidence": 0.9,
+          "quote_or_summary": "Export markets: Malaysia, Vietnam, Singapore.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-208",
+          "claim": "contact_channels",
+          "value": "export@durimcos.example",
+          "source_url": "https://durimcos.example/contact",
+          "source_domain": "durimcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Export sales enquiries: export@durimcos.example",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-209",
+          "claim": "english_site",
+          "value": true,
+          "source_url": "https://durimcos.example/en/",
+          "source_domain": "durimcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Full English site with an English product catalogue.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:export_inquiry_channel"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-210",
+          "claim": "regulatory_registrations",
+          "value": {
+            "market": "ID",
+            "scheme": "BPOM cosmetic notification (notifikasi kosmetika)",
+            "registration_status": "in_progress"
+          },
+          "source_url": "https://durimcos.example/global/indonesia",
+          "source_domain": "durimcos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-05-30",
+          "confidence": 0.9,
+          "quote_or_summary": "BPOM notification for the serum line is in progress with our Indonesian partner.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "regulatory_registrations": [
+        {
+          "market": "ID",
+          "scheme": "BPOM cosmetic notification (notifikasi kosmetika)",
+          "registration_status": "in_progress",
+          "evidence_ids": [
+            "EV-210"
+          ]
+        }
+      ]
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-maruhwabio-example",
+      "company_name": "Maruhwa Bio Co., Ltd.",
+      "website": "https://maruhwabio.example/",
+      "canonical_domain": "maruhwabio.example",
+      "country": "KR",
+      "company_type": "oem_odm",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "notes": [
+        "no Indonesian market page was found; regulatory_registrations is absent, which is unknown and not present-and-empty"
+      ],
+      "product_categories": [
+        "serum",
+        "skincare"
+      ],
+      "product_forms": [
+        "serum",
+        "essence"
+      ],
+      "oem_odm": true,
+      "private_label": true,
+      "brand_export": false,
+      "moq": 5000,
+      "moq_unit": "units",
+      "lead_time_days": 45,
+      "monthly_capacity_units": 400000,
+      "certifications": [
+        "ISO22716",
+        "CGMP",
+        "HALAL"
+      ],
+      "certifications_verified": true,
+      "export_markets": [
+        "MY",
+        "VN",
+        "SG"
+      ],
+      "excluded_markets": [],
+      "english_site": true,
+      "overseas_partner_signal": true,
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "export@maruhwabio.example"
+        },
+        {
+          "type": "contact_page",
+          "value": "https://maruhwabio.example/contact"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active",
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-301",
+          "claim": "company_type",
+          "value": "oem_odm",
+          "source_url": "https://maruhwabio.example/about",
+          "source_domain": "maruhwabio.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Contract manufacturer of skincare serums and ampoules for overseas brand owners.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-302",
+          "claim": "product_categories",
+          "value": [
+            "serum",
+            "skincare"
+          ],
+          "source_url": "https://maruhwabio.example/products/serum",
+          "source_domain": "maruhwabio.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Brightening serum line, filled and packed in-house.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:named_product_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-303",
+          "claim": "oem_odm",
+          "value": true,
+          "source_url": "https://maruhwabio.example/oem",
+          "source_domain": "maruhwabio.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "OEM and ODM contract manufacturing for overseas brand owners.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:published_oem_odm_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-304",
+          "claim": "private_label",
+          "value": true,
+          "source_url": "https://maruhwabio.example/oem",
+          "source_domain": "maruhwabio.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Private-label production under the customer's own brand is available.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-305",
+          "claim": "moq",
+          "value": 5000,
+          "source_url": "https://maruhwabio.example/oem",
+          "source_domain": "maruhwabio.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Minimum order quantity 5,000 units per SKU.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:published_moq_or_pricing_terms"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-306",
+          "claim": "certifications",
+          "value": [
+            "ISO22716",
+            "CGMP",
+            "HALAL"
+          ],
+          "source_url": "https://maruhwabio.example/quality",
+          "source_domain": "maruhwabio.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-03-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Certification page, with certificate numbers.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-307",
+          "claim": "export_markets",
+          "value": [
+            "MY",
+            "VN",
+            "SG"
+          ],
+          "source_url": "https://maruhwabio.example/global",
+          "source_domain": "maruhwabio.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-04-11",
+          "confidence": 0.9,
+          "quote_or_summary": "Export markets: Malaysia, Vietnam, Singapore.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-308",
+          "claim": "contact_channels",
+          "value": "export@maruhwabio.example",
+          "source_url": "https://maruhwabio.example/contact",
+          "source_domain": "maruhwabio.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Export sales enquiries: export@maruhwabio.example",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-309",
+          "claim": "english_site",
+          "value": true,
+          "source_url": "https://maruhwabio.example/en/",
+          "source_domain": "maruhwabio.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Full English site with an English product catalogue.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:export_inquiry_channel"
+          ]
+        }
+      ]
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-cheonglimoem-example",
+      "company_name": "Cheonglim OEM Co., Ltd.",
+      "website": "https://cheonglimoem.example/",
+      "canonical_domain": "cheonglimoem.example",
+      "country": "KR",
+      "company_type": "oem_odm",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "notes": [
+        "the certification page presents itself as the complete set and does not list a halal certificate"
+      ],
+      "product_categories": [
+        "serum",
+        "skincare"
+      ],
+      "product_forms": [
+        "serum",
+        "essence"
+      ],
+      "oem_odm": true,
+      "private_label": true,
+      "brand_export": false,
+      "moq": 5000,
+      "moq_unit": "units",
+      "lead_time_days": 45,
+      "monthly_capacity_units": 400000,
+      "certifications": [
+        "ISO22716",
+        "CGMP"
+      ],
+      "certifications_verified": true,
+      "export_markets": [
+        "MY",
+        "VN",
+        "SG"
+      ],
+      "excluded_markets": [],
+      "english_site": true,
+      "overseas_partner_signal": true,
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "export@cheonglimoem.example"
+        },
+        {
+          "type": "contact_page",
+          "value": "https://cheonglimoem.example/contact"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active",
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-401",
+          "claim": "company_type",
+          "value": "oem_odm",
+          "source_url": "https://cheonglimoem.example/about",
+          "source_domain": "cheonglimoem.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Contract manufacturer of skincare serums and ampoules for overseas brand owners.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-402",
+          "claim": "product_categories",
+          "value": [
+            "serum",
+            "skincare"
+          ],
+          "source_url": "https://cheonglimoem.example/products/serum",
+          "source_domain": "cheonglimoem.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Brightening serum line, filled and packed in-house.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:named_product_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-403",
+          "claim": "oem_odm",
+          "value": true,
+          "source_url": "https://cheonglimoem.example/oem",
+          "source_domain": "cheonglimoem.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "OEM and ODM contract manufacturing for overseas brand owners.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:published_oem_odm_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-404",
+          "claim": "private_label",
+          "value": true,
+          "source_url": "https://cheonglimoem.example/oem",
+          "source_domain": "cheonglimoem.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Private-label production under the customer's own brand is available.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-405",
+          "claim": "moq",
+          "value": 5000,
+          "source_url": "https://cheonglimoem.example/oem",
+          "source_domain": "cheonglimoem.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Minimum order quantity 5,000 units per SKU.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:published_moq_or_pricing_terms"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-406",
+          "claim": "certifications",
+          "value": [
+            "ISO22716",
+            "CGMP"
+          ],
+          "source_url": "https://cheonglimoem.example/quality",
+          "source_domain": "cheonglimoem.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-03-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Certification page, with certificate numbers.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-407",
+          "claim": "export_markets",
+          "value": [
+            "MY",
+            "VN",
+            "SG"
+          ],
+          "source_url": "https://cheonglimoem.example/global",
+          "source_domain": "cheonglimoem.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-04-11",
+          "confidence": 0.9,
+          "quote_or_summary": "Export markets: Malaysia, Vietnam, Singapore.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-408",
+          "claim": "contact_channels",
+          "value": "export@cheonglimoem.example",
+          "source_url": "https://cheonglimoem.example/contact",
+          "source_domain": "cheonglimoem.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Export sales enquiries: export@cheonglimoem.example",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-409",
+          "claim": "english_site",
+          "value": true,
+          "source_url": "https://cheonglimoem.example/en/",
+          "source_domain": "cheonglimoem.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Full English site with an English product catalogue.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:export_inquiry_channel"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-410",
+          "claim": "regulatory_registrations",
+          "value": {
+            "market": "ID",
+            "scheme": "BPOM cosmetic notification (notifikasi kosmetika)",
+            "registration_status": "registered"
+          },
+          "source_url": "https://cheonglimoem.example/global/indonesia",
+          "source_domain": "cheonglimoem.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-05-30",
+          "confidence": 0.9,
+          "quote_or_summary": "BPOM notification completed for our Indonesian importer's catalogue.",
+          "retrieval_method": "page_fetch"
+        }
+      ],
+      "regulatory_registrations": [
+        {
+          "market": "ID",
+          "scheme": "BPOM cosmetic notification (notifikasi kosmetika)",
+          "registration_status": "registered",
+          "evidence_ids": [
+            "EV-410"
+          ]
+        }
+      ]
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-baraecos-example",
+      "company_name": "Barae Cosmetic Co., Ltd.",
+      "website": "https://baraecos.example/",
+      "canonical_domain": "baraecos.example",
+      "country": "KR",
+      "company_type": "oem_odm",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "notes": [
+        "certification list comes from a third-party directory checkbox, so certifications_verified is false and HF-04 cannot reject"
+      ],
+      "product_categories": [
+        "serum",
+        "skincare"
+      ],
+      "product_forms": [
+        "serum",
+        "essence"
+      ],
+      "oem_odm": true,
+      "private_label": true,
+      "brand_export": false,
+      "moq": 5000,
+      "moq_unit": "units",
+      "lead_time_days": 45,
+      "monthly_capacity_units": 400000,
+      "certifications": [
+        "ISO22716"
+      ],
+      "certifications_verified": false,
+      "export_markets": [
+        "MY",
+        "VN",
+        "SG"
+      ],
+      "excluded_markets": [],
+      "english_site": true,
+      "overseas_partner_signal": true,
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "export@baraecos.example"
+        },
+        {
+          "type": "contact_page",
+          "value": "https://baraecos.example/contact"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active",
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-501",
+          "claim": "company_type",
+          "value": "oem_odm",
+          "source_url": "https://baraecos.example/about",
+          "source_domain": "baraecos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Contract manufacturer of skincare serums and ampoules for overseas brand owners.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-502",
+          "claim": "product_categories",
+          "value": [
+            "serum",
+            "skincare"
+          ],
+          "source_url": "https://baraecos.example/products/serum",
+          "source_domain": "baraecos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Brightening serum line, filled and packed in-house.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:named_product_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-503",
+          "claim": "oem_odm",
+          "value": true,
+          "source_url": "https://baraecos.example/oem",
+          "source_domain": "baraecos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "OEM and ODM contract manufacturing for overseas brand owners.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:published_oem_odm_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-504",
+          "claim": "private_label",
+          "value": true,
+          "source_url": "https://baraecos.example/oem",
+          "source_domain": "baraecos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Private-label production under the customer's own brand is available.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-505",
+          "claim": "moq",
+          "value": 5000,
+          "source_url": "https://baraecos.example/oem",
+          "source_domain": "baraecos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Minimum order quantity 5,000 units per SKU.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:published_moq_or_pricing_terms"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-506",
+          "claim": "certifications",
+          "value": [
+            "ISO22716"
+          ],
+          "source_url": "https://directory.koreatradeagency.example/suppliers/baraecos",
+          "source_domain": "directory.koreatradeagency.example",
+          "source_type": "third_party",
+          "source_tier": 4,
+          "is_official": false,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-01-20",
+          "confidence": 0.55,
+          "quote_or_summary": "Directory entry lists ISO 22716 in a checkbox field.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-507",
+          "claim": "export_markets",
+          "value": [
+            "MY",
+            "VN",
+            "SG"
+          ],
+          "source_url": "https://baraecos.example/global",
+          "source_domain": "baraecos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-04-11",
+          "confidence": 0.9,
+          "quote_or_summary": "Export markets: Malaysia, Vietnam, Singapore.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-508",
+          "claim": "contact_channels",
+          "value": "export@baraecos.example",
+          "source_url": "https://baraecos.example/contact",
+          "source_domain": "baraecos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Export sales enquiries: export@baraecos.example",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-509",
+          "claim": "english_site",
+          "value": true,
+          "source_url": "https://baraecos.example/en/",
+          "source_domain": "baraecos.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Full English site with an English product catalogue.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:export_inquiry_channel"
+          ]
+        }
+      ]
+    },
+    {
+      "schema_version": "0.1.0",
+      "score_version": "unscored",
+      "seller_id": "SEL-hanaraexport-example",
+      "company_name": "Hanara Export Co., Ltd.",
+      "website": "https://hanaraexport.example/",
+      "canonical_domain": "hanaraexport.example",
+      "country": "KR",
+      "company_type": "oem_odm",
+      "status": "VERIFIED",
+      "qualification_score": 0,
+      "confidence": 0,
+      "notes": [
+        "exclusivity is recorded as the page states it, not inferred"
+      ],
+      "product_categories": [
+        "serum",
+        "skincare"
+      ],
+      "product_forms": [
+        "serum",
+        "essence"
+      ],
+      "oem_odm": true,
+      "private_label": true,
+      "brand_export": false,
+      "moq": 5000,
+      "moq_unit": "units",
+      "lead_time_days": 45,
+      "monthly_capacity_units": 400000,
+      "certifications": [
+        "ISO22716",
+        "HALAL"
+      ],
+      "certifications_verified": true,
+      "export_markets": [
+        "MY",
+        "VN",
+        "SG"
+      ],
+      "excluded_markets": [
+        "ID"
+      ],
+      "english_site": true,
+      "overseas_partner_signal": true,
+      "contact_channels": [
+        {
+          "type": "corporate_email",
+          "value": "export@hanaraexport.example"
+        },
+        {
+          "type": "contact_page",
+          "value": "https://hanaraexport.example/contact"
+        }
+      ],
+      "stale": false,
+      "operational_status": "active",
+      "evidence": [
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-601",
+          "claim": "company_type",
+          "value": "oem_odm",
+          "source_url": "https://hanaraexport.example/about",
+          "source_domain": "hanaraexport.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Contract manufacturer of skincare serums and ampoules for overseas brand owners.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-602",
+          "claim": "product_categories",
+          "value": [
+            "serum",
+            "skincare"
+          ],
+          "source_url": "https://hanaraexport.example/products/serum",
+          "source_domain": "hanaraexport.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Brightening serum line, filled and packed in-house.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:named_product_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-603",
+          "claim": "oem_odm",
+          "value": true,
+          "source_url": "https://hanaraexport.example/oem",
+          "source_domain": "hanaraexport.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "OEM and ODM contract manufacturing for overseas brand owners.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:published_oem_odm_page"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-604",
+          "claim": "private_label",
+          "value": true,
+          "source_url": "https://hanaraexport.example/oem",
+          "source_domain": "hanaraexport.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Private-label production under the customer's own brand is available.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-605",
+          "claim": "moq",
+          "value": 5000,
+          "source_url": "https://hanaraexport.example/oem",
+          "source_domain": "hanaraexport.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Minimum order quantity 5,000 units per SKU.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:published_moq_or_pricing_terms"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-606",
+          "claim": "certifications",
+          "value": [
+            "ISO22716",
+            "HALAL"
+          ],
+          "source_url": "https://hanaraexport.example/quality",
+          "source_domain": "hanaraexport.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-03-02",
+          "confidence": 0.9,
+          "quote_or_summary": "Certification page, with certificate numbers.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-607",
+          "claim": "export_markets",
+          "value": [
+            "MY",
+            "VN",
+            "SG"
+          ],
+          "source_url": "https://hanaraexport.example/global",
+          "source_domain": "hanaraexport.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-04-11",
+          "confidence": 0.9,
+          "quote_or_summary": "Export markets: Malaysia, Vietnam, Singapore.",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-608",
+          "claim": "contact_channels",
+          "value": "export@hanaraexport.example",
+          "source_url": "https://hanaraexport.example/contact",
+          "source_domain": "hanaraexport.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Export sales enquiries: export@hanaraexport.example",
+          "retrieval_method": "page_fetch"
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-609",
+          "claim": "english_site",
+          "value": true,
+          "source_url": "https://hanaraexport.example/en/",
+          "source_domain": "hanaraexport.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-06-18",
+          "confidence": 0.9,
+          "quote_or_summary": "Full English site with an English product catalogue.",
+          "retrieval_method": "page_fetch",
+          "notes": [
+            "signal:export_inquiry_channel"
+          ]
+        },
+        {
+          "schema_version": "0.1.0",
+          "evidence_id": "EV-610",
+          "claim": "excluded_markets",
+          "value": [
+            "ID"
+          ],
+          "source_url": "https://hanaraexport.example/global",
+          "source_domain": "hanaraexport.example",
+          "source_type": "official_site",
+          "source_tier": 1,
+          "is_official": true,
+          "observed_at": "2026-09-11T10:00:00Z",
+          "source_date": "2026-04-11",
+          "confidence": 0.9,
+          "quote_or_summary": "Indonesia is served exclusively by our appointed partner; we take no new Indonesian accounts.",
+          "retrieval_method": "page_fetch"
+        }
+      ]
+    }
+  ]
+}

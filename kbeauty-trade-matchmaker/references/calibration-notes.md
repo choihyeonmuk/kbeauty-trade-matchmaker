@@ -29,6 +29,7 @@ fictional companies on `.example` domains for the same reason. Everything below 
 - [4. What was deliberately not changed — the Phase-4 agenda](#4-what-was-deliberately-not-changed--the-phase-4-agenda)
 - [5. Discovery-playbook findings](#5-discovery-playbook-findings)
 - [6. The standing warning, stated plainly](#6-the-standing-warning-stated-plainly)
+- [7. Closing the loop — the labelled-set protocol](#7-closing-the-loop--the-labelled-set-protocol)
 
 ---
 
@@ -275,3 +276,152 @@ Until both exist, treat every score as **an audit trail, not a verdict**: it say
 found, where it came from and how it was weighed, reproducibly from the same inputs on the same
 `as_of` date. It does not say the company is a good one. Report it that way, and read the `Missing:`
 line before the score.
+
+Section 7 is the protocol for building the first of those two labelled sets; until a report produced
+by it exists, every sentence above still stands exactly as written.
+
+---
+
+## 7. Closing the loop — the labelled-set protocol
+
+Section 6 says what is missing: a **labelled set**. This section says how to build one, with the two
+scripts that ship for exactly this purpose and nothing else.
+*Korean gloss: 사람이 채점한 라벨 세트를 만들어 루브릭의 변별력을 실제로 측정하는 절차.*
+
+| | |
+|---|---|
+| Scripts | `scripts/make_review_sheet.py` (scored run → blind CSV), `scripts/acceptance_report.py` (filled CSVs + scored runs → report) |
+| Report shape | `schemas/acceptance-report.schema.json`, field notes in `references/data-contract.md` §9.3 |
+| Tunables | `schemas/scoring.config.json` → `calibration` (minimum sample, band edges, sweep range) |
+| What it measures | **PRD 17 Human Acceptance Rate only** |
+| What it cannot measure | **PRD 17 RFQ Conversion.** That needs outcome data fed back from the application layer after real outreach — who was contacted, who replied, which reply became an RFQ. No document this package produces carries it, and no report here may be read as evidence about it. |
+
+Neither script can change a score. Nothing reads the `calibration` block except these two, so a
+report never moves `score_version` (`kbtm-score-0.1.0`) or `schema_version` (`0.1.0`).
+
+### 7.1 Why the sheet is blind
+
+A reviewer who can see the rubric's answer tends to agree with it, and a label that only confirms
+the score measures nothing at all. So the default sheet carries **no score, no rank, no `qualified`
+flag and no excluded-versus-returned marker**, and its rows are ordered by the sha256 digest of the
+record id rather than by rank. *Korean gloss: 점수를 보여주면 사람이 점수에 끌려가므로, 기본 시트는
+점수·순위·적격 여부를 숨기고 순서도 섞는다.*
+
+Two consequences worth stating out loud:
+
+- **Excluded records are indistinguishable from returned ones** under `--include-excluded`. That is
+  the only way to measure a **false exclusion** — a candidate the rubric threw away that the
+  operator would have contacted. A hard filter that is quietly discarding business shows up here
+  and nowhere else. Hiding the score does not achieve this on its own: an excluded discovery record
+  has no `country` at all (the schema has no such field on it), so the excluded rows would have
+  been exactly the rows whose country cell read `unknown`. In blind `--include-excluded` mode the
+  sheet therefore writes the literal `not_shown` into any column that would separate the two
+  populations, on **every** row — blanking it only on the excluded rows would be the same tell
+  inverted — and names those columns on stderr. A column the reviewer cannot see is never a column
+  they are not told about. A match sheet keeps its country column as it is: neither population
+  carries a country there, so `unknown` separates nothing.
+- `--no-blind` exists for auditing one specific ranking, not for building a labelled set. A sheet
+  produced with it appends `rank,score,qualified` and keeps rank order; a report built from one is
+  an audit record, not evidence about the rubric.
+
+### 7.2 Composing the sample
+
+The sample decides what the report can be used for. A number computed over the wrong population is
+worse than no number, because it looks like evidence.
+
+| Rule | Why |
+|---|---|
+| **≥ 2 countries** | §3.1 found `market_relevance` resolving to **2 distinct values** on a single-country request. One country cannot tell you whether a market dimension works. |
+| **≥ 2 product categories** | Same failure mode on `product_fit` / `kbeauty_fit`: one category collapses the dimension that is supposed to separate. |
+| **Target 100–200 reviewed records** | The two live trials had 32 and 12. That was enough to prove a mechanism broken and nowhere near enough to fit a coefficient — the whole finding of §1. `calibration.min_sample` (30) is a *floor below which the report refuses to be evidence*, not a target. |
+| **One reviewer role per sheet** | So a disagreement between two reviewers shows up as two sheets with two rates, not as one averaged number that hides it. The `reviewer_role` column takes a **role label** ("trade operator", "category buyer") — never a person's name, and never an address or a number (INV-31; the report refuses a sheet whose `note` or `reviewer_role` carries either). |
+| **Review the whole returned list, not the top slice** | Reviewing only the top 10 makes every rate a rate about high scorers, and leaves the threshold sweep with nothing below the cut-off to measure. |
+| **`unsure` is a real answer** | It is counted, reported separately, and excluded from both sides of the acceptance rate. A reviewer forced to guess produces a label that measures the forcing, not the company. |
+
+### 7.3 The commands
+
+```bash
+# 1. score the run as usual
+python3 scripts/score_buyer.py --input tmp.buyers.deduped.json --query query-surface.json \
+    --as-of 2026-09-12 --pretty --output buyers.ae.scored.json
+
+# 2. cut a blind review sheet, excluded records included
+python3 scripts/make_review_sheet.py --input buyers.ae.scored.json --as-of 2026-09-12 \
+    --include-excluded --output reviews.ae.csv
+
+# 3. the operator fills verdict / reason_code / note / reviewer_role / reviewed_on and returns it.
+#    Repeat 1-3 per country and per category until the sample rules of 7.2 are met.
+
+# 4. join every sheet back to every run and measure
+python3 scripts/acceptance_report.py \
+    --scored buyers.ae.scored.json --scored buyers.gb.scored.json \
+    --reviews reviews.ae.csv --reviews reviews.gb.csv \
+    --as-of 2026-09-20 --pretty --output acceptance.2026-09-20.json
+
+python3 scripts/validate_output.py --input acceptance.2026-09-20.json \
+    --schema acceptance-report --invariants --strict
+```
+
+`--min-sample N` overrides the configured floor for one run. Lower it to look at a small sample; do
+not lower it to make a decision, which is what `insufficient_sample` exists to stop.
+
+The report **refuses** rather than repairing, with exit 1 and one `ERROR:` line, on: an unknown
+verdict or reason code; a `reject` with no reason code; a duplicate `record_id` whose rows disagree
+on the verdict, or agree on the verdict and disagree on the reason code; a review row that joins to
+no scored record; a malformed or impossible `reviewed_on`, or one later than `--as-of`; a `note` or
+`reviewer_role` carrying an email address or a phone-number-like string; **one `record_id` reaching
+the report from two `--scored` documents** — the same run passed twice doubles every count and
+defeats `min_sample`; two `score_version`s in one report (the INV-23 principle — scores from two
+rubrics are not on one scale); a discovery run mixed with a match run, or a buyer population mixed
+with a seller one; and scored documents carrying no record at all. Silently dropping or silently
+doubling a row would change the denominator of the very rate the decision rests on. On a schema
+failure the report writes nothing at all, to stdout or to `--output`.
+
+What it does **not** refuse: a trailing all-empty CSV row (a spreadsheet's blank line, skipped), a
+partially filled sheet (an empty verdict is simply not reviewed), and a run that returned nothing —
+a `no_match` match run reports every rate as `null` and measures false exclusions only, which on
+such a run is the one thing worth measuring.
+
+The personal-data scan is tuned to pass the notes this protocol asks for. An operator recording a
+CDSCO registration certificate number, a BPOM notification number, an ISO certificate number, a
+registry URL or a trading period writes a longer digit run than any telephone number, so a bare
+number is not a refusal: a telephone needs a telephone **signal** — a leading `+`, a trunk-prefix
+`0` on nine digits or more, or a `tel` / `phone` / `mobile` / `전화`-style label in front. Email
+detection stays broad and also catches `name [at] company.example`.
+
+### 7.4 How to read each block
+
+| Block | The question it answers | How it misleads if read carelessly |
+|---|---|---|
+| `summary.human_acceptance_rate` | Of the candidates an operator *decided on*, what share did they accept? | `unsure` is excluded from both sides. A run with many `unsure`s has a rate over a small population — read `reviewed`, `accept`, `reject` and `unsure` together, and `review_coverage` beside them. |
+| `summary.insufficient_sample` | May this report justify a change? | `true` means **no**, whatever the rates look like. The accompanying `notes[]` line says so in words. |
+| `by_qualified` | Is the `qualified` flag worth anything? `qualified_true.acceptance_rate` is its precision; `qualified_false.acceptance_rate` is what it is throwing away; `qualified_unknown` is what it never judged. | Two rates close together mean the flag is not separating, even if both are high. A non-zero `qualified_unknown` is a defect in the scored run, not a finding about the rubric — read it before the other two, because those records are in neither. |
+| `by_score_band` | Does acceptance rise with the score, monotonically? | A band with `n: 0` reports `null`, not 0. Bands with two or three records are noise. |
+| `threshold_sweep` | What would a different cut-off have returned? `precision` is acceptance among the returned records at or above it; `recall` is the share of **every** accepted record it keeps, an accepted record the rubric *excluded* included — that record sits at or above no threshold, so it is a lead every cut-off loses. | Precision always improves as the threshold rises; the question is what recall it costs. Read the pair. And read `notes[]`: on a **match** report, rows below the run's own threshold are not measurable, because `score_match.py` keeps only candidates at or above it in `results[]`. A discovery report has no such caveat — `score_buyer.py` / `score_seller.py` return their below-threshold records and only flag them unqualified. |
+| `discrimination.overall.auc` | Does a higher score actually mean a better counterparty? 0.5 is "this number tells the reviewer nothing"; 1.0 is perfect separation. | An AUC over a handful of pairs moves a long way on one label. `n_accept` and `n_reject` are printed beside it for that reason. |
+| `discrimination.by_dimension[].distinct_values` | Can this dimension separate anything at all? | This is §3's finding made visible. A dimension at 1–2 distinct values cannot discriminate **whatever its weight** and **whatever its AUC** — an AUC computed over two values is a coin flip dressed up. Read this column before the AUC beside it. |
+| `by_country` | Does the rubric work outside the market it was written against? | One country's rate is the single-country failure of §3.1 all over again. |
+| `by_reason_code` | *Why* are candidates being rejected? | This is the most actionable block: `wrong_vertical` concentrated in one country points at a query family, `evidence_wrong` at the evidence policy, `wrong_company_type` at `B-CR1`. |
+| `false_exclusions` | Which hard filter or evidence bar is discarding business? | A non-empty list is a defect report, not a statistic. One entry is worth investigating; it does not need a sample size. |
+
+### 7.5 What each Phase-4 entry needs before it can be decided
+
+The §4 agenda is deferred for lack of measurement. This is the measurement each entry needs, from
+the blocks above, over a sample that satisfies §7.2 and does **not** carry `insufficient_sample`.
+
+| Id | Decide it when the report shows | Decide the other way when |
+|---|---|---|
+| **P4-1** (buyer weights: `sourcing_intent` 25→18, `b2b_commercial_role` 20→25, `reachability` 10→7, `kbeauty_korea_fit` 20→25) | `discrimination.by_dimension` gives `sourcing_intent` an AUC at or near 0.5 with a low `distinct_values`, while `b2b_role` and `kbeauty_fit` carry the separation — the weight is on the dimensions that do not discriminate | `sourcing_intent` separates once the population spans several countries. Its collapse may have been an artefact of one market's publishing habits. |
+| **P4-2** (seller weights: `compliance_readiness` 15→10, `evidence_quality` 10→15) | Among *sellers*, `evidence_quality` out-AUCs `compliance_fit`, and `by_reason_code` shows few `evidence_wrong` rejections among well-evidenced makers with unpublished terms | `compliance_fit` predicts acceptance and the rejected makers are the ones without a baseline certification — then the current weighting is right and §3's observation was about the population, not the rubric |
+| **P4-3** (threshold mode `fixed 70` → `percentile`) | `threshold_sweep` shows precision materially better at a cut-off other than 70 **on more than one population**, and `by_score_band` shows the run's scores bunched rather than spread | The sweep is flat around 70, or the best cut-off differs per country — a percentile mode would then move the bar for reasons unrelated to quality |
+| **P4-4** (K-Beauty fit: weight or gate?) | `by_qualified` shows the gate's precision clearly above `qualified_false`'s, and `false_exclusions` / low-scoring accepts show the gate is not costing real leads | Accepted records keep landing in `qualified_false` because the gate fired — the gate is then over-reaching and the question returns to weighting |
+| **P4-5** (price a consumer-facing chain with a central buying function) | Accepted records cluster in the `by_score_band` rows *below* the threshold and carry the retail-chain shape — i.e. the rubric is ranking real buyers too low | Those records are rejected too; the 12th-of-20 ranking was then correct and the +20 adjustment already shipped is enough |
+| **P4-6** (let verification reach `compliance_readiness` in a bare discovery run) | On seller discovery runs naming **no** required certification, `compliance_fit` shows 1–2 `distinct_values` and near-0.5 AUC — the dimension is inert exactly as predicted | It already separates, meaning the +5 adjustment path is doing the work |
+| **P4-7** (measure the matching and outreach rubrics at all) | Needs **match-result reviews**: run steps 7.3 over `score_match.py` output, one sheet per RFQ. `--scored` accepts a `match-result` and reports per-component AUC over the six match components. Outreach has no scored document at all and so no report here can reach it | — |
+
+Two standing cautions. First, a report answers "does the rubric agree with this operator", not "is
+this company good": a reviewer's `reject` is itself a judgement, which is why one reviewer role per
+sheet and several sheets beat one averaged number. Second, **P4-1 … P4-6 all change a weight or a
+threshold, so deciding any of them is a `score_version` MINOR bump** (BUILD-CONTRACT 12.2) and every
+stored score goes stale by definition (12.3). The report is the evidence for that bump; it is not
+the bump.

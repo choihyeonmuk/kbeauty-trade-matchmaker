@@ -1,0 +1,11 @@
+record_id,entity_type,company_name,website,country,verdict,reason_code,note,reviewer_role,reviewed_on,rank,score,qualified
+SEL-hansolodm-example,seller,Hansol ODM Corp,https://hansolodm.example/,unknown,,,,,,1,99,true
+SEL-hanbitcos-example,seller,"Hanbit Cosmetics Co., Ltd.",https://hanbitcos.example/,unknown,,,,,,2,97,true
+SEL-hwadamglobal-example,seller,"Hwadam Global Co., Ltd.",https://hwadamglobal.example/,unknown,,,,,,3,93,true
+SEL-nuriskinlab-example,seller,"Nuri Skin Lab Co., Ltd.",https://nuriskinlab.example/,unknown,,,,,,4,91,true
+SEL-pyeongwhacos-example,seller,"Pyeongwha Cosmetics Co., Ltd.",https://pyeongwhacos.example/,unknown,,,,,,5,91,true
+SEL-areumfactory-example,seller,"Areum Factory Co., Ltd.",https://areumfactory.example/,unknown,,,,,,6,82,true
+SEL-kkotgilcos-example,seller,"Kkotgil Cosmetic Co., Ltd.",https://kkotgilcos.example/,unknown,,,,,,7,80,true
+SEL-mirinaeoem-example,seller,"Mirinae OEM Co., Ltd.",https://mirinaeoem.example/,unknown,,,,,,8,80,true
+SEL-yeonhwalab-example,seller,"Yeonhwa Lab Co., Ltd.",https://yeonhwalab.example/,unknown,,,,,,9,79,true
+SEL-dalbitlabs-example,seller,"Dalbit Labs Co., Ltd.",https://dalbitlabs.example/,unknown,,,,,,10,75,true

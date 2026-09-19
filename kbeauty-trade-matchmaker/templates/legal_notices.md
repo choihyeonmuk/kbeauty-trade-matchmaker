@@ -2,8 +2,8 @@
 
 > ## Verify before sending. This page is not legal advice.
 >
-> Each block below is **draft notice wording**, compiled 2026-09-12 from the instruments named in
-> `references/compliance-notes.md` §4.1. It is not a clearance, not a determination, and not a
+> Each block below is **draft notice wording**, compiled 2026-09-12 — the `IN.*`, `ID.*` and `TR.*`
+> blocks 2026-09-19 — from the instruments named in `references/compliance-notes.md` §4.1. It is not a clearance, not a determination, and not a
 > substitute for reading the current text of the instrument or for advice from qualified counsel in
 > the recipient's jurisdiction. A block tells the reviewer *which elements a notice is expected to
 > carry*; the reviewer confirms the wording before anything leaves the application layer.
@@ -73,6 +73,12 @@ questions rather than notice-wording questions. They fall to the §1 step-4 fall
 | `DE.corporate_email` | `unknown` | role address on the company domain |
 | `FR.corporate_email` | `required` | role address on the company domain |
 | `IT.corporate_email` | `unknown` | role address on the company domain |
+| `IN.corporate_email` | `unknown` | role address on the company domain |
+| `IN.partnership_form` | `unknown` | company's own form / contact page |
+| `ID.corporate_email` | `unknown` | role address on the company domain |
+| `ID.partnership_form` | `unknown` | company's own form / contact page |
+| `TR.corporate_email` | `required` | role address on the company domain |
+| `TR.partnership_form` | `unknown` | company's own form / contact page |
 
 Every other `{{country_alpha2}}.{{channel_type}}` pair — including every EU/EEA member state not
 listed above — has no block and takes the §1 step-4 fallback line. That is the designed behaviour,
@@ -242,6 +248,101 @@ function · `compliance-notes.md` §4.1 EU/EEA row
 - Contatto: {{sender_contact_channel}}
 - Opposizione / cancellazione: {{opt_out_route}}
 - Origine dell'indirizzo: {{recipient_channel_source_url}}
+```
+
+### 3.14 `IN.corporate_email`
+
+`status: unknown` · no email-specific statute; DPDP Act 2023 commencement is date-dependent ·
+`compliance-notes.md` §4.1 India row
+
+```text
+- Sender: {{sender_company_name}}, {{sender_company_postal_address}}
+- This is a business sourcing enquiry about supply and distribution.
+- Contact us at {{sender_contact_channel}}.
+- To stop receiving messages at this address, reply with "opt out" or use {{opt_out_route}}.
+  We will stop contacting this address.
+- We obtained this address from {{recipient_channel_source_url}}.
+- India has no email-specific anti-spam statute, and the commencement position of the
+  Digital Personal Data Protection Act, 2023 changes with the send date. Confirm what is
+  in force on the day this is sent.
+- Confirm this address is a company role address and not an individual's. If it
+  identifies a person, the data-protection analysis changes and this draft is not usable
+  on this channel — use the company's own distributor or partner form instead.
+```
+
+### 3.15 `IN.partnership_form`
+
+`status: unknown` · a submission the company's own page invited
+
+```text
+- Submitted through the distributor or partner enquiry form published at
+  {{recipient_channel_source_url}}.
+- Sender: {{sender_company_name}} — {{sender_contact_channel}}
+- Whether any notice duty attaches to a form submission in this jurisdiction is
+  unresolved here. Review before use.
+- No Indian telephone number is contacted from this workflow.
+```
+
+### 3.16 `ID.corporate_email`
+
+`status: unknown` · Law 27/2022 (UU PDP) and UU ITE · `compliance-notes.md` §4.1 Indonesia row
+
+```text
+- Sender: {{sender_company_name}}, {{sender_company_postal_address}}
+- This is a business sourcing enquiry about supply and distribution.
+- Contact us at {{sender_contact_channel}}.
+- To stop receiving messages at this address, use {{opt_out_route}}.
+- We obtained this address from {{recipient_channel_source_url}}.
+- The lawful basis and any notice duty for unsolicited business email in this
+  jurisdiction are unresolved here. Confirm them against the instruments in force, and
+  the current status of the supervisory authority, before this message is sent, and
+  prefer the company's own partner form.
+```
+
+### 3.17 `ID.partnership_form`
+
+`status: unknown` · the preferred Indonesian channel · `compliance-notes.md` §4.2
+
+```text
+- Submitted through the distributor or partner application form published at
+  {{recipient_channel_source_url}}.
+- Sender: {{sender_company_name}} — {{sender_contact_channel}}
+- No Indonesian telephone number is contacted from this workflow.
+```
+
+### 3.18 `TR.corporate_email`
+
+`status: required` · Law 6563 §6 and the Commercial Electronic Messages Regulation: sender
+identification and a right of refusal · `compliance-notes.md` §4.1 Türkiye row
+
+```text
+- Sender: {{sender_company_name}}, {{sender_company_postal_address}}
+- This is a commercial electronic message: a business sourcing enquiry about supply and
+  distribution.
+- Contact: {{sender_contact_channel}}
+- Refusal / opt-out: reply with "opt out", or use {{opt_out_route}}. We will stop
+  contacting this address, and we will not contact it again after a refusal.
+- We obtained this address from {{recipient_channel_source_url}}.
+- Prior consent is not sought for a recipient that is a merchant (tacir) or tradesman
+  (esnaf), but that status must be confirmed for this recipient before the message is
+  sent, and the message-registry (İYS) position must be checked for an exercised refusal.
+- Unresolved: whether and how a sender with no establishment in Türkiye registers with
+  İYS. Obtain local advice before sending on this channel, and prefer the company's own
+  distributor application form.
+```
+
+### 3.19 `TR.partnership_form`
+
+`status: unknown` · a submission the company's own page invited
+
+```text
+- Submitted through the distributor or dealership application form published at
+  {{recipient_channel_source_url}}.
+- Sender: {{sender_company_name}} — {{sender_contact_channel}}
+- Whether the commercial-electronic-message duties of this jurisdiction attach to a form
+  submission, and whether any İYS obligation is engaged, are unresolved here. Review
+  before use.
+- No Turkish telephone number is contacted from this workflow.
 ```
 
 ---

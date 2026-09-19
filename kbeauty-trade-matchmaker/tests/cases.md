@@ -50,8 +50,12 @@ Other fixtures:
 | `fixtures/rfq.no-match.json` | RFQ #901 — T10. Requires `EWG_VERIFIED`, which no seller holds. |
 | `fixtures/match-134.input.json`, `fixtures/match-no-match.input.json` | Run envelopes (`rfq` + `query` + `records`) for `score_match.py`. The envelope's `query` carries `region_countries`, which the agent expands from the operator's "GCC" **before** the query surface is built (BUILD-CONTRACT 8.7 — scripts never expand regions). Without it `market_fit` for Seller A is 79 instead of the contract's 87. `run_tests.py` asserts that each envelope embeds its RFQ and the seller set byte-identically, so the duplication cannot drift. |
 | `fixtures/rerank-134.json` | The SCORING-CONTRACT 6.2 rerank input (`delta +2`, one evidence id). |
-| `fixtures/normalize.cases.json` | Pure string cases for `canonical_domain` / `normalize_company_name`, copied from BUILD-CONTRACT 8.1 and 8.3. These are string transformations and assert nothing about any business. |
+| `fixtures/normalize.cases.json` | Pure string cases for `canonical_domain` / `normalize_company_name`, copied from BUILD-CONTRACT 8.1 and 8.3. These are string transformations and assert nothing about any business. v0.2.0 adds four guard cases for the end-only legal forms: `LLP Cosmetics` and `Pvt Beauty` stay intact (the tokens are a legal form only at the tail), while `Aurora Beauty Pvt Ltd` and `Sunbright LLP` still normalise. |
 | `fixtures/expected/rfq.readiness.expected.json` | RFQ readiness per SCORING-CONTRACT 2.9. |
+| `fixtures/reviews.buyers.uae.csv`, `fixtures/reviews.match-134.csv` | Filled operator review sheets for the calibration loop (section 11). Reviewers are a **role label**, never a name; no address and no number appears in any cell. |
+| `fixtures/expected/review-sheet.*.csv`, `fixtures/expected/acceptance.*.expected.json` | Golden review sheets and golden `acceptance-report` documents (section 11). |
+| `fixtures/rfq.id-halal.json`, `fixtures/match-id-halal.input.json` | RFQ #ID-701 — **destination `ID`, `required_certifications: ["HALAL"]`**, six Korean private-label serum makers of their own (not `sellers.golden.json`). Added to show that the v0.1.0 rubric already prices an emerging-market request with a claim certification and a destination registration **without any scorer, `scoring.config.json` or `score_version` change**. `run_tests.py` asserts that the envelope embeds the standalone RFQ byte-identically. |
+| `fixtures/expected/match-id-halal.expected.json` | Expectation for R9, same field-level shape as `match-134.expected.json`. |
 
 **Counts.** 20 buyer records across AE / GB / US / JP / SG / DE and 20 Korean seller records
 (19 `KR` + 1 with an unknown country), as the Phase 0 roadmap requires.
@@ -171,6 +175,7 @@ Two comparison rules make the pinned fields exact rather than fuzzy:
 | R6 | `score_match.py --input match-134.input.json --rerank-input rerank-134.json` | `expected/match-134.expected.json` |
 | R7 | `score_match.py --input match-no-match.input.json` | `expected/match-no-match.expected.json` |
 | R8 | `validate_output.py --strict --invariants` over one fixture of each of the six document kinds | exit `0` (BUILD-CONTRACT 13.1) |
+| R9 | `score_match.py --input match-id-halal.input.json` | `expected/match-id-halal.expected.json` |
 
 Every run is executed **twice** and the two stdout byte strings must be identical (INV-13).
 `normalize_company.py` and `dedupe_companies.py` are additionally re-applied to their own output
@@ -188,6 +193,10 @@ Headline expected numbers:
   RFQ readiness **70/100** (7 of 10 fields; `buyer_id`, `target_price`, `timeline` missing).
 - R7 (RFQ #901): **every** candidate excluded, `is_no_match: true`, binding rule **HF-04**
   (12 rejections, ahead of HF-07's 6).
+- R9 (RFQ #ID-701, Indonesia / HALAL): 6 considered, 4 passed the hard filter, **2 excluded**
+  (HF-04 ×1, HF-05 ×1); `compliance_fit` **100 / 97 / 91** across `registered` / `in_progress` /
+  absent `regulatory_registrations`, and the seller with no HALAL on an **unverified** list is
+  ranked last at **81** rather than rejected. RFQ readiness **60/100** (6 of 10 fields).
 
 ---
 
@@ -231,11 +240,15 @@ PRD 22 asks for ten or more negative/edge tests beyond T01–T10. These run insi
 | **E13** One rubric per run | R3–R7 | A single `score_version` across every envelope and record, and never `"unscored"` in a scored output | INV-23 |
 | **E14** Partial degrades | R3, R5, R6 | Every run envelope carries a `partial` flag rather than aborting | INV-35 |
 | **E15** Summary counters | R6, R7 | `candidates_considered >= passed_hard_filter >= returned`, `excluded_count == candidates_considered − passed_hard_filter`, and `excluded_count == len(excluded)` | SCORING-CONTRACT 3.5 |
-| **E16** Normalization cases | `normalize.cases.json` | The twenty-two `canonical_domain` cases and eight `normalize_company_name` cases of BUILD-CONTRACT 8.1 / 8.3, including `co.uk → unknown`, an IPv4 literal → `unknown`, `www.www.example.com → example.com` and `ABC Trading LLC → abc` | INV-15, INV-33 |
+| **E16** Normalization cases | `normalize.cases.json` | The twenty-two `canonical_domain` cases and twenty `normalize_company_name` cases of BUILD-CONTRACT 8.1 / 8.3, including `co.uk → unknown`, an IPv4 literal → `unknown`, `www.www.example.com → example.com` and `ABC Trading LLC → abc` | INV-15, INV-33 |
+| **E16(c)** Emerging-market legal forms | `normalize.cases.json`, twelve name cases | India `Pvt. Ltd.` / `Private Limited` / `LLP`, Indonesia `PT …` / `CV …` / `… Tbk` and Türkiye `A.Ş.` / `Ltd. Şti.` / `San. ve Tic.` / `Anonim Şirketi` all reduce to the bare name, **including the all-caps Turkish spelling** whose `İ` casefolds to `i` + U+0307. Four guard cases prove the restricted edges hold: `Private Label Studio`, `Tic Beauty Studio`, `Aş Kozmetik` and `Beauty PT` are returned unchanged | BUILD-CONTRACT 8.3 step 5; INV-15 |
 | **E16(b)** IDN folding | `normalize.cases.json`, four IDN cases | `https://마이브랜드.kr/about`, `https://www.마이브랜드.kr` and the already-punycode `https://xn--hy1b45cw6b22g85n.kr/` all fold to `xn--hy1b45cw6b22g85n.kr`, and `https://例え.jp/` to `xn--r8jz45g.jp` — which is what lets `dedupe_companies.py` merge a local-language duplicate. T06 covers only the `www`/non-www pair; the reference pages previously cited T06 for the IDN half too, and now cite these cases | PRD 15.1 criterion 4; INV-15, INV-16 |
 | **E17** Domain beats name | `expected/dedupe.expected.json must_not_merge` | Two records with different known `canonical_domain` values never merge, whatever their names | INV-16 (R8.4.2) |
 | **E18** Determinism | every run | Two identical invocations produce byte-identical stdout; `normalize_company.py` and `dedupe_companies.py` are stable when re-applied to their own output | INV-13, INV-15 |
 | **E19** Renderable candidate | R3 and R6 output with `website`, `contact_channels`, `missing`, `company_type` and `oem_odm` stripped | `validate_output.py --strict --invariants` exits **1** and reports `INV-19` on both the discovery and the match document. Presence, not non-emptiness: a present-and-empty list is a verified `none` (E08) and stays legal. `website` may be absent only when `canonical_domain` is `"unknown"`, which BUILD-CONTRACT 8.1 makes the only case in which no website was discoverable | **INV-19**, PRD 15.1 criterion 2, PRD 12.2 |
+| **E20** Destination registration ladder (ID) | R9, `SEL-ahyeonlab-example` / `SEL-durimcos-example` / `SEL-maruhwabio-example` — identical except for `regulatory_registrations` | `compliance_fit` is strictly decreasing **100 → 97 → 91** for `registered` → `in_progress` → **absent**, and the three keep that ranked order. The absent array takes the **S-CP3 unknown penalty** and surfaces `Destination-market registration` on the `Missing:` line; it is never read as "checked, none found" | S-CP3; BUILD-CONTRACT 3.2 |
+| **E21** HALAL required, ID destination | R9, `SEL-cheonglimoem-example` (verified list, no HALAL) vs `SEL-baraecos-example` (tier-4 directory list, no HALAL) | The **verified** list fails **HF-04** and leaves `results[]`; the **unverified** list puts HF-04 in **neither** hard-filter array, stays ranked, and is priced down instead — `compliance_fit` **21** against 91 for a held HALAL, total **81** against 92. An unknown is penalised, never fatal | INV-07; PRD test T04; BUILD-CONTRACT R6.2.4 |
+| **E22** Seller-declared market exclusion | R9, `SEL-hanaraexport-example`, `excluded_markets: ["ID"]` | **HF-05** rejects, with `Does not supply ID (market excluded by the seller)`; no `match_score` is emitted | INV-32; HF-05 |
 
 ### Fixture-level cases (no script needed)
 
@@ -248,7 +261,7 @@ PRD 22 asks for ten or more negative/edge tests beyond T01–T10. These run insi
 | Entity status | `DISCOVERED` needs a resolvable `source_url`; `VERIFIED` needs a material claim at `source_tier <= 3`; no raw fixture carries a later state | INV-37, INV-09 |
 | Fictional domains | Every website and evidence host ends in `.example` | fixture policy (top of this file) |
 | No personal data | No `first.last@`-shaped address anywhere in `tests/fixtures/` | INV-31 |
-| Envelope consistency | `match-134.input.json` / `match-no-match.input.json` embed their RFQ and the seller set byte-identically | prevents fixture drift |
+| Envelope consistency | `match-134.input.json` / `match-no-match.input.json` embed their RFQ and the seller set byte-identically; `match-id-halal.input.json` embeds `rfq.id-halal.json` byte-identically (its six seller records are its own) | prevents fixture drift |
 
 ### Safety cases (static, no script needed)
 
@@ -350,11 +363,12 @@ These are **reported, not absorbed**. Each one is a live failure or a documented
 
 ## 9. Current status
 
-`python3 tests/run_tests.py` → **PASS 175 / FAIL 0 / SKIP 0**, exit 0.
+`python3 tests/run_tests.py` → **PASS 252 / FAIL 0 / SKIP 0**, exit 0.
 
 Every scored record, every component score, every hard-filter decision, every exclusion, the whole
 ordering of all four ranked runs, T01–T10, E01–E19, the eleven field regressions of section 6,
-the package and adapter guards of section 10 and every safety and fixture case pass. Q4–Q6 remain open as documented divergences; none of them
+the package and adapter guards of section 10 and the calibration cases of section 11 and every
+safety and fixture case pass. Q4–Q6 remain open as documented divergences; none of them
 currently produces a wrong number on the golden set, which is why they are recorded here rather than
 absorbed into an expectation.
 
@@ -371,7 +385,7 @@ the post-audit pass, each of which had been demonstrated to be bypassable.
 | `package: README.md exists at the repository root` | `README.md` and `docs/` are repository files, not package files (2.2 note); the README documents the repo tree and `install.sh` ships only the package folder | BUILD-CONTRACT 2.2 |
 | `package: INV-36 SKILL.md names no provider-specific tool, model or API` | The case-insensitive grep list of INV-36 (`WebSearch`, `WebFetch`, `web.run`, `browser.`, `mcp__`, `claude`, `anthropic`, `openai`, `codex`, `gpt-`, `chatgpt`) matches nothing in `SKILL.md` outside a pointer at `references/runtime-adapters.md` | **INV-36** |
 | `package: BUILD-CONTRACT 2.2 row 1 SKILL.md frontmatter shape` | Frontmatter keys are exactly `name` + `description`; `name` is the `^[a-z0-9]+(-[a-z0-9]+)*$` slug `kbeauty-trade-matchmaker`, ≤ 64 chars; `description` is one line ≤ 1024 chars | BUILD-CONTRACT 2.2 row 1, INV-36 |
-| `package: R7.3.3 a non-UTF-8 input is a clean usage error, not a traceback` | All six CLI scripts fed a file with a raw `0xff` byte exit **2** with exactly one `ERROR:` line and empty stdout. `UnicodeDecodeError` is a `ValueError`, so it used to escape `read_input`'s `except (IOError, OSError)` and four scripts died with a bare traceback | R7.3.2, R7.3.3, **INV-35** |
+| `package: R7.3.3 a non-UTF-8 input is a clean usage error, not a traceback` | All seven `--input`-taking CLI scripts (the six pipeline scripts plus `make_review_sheet.py`) fed a file with a raw `0xff` byte exit **2** with exactly one `ERROR:` line and empty stdout. `UnicodeDecodeError` is a `ValueError`, so it used to escape `read_input`'s `except (IOError, OSError)` and four scripts died with a bare traceback | R7.3.2, R7.3.3, **INV-35** |
 | `package: INV-35 a non-string canonical_domain degrades, never tracebacks` | `score_buyer.py` / `score_seller.py` fed a record whose `canonical_domain` is a list still write a document and one `ERROR:` line. The `excluded[]` sort key used to raise `TypeError` from outside every `try` | R7.3.2, R7.3.3, **INV-35** |
 | `adapter: a clean draft is still accepted` | The guards below did not simply break the adapter: a normal draft still stores at `READY_FOR_REVIEW` / `auto_send false` / `manual_approval_required true` | INV-09 |
 | `adapter: INV-10/INV-25 a NESTED dispatch or credential block is refused` | `delivery.{transport,recipients,schedule_at}` and `auth_block.{token,password}` are refused with their JSON paths named. The scan used to read only top-level keys, so a nested dispatch instruction and a cleartext credential were written to disk while the run reported "queued for human review" and exited 0 | **INV-10, INV-25** |
@@ -384,3 +398,105 @@ the post-audit pass, each of which had been demonstrated to be bypassable.
 a document whose candidates cannot render their INV-19 lines. Before it, stripping `website`,
 `contact_channels`, `missing`, `company_type` and `oem_odm` off every record left a document that
 passed `--strict --invariants` at exit 0 — the shipping gate `SKILL.md` self-check #1 names.
+
+---
+
+## 11. Calibration tooling — the labelled-set loop
+
+`phase_calibration` runs after the field regressions. It covers the two scripts that measure the
+rubric instead of computing it: `scripts/make_review_sheet.py` (scored run → blind operator CSV) and
+`scripts/acceptance_report.py` (filled CSVs + scored runs → an `acceptance-report` document). Neither
+can change a score — no scorer reads them and no scorer reads the `calibration` block of
+`scoring.config.json` — so every case here is about **measurement discipline**, not arithmetic. The
+protocol they implement is `references/calibration-notes.md` §7.
+
+### Fixtures
+
+| File | What it is |
+|---|---|
+| `fixtures/reviews.buyers.uae.csv` | The R3 blind sheet (19 returned + 1 excluded, `--include-excluded`) as a trade operator handed it back: 5 `accept`, 6 `reject`, 1 `unsure` on returned records, plus `accept` on the excluded `BUY-quietharbour-example`. `reviewer_role` is the role label `trade operator` on every filled row; no personal data anywhere |
+| `fixtures/reviews.match-134.csv` | The same for R6 (10 returned + 9 excluded): 4 `accept`, 3 `reject`, 1 `unsure`, plus `accept` on the `HF-03`-excluded `SEL-daehansuncare-example` |
+| `fixtures/expected/review-sheet.buyers.uae.blind.csv` | Golden blind sheet for R3 with `--include-excluded` |
+| `fixtures/expected/review-sheet.match-134.ranked.csv` | Golden `--no-blind` sheet for R6 (rank order, `rank,score,qualified` appended) |
+| `fixtures/expected/acceptance.buyers.uae.expected.json` | Golden report for R3 + `reviews.buyers.uae.csv` |
+| `fixtures/expected/acceptance.match-134.expected.json` | Golden report for R6 + `reviews.match-134.csv` |
+
+Both expected reports were generated by the script and then **recomputed by hand** before being
+trusted. The numbers below are those hand checks; if a change makes one of them move, the change is
+what needs explaining.
+
+| Report | Hand check |
+|---|---|
+| Buyers | accept 5, reject 6 → `human_acceptance_rate` = 5 / 11 = **0.4545**; coverage 12 / 19 = **0.6316**; `by_qualified` 4/5 = **0.8** against 1/6 = **0.1667**; overall AUC over accepts {96, 84, 81, 71, 53} vs rejects {82, 63, 57, 53, 36, 32} = (6 + 6 + 5 + 5 + 2.5) / 30 = 24.5 / 30 = **0.8167**, the 2.5 being the 53-vs-53 tie counted 0.5; `kbeauty_fit` AUC = 20.5 / 30 = **0.6833** |
+| Match | accept 4, reject 3 → 4 / 7 = **0.5714**; coverage 8 / 10 = **0.8**; AUC over accepts {99, 97, 91, 82} vs rejects {93, 80, 75} = (3 + 3 + 2 + 2) / 12 = 10 / 12 = **0.8333** |
+| Recall denominator (both) | Every accepted record, **excluded ones included**. Match: 4 returned accepts + the accepted `HF-03` exclusion = 5, so recall is 4 / 5 = **0.8** at thresholds 50–80 (all four accepted scores 99/97/91/82 clear 80) and 3 / 5 = **0.6** at 85 and 90. Buyer: 5 returned accepts + the accepted `DISC-06` exclusion = 6, so 5 / 6 = **0.8333** at 50, 4 / 6 = **0.6667** at 55–70 (96/84/81/71), 3 / 6 = **0.5** at 75–80, 1 / 6 = **0.1667** at 85 and 90 |
+
+`market_relevance` reports `distinct_values: 2` on the buyer report — the single-country collapse of
+`references/calibration-notes.md` §3.1, now visible in a document instead of a prose finding. The
+match report groups every candidate under `country: unknown`, because a `match_candidate` carries no
+country; that is reported rather than papered over.
+
+### Cases
+
+| Case | What it asserts |
+|---|---|
+| `calibration: make_review_sheet.py (buyer run, blind) exits 0` · `(match run, --no-blind) exits 0` | Both modes run clean over the R3 and R6 documents |
+| `calibration: the blind buyer sheet matches its golden byte for byte` · `the ranked match sheet …` | Byte-for-byte CSV comparison, LF line endings included |
+| `calibration: a blind sheet carries no rank/score/qualified column` | The three anchoring columns are absent from the header in blind mode |
+| `calibration: no blind sheet cell carries a qualification score` | Stronger than the header check: no cell anywhere holds any of the run's 19 score values, so the score cannot leak through another column |
+| `calibration: blind row order is independent of rank` | The blind order is **not** the document's ranked order. A sheet that reproduces the ranking anchors the reviewer even with the numbers hidden |
+| `calibration: blind row order is the sha256 order of the record ids` | And it is that specific order, so the shuffle is deterministic (INV-13) rather than merely different |
+| `calibration: --include-excluded lists excluded[] and the default does not` | `BUY-quietharbour-example` appears only under the flag; false exclusions cannot be measured without it |
+| `calibration: INV-13 make_review_sheet.py is byte-identical on a re-run` | **INV-13** |
+| `calibration: acceptance_report.py (buyer / match) exits 0` | Both documents kinds report clean |
+| `calibration: the buyer / match acceptance report matches its golden byte for byte` | The full report, every count and every rate |
+| `calibration: INV-13 acceptance_report.py (buyer / match) is byte-identical on a re-run` | **INV-13** |
+| `calibration: the buyer / match acceptance report validates --strict` | `validate_output.py --schema acceptance-report --invariants --strict` exits 0 against `schemas/acceptance-report.schema.json` |
+| `calibration: the report says it measures Human Acceptance Rate only` | `notes[]` names both PRD 17 metrics and says RFQ Conversion is out of reach. A calibration report that does not state its own limit is how one gets quoted as evidence for something it never measured |
+| `calibration: a small sample is flagged and refuses to be evidence` | 11 decided reviews against `calibration.min_sample` 30 sets `insufficient_sample: true` **and** writes the note saying the report cannot justify a weight or threshold change |
+| `calibration: --min-sample lowers the bar and clears the flag` | The override works and is visible in the summary — lowering the bar is a deliberate, recorded act |
+| `calibration: refuses an unknown verdict` | `verdict: maybe` → exit 1 |
+| `calibration: refuses an unknown reason_code` | `reason_code: vibes` → exit 1 |
+| `calibration: refuses a reject with no reason_code` | A rejection with no reason is a data point nobody can act on |
+| `calibration: refuses a malformed reviewed_on` · `an impossible reviewed_on` · `a reviewed_on later than as_of` | `12/09/2026`, `2026-02-31` and a date after the report's `--as-of` are each refused |
+| `calibration: refuses an email address in a note` · `a phone number in reviewer_role` | **INV-31.** The review sheet is the one path by which a personal contact could enter the calibration loop; the report refuses the whole sheet rather than aggregating it |
+| `calibration: refuses a duplicate record_id with conflicting verdicts` | Two rows for one record saying `accept` and `reject` → exit 1. A duplicate with the *same* verdict is kept once and noted |
+| `calibration: refuses a review row that matches no scored record` | The sheet and the run have drifted apart; the join would silently change the denominator |
+| `calibration: refuses two score_versions in one report` | The **INV-23** principle applied to a report: scores from two rubrics are not on one scale (BUILD-CONTRACT 12.3 rule 4) |
+| `calibration: refuses a discovery and a match document in one report` | Different rubrics on different populations. A buyer population mixed with a seller one is refused by the same check |
+| `calibration: refuses one record_id carried by two --scored documents` | The same run passed twice (or a copy under a second name) multiplies every count it appears in and would let 30 decided reviews report as 60, defeating `min_sample`. The check runs **after** the score_version / kind / entity checks, so a rubric mismatch is still named first |
+| `calibration: refuses a duplicate record_id with conflicting reason_codes` | Two rows agreeing on `reject` but disagreeing on *why* are as unresolved as two disagreeing verdicts. A duplicate agreeing on both is kept once and noted |
+
+Every refusal additionally asserts the shape of the failure: exit **1**, exactly one `ERROR:` line
+(R7.3.3), no traceback, and a message that names the defect rather than the exception.
+
+### Cases from the v0.2.0 review
+
+An independent review of the first cut found that hiding the score was not enough to make a sheet
+blind, and that several guards were tuned for the fixture rather than for the field. These cases
+pin the repairs; each was mutation-checked (the fix was reverted and the case observed to fail).
+
+| Case | What it asserts |
+|---|---|
+| `calibration: H1 no column of the blind buyer sheet separates excluded from returned rows` · `… blind match sheet …` | The general property, not the specific leak: for **every** column, the set of cell shapes (`filled` / `unknown` / `not_shown` / `empty`) on the excluded rows must overlap the set on the returned rows. `discovery-result.excluded[]` has no `country` field, so before the fix the excluded rows were exactly the rows whose country cell read `unknown` — the ranking hidden and the exclusions still legible |
+| `calibration: H1 the discovery country column is neutralised for every row` | `not_shown` on **all** 20 rows, not only the excluded one — blanking one population is the same tell inverted |
+| `calibration: H1 the neutralisation is announced on stderr` | A column the reviewer cannot see must not be a column they are not told about |
+| `calibration: H1 without --include-excluded the country column is real` | The neutralisation is scoped: with one population there is nothing to separate, so `AE` / `GB` / `JP` stay. A match sheet keeps its country column too (both populations carry none, so `unknown` separates nothing) |
+| `calibration: H3 a formula-leading company name is escaped, not executed` | `=cmd\|'/c calc'!A1` and `@SUM(1+1)*cmd` as `company_name` are written with a leading apostrophe. Names come off harvested public pages; the operator opens the sheet in a spreadsheet |
+| `calibration: refuses a record_id that would need a formula guard` | The join key is never rewritten — an apostrophe would break every row of the report — so an id starting with a formula character is refused instead |
+| `calibration: M4 recall counts accepted-but-EXCLUDED records in its denominator` | Asserted on a **fresh run**, not on the golden: recall@50 = 0.8 and recall@85 = 0.6 over 5 accepted records of which 4 were returned. Measuring recall against the run's own output could never fall below 1.0 at the bottom of the sweep |
+| `calibration: M4 a match report says its sub-threshold sweep rows are unmeasurable` · `… a discovery report does NOT …` | Worded per kind, because the kinds differ: `score_match.py` keeps only `match_score >= threshold` in `results[]`, while `score_buyer.py` / `score_seller.py` return their below-threshold records and merely flag them unqualified |
+| `calibration: M5 registration numbers, certificate numbers, year ranges and registry URLs are not read as personal data` | A CDSCO RC number, a BPOM notification number, `active 2019 - 2024, ISO 22716 cert 9001-2015`, a registry URL with a numeric id and `15 000 000 KRW over 2020/2021/2022` all pass. The discovery playbooks tell operators to record exactly these, and a digit-count rule refused them — aborting the whole report over a note the protocol asked for |
+| `calibration: refuses an obfuscated email in a note` · `a full-width phone number in a note` · `a phone number glued to a URL in a note` | The other direction: `name [at] company.example` and `ＴＥＬ ０１０１２３４５６７８` are caught. Input is NFKC-normalised first, and a telephone now needs a telephone *signal* (`+`, a trunk `0` on ≥ 9 digits, or a `tel`/`phone`/`전화`-style label) rather than merely being long URLs are scrubbed before the telephone pass so a registry URL with a numeric id passes; a separator-formatted trunk-prefix number or a `tel=`/`phone=` label INSIDE a URL (`www.x.example/010-1234-5678`) is therefore checked first and still refused. |
+| `calibration: M6 a record with no qualified flag lands in qualified_unknown, never qualified_false` | "Unknown is not false" is the package's headline rule. Folding an unjudged record into `qualified_false` would invent a negative out of a gap, in the one document whose job is to measure the flag's precision |
+| `calibration: M7 a trailing all-empty CSV row is skipped, not fatal` | A sheet with a trailing `,,,,,,,,,` produces byte-identical output to the same sheet without it. A row with content but no `record_id` is still a defect |
+| `calibration: L10 a report that fails its schema is not written at all` | Run against a deliberately impossible schema: exit 1, empty stdout, `--output` not created. Unlike a scorer (R7.3.2), a report is a single aggregate that is either trustworthy or not, and a file on disk that failed its own schema is the one most likely to be quoted |
+| `calibration: L15 an empty reject class yields a null AUC with a stated reason, and distinct_values is still reported` | An all-accept sheet: `overall.auc` is `null` with the reason naming the empty class, every per-dimension AUC likewise, and `distinct_values` (17 overall, 2 on `market_relevance`) is still counted — the collapse finding does not depend on having both classes |
+| `calibration: L15 the no-match fixture really returns nothing` · `… still yields a review sheet of its exclusions` · `… a no-match report succeeds, reports null rates and measures false exclusions only` | The pinned behaviour for a `no_match` match run: **not** a refusal. Every rate is `null`, `false_exclusions` carries the one accepted exclusion, and `notes[]` says the report measures false exclusions only — which on such a run is the one thing worth measuring |
+| `calibration: refuses a scored document with no record at all` | The boundary of the above: no returned record *and* no excluded record means there was never anything for a sheet to label |
+
+One case in section 10 grew out of this work:
+
+| Case | What it asserts | Invariant |
+|---|---|---|
+| `package: BUILD-CONTRACT 12.1 skill_version agrees everywhere it is stated` | The `skill_version` in the **body** of `SKILL.md`, `_common.SKILL_VERSION` and `adapters/tradewith_adapter.py`'s `SKILL_VERSION` are one value. Nothing checked this before, so a bump that reached two of the three would have shipped a package reporting a version it was not | BUILD-CONTRACT 12.1 |

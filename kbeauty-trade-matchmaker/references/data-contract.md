@@ -11,7 +11,7 @@ changes.
 | `schema_version` | `0.1.0` |
 | `score_version` | `kbtm-score-0.1.0` |
 | Canonical `as_of` in every example | `2026-09-12` |
-| **Binding source of document shape** | `schemas/buyer.schema.json`, `seller.schema.json`, `rfq.schema.json`, `evidence.schema.json`, `match-result.schema.json`, `discovery-result.schema.json` |
+| **Binding source of document shape** | `schemas/buyer.schema.json`, `seller.schema.json`, `rfq.schema.json`, `evidence.schema.json`, `match-result.schema.json`, `discovery-result.schema.json`, `acceptance-report.schema.json` |
 | **Binding source of every number** | `schemas/scoring.config.json` |
 | Companion pages | `references/qualification-rubric.md`, `references/matching-rules.md`, `references/evidence-policy.md` |
 
@@ -44,7 +44,7 @@ changes.
 
 ## 1. The document set
 
-Five document kinds plus two run envelopes:
+Five document kinds, two run envelopes and one measurement document:
 
 ```
                     +---------------------+
@@ -87,6 +87,7 @@ Five document kinds plus two run envelopes:
 | `evidence` | every step | **No** — embedded by value inside the other documents | One claim, one source, one observation time |
 | `match-result` | `score_match.py` | Yes | One full RFQ → seller run; scored profile only |
 | `discovery-result` | `score_buyer.py` / `score_seller.py` | Yes | The run envelope around scored buyer/seller records |
+| `acceptance-report` | `acceptance_report.py` | Yes | A **measurement** document (§9.3): operator labels joined back to a scored run. No scorer reads it, so producing one never moves `score_version` |
 
 ### 1.1 Profiles
 
@@ -594,6 +595,122 @@ the match arithmetic reads the seller document, never these copies.
 `base_score` is stored **separately** from `match_score` so the deterministic half and the AI half
 stay separable, and so determinism is testable on `base_score` alone.
 
+### 9.3 The calibration pair — review sheet and `acceptance-report`
+
+Two **measurement** documents. They exist to answer whether the rubric discriminates, and nothing
+reads them back into a score: no scorer opens either, so producing one never moves `score_version`.
+The protocol is `references/calibration-notes.md` §7.
+*Korean gloss: 루브릭 검증용 측정 문서 — 점수에는 절대 영향을 주지 않는다.*
+
+**The review sheet** (CSV, UTF-8, LF, produced by `scripts/make_review_sheet.py`). Ten columns, in
+this order; the last five ship **empty** for the operator to fill:
+
+| Column | Filled by | Notes |
+|---|---|---|
+| `record_id` | script | `buyer_id` / `seller_id` of the scored record; the join key |
+| `entity_type` | script | `buyer` \| `seller` |
+| `company_name`, `website`, `country` | script | copied from the scored document; the literal `unknown` when it carries none (a `match-result` candidate carries no `country`, so a match sheet's column is all `unknown`), or the literal `not_shown` when the blind rule below neutralises the column |
+| `verdict` | operator | `accept` \| `reject` \| `unsure` |
+| `reason_code` | operator | **required when `verdict` is `reject`**, optional otherwise: `wrong_company_type` \| `wrong_vertical` \| `wrong_market` \| `inactive_or_unreachable` \| `duplicate` \| `evidence_wrong` \| `other` |
+| `note` | operator | free text; **no personal data** — the report refuses a sheet whose `note` carries an email address or a phone-number-like string (INV-31) |
+| `reviewer_role` | operator | a **role label** ("trade operator"), never a person's name, address or number |
+| `reviewed_on` | operator | `YYYY-MM-DD`, never later than the report's `as_of` |
+
+Three cell states, never conflated (INV-02): an **empty** cell means "the operator has not
+answered"; the literal `unknown` means "the scored document did not carry this value"; the literal
+`not_shown` means "the sheet is withholding this column on purpose". A row with an empty `verdict`
+is simply not reviewed and changes no denominator, and a row in which **every** cell is empty — the
+trailing blank line a spreadsheet saves — is skipped rather than treated as a defect.
+
+**Formula guard.** `company_name` and `website` come off a harvested public page, so either can
+begin with `=`, `+`, `-`, `@`, a tab or a carriage return, which a spreadsheet reads as the start of
+a formula. Any such cell is written with a leading apostrophe (`'=cmd|…`), which neutralises it and
+leaves the text readable. `record_id` is **never** rewritten — it is the join key and an apostrophe
+would break every row of the report — so a `record_id` that would need the guard is refused with
+exit 1 instead.
+
+The sheet is **blind by default**: no score, no rank, no `qualified` flag, no returned-versus-excluded
+marker, and rows ordered by `sha256(record_id)` so the reviewer is not anchored by the rubric.
+`--no-blind` keeps rank order and appends `rank,score,qualified` after the ten columns.
+`--include-excluded` adds the `excluded[]` records, indistinguishable from the rest in blind mode,
+which is the only way to measure a **false exclusion**.
+
+**Hiding the score is not enough on its own.** `discovery-result.excluded[]` carries no `country`
+field at all, so under `--include-excluded` the excluded rows would be exactly the rows whose
+country cell reads `unknown` — the ranking hidden and the exclusions still legible. In blind
+`--include-excluded` mode the sheet therefore neutralises any display column that would separate the
+two populations, writing `not_shown` on **every** row (blanking only the excluded rows would be the
+same tell inverted) and naming the columns on stderr. Two rules decide it: *structural* — a column
+the excluded shape cannot carry, which is `country` on a discovery run whatever the data holds — and
+*observed* — a column whose cell shapes do not overlap between the two populations, which catches a
+run where, say, no excluded record happens to have a website. A match sheet keeps its `country`
+column untouched, because neither population carries a country and `unknown` therefore separates
+nothing. The ten-column layout never changes. The vocabularies live in `_common.py`
+(`REVIEW_SHEET_COLUMNS`, `REVIEW_VERDICTS`, `REVIEW_REASON_CODES`) — they are vocabularies, not
+tunable numbers, so INV-29 is unaffected; every number the two scripts use is in
+`scoring.config.json` → `calibration`.
+
+**The report** (`schemas/acceptance-report.schema.json`, produced by
+`scripts/acceptance_report.py`) · **required**: `report_kind` (const `acceptance-report`),
+`schema_version`, `score_version`, `as_of`, `summary`, `by_qualified`, `by_score_band`,
+`threshold_sweep`, `discrimination`, `by_country`, `by_reason_code`, `false_exclusions`, `notes`.
+
+| Field | Notes |
+|---|---|
+| `summary` | counts (`returned`, `excluded`, `reviewed`, `reviewed_excluded`, `accept`, `reject`, `unsure`), `review_coverage`, **`human_acceptance_rate` = accept / (accept + reject)** with `unsure` excluded and reported separately, plus `score_version`, `source_kind`, `entity`, `threshold_used`, `threshold_mode`, `as_of`, `min_sample` and `insufficient_sample` |
+| `by_qualified` | `qualified_true` / `qualified_false` / **`qualified_unknown`**, each the shared count block — the precision of the `qualified` flag, what it misses, and the records it never judged. Three buckets, not two: "unknown is not false" (§2), and folding an absent or `"unknown"` flag into `qualified_false` would report a gap as a rejection in the one document whose job is to measure the flag |
+| `by_score_band` | one row per `calibration.score_bands` pair (0–49, 50–59, 60–69, 70–79, 80–89, 90–100), in config order |
+| `threshold_sweep` | one row per candidate cut-off over `calibration.threshold_sweep` (50…90 step 5). `precision` = accept / (accept + reject) **among the returned records at or above the cut-off**; `recall` = those accepts / **every** accepted record in the report, excluded ones included, because an accepted record the rubric excluded is a lead that cut-off would also have lost. A row **below** the run's own `threshold_used` is only measurable when the run returned its below-threshold records: `score_buyer.py` / `score_seller.py` do (`qualified` is a flag there, not a filter), `score_match.py` does not, and a match report then says so in `notes[]` |
+| `discrimination` | `overall` and `by_dimension[]` AUC — P(score of an accepted record > score of a rejected one), ties 0.5 — over the six discovery dimensions or the six match components, each with a `distinct_values` count |
+| `by_country`, `by_reason_code` | breakdowns; `by_reason_code` emits all seven codes in vocabulary order whether or not they occurred |
+| `false_exclusions` | excluded records an operator accepted, with the `reason_summary` and `failed_rule_ids` that excluded them |
+| `notes` | run-level notes, always including the statement that this report measures PRD 17 **Human Acceptance Rate** only |
+
+Rate conventions: every rate is rounded half-up to `calibration.rate_decimals` and is **`null`, never
+`0`, when its denominator is zero** — the same unknown-is-not-zero rule as §2. `insufficient_sample`
+is true when `accept + reject < min_sample`; the report then carries a `notes[]` line saying it
+cannot justify a weight or threshold change.
+
+Counter invariants: `returned >= reviewed >= accept + reject + unsure` is an equality on the last
+three.
+
+**Everything the report refuses**, each with exit 1 and one `ERROR:` line, rather than repairing
+it — a calibration report is evidence for a weight or threshold decision, and a silently dropped or
+silently doubled row changes the denominator that decision rests on:
+
+1. an unknown `verdict`, or an unknown `reason_code`;
+2. a `reject` carrying no `reason_code`;
+3. a duplicate `record_id` whose rows disagree on `verdict`, **or** agree on `verdict` and disagree
+   on `reason_code` (a duplicate that agrees on both is kept once and noted);
+4. a review row whose `record_id` matches no scored record;
+5. a `reviewed_on` that is malformed, not a real calendar date, or later than the report's `as_of`;
+6. a `note` or `reviewer_role` carrying an email address or a phone-number-like string (INV-31);
+7. one `record_id` appearing in two `--scored` documents — the same run passed twice multiplies
+   every count it appears in and defeats `min_sample`;
+8. two `score_version`s in one report (the INV-23 principle, BUILD-CONTRACT 12.3 rule 4);
+9. a discovery run mixed with a match run, or a buyer population mixed with a seller one;
+10. scored documents carrying no record at all, returned or excluded.
+
+A run that returned **nothing** — a `no_match` match run, or a discovery run that excluded every
+candidate — is not a refusal: the report succeeds with every rate `null` and a `notes[]` line saying
+it measures false exclusions only, which on such a run is the one thing worth measuring.
+
+**The report is validated before anything is written.** On a schema failure nothing reaches stdout
+or `--output`. That is deliberately unlike the scorers, which emit their document even on exit 1
+(BUILD-CONTRACT R7.3.2) so an operator can see which record broke: a report is a single aggregate
+that is either trustworthy or not, and a file on disk that failed its own schema is the one most
+likely to be quoted anyway.
+
+**What the personal-data scan does and does not catch.** It is deliberately asymmetric. An `@`
+inside a word is almost never anything but an address, so email detection is broad and also catches
+the `name [at] company.example` obfuscation. A long run of digits, by contrast, is usually **not** a
+telephone number in this vertical — the discovery playbooks tell an operator to record a CDSCO
+registration certificate number, a BPOM notification number, an ISO certificate number, a registry
+URL and a trading period, every one of which is a longer digit run than a phone number. A telephone
+therefore needs a telephone **signal**: a leading `+`, a trunk-prefix `0` on a run of nine digits or
+more, or a `tel` / `phone` / `mobile` / `전화`-style label just in front. Input is NFKC-normalised
+first, so full-width digits cannot walk past the scan, and URLs and ISO dates are removed before it.
+
 ---
 
 ## 10. State machine
@@ -708,6 +825,43 @@ python3 scripts/score_seller.py \
   --as-of 2026-09-12 \
   --output out/sellers.scored.json --pretty
 ```
+
+### 11.4 Migration — `normalized_name` changed in v0.2.0
+
+`skill_version 0.2.0` changes what `normalize_company_name` returns for two families of input.
+Neither is a schema change and neither touches a score, so `schema_version` stays `0.1.0` and
+`score_version` stays `kbtm-score-0.1.0` — but `normalized_name` is **dedupe key 2** (§12 rule 2),
+so a stored record normalised by an earlier version and a fresh one can fail to merge when they are
+the same company.
+*Korean gloss: v0.2.0에서 `normalized_name` 규칙이 바뀌었으므로, 이전 버전으로 저장한 레코드는 새
+레코드와 중복 제거하기 전에 반드시 다시 정규화해야 한다.*
+
+| What changed | Before → after |
+|---|---|
+| Turkish dotted capital `İ` | NFKC + casefold now folds it, so `İPEK Kozmetik` → `ipek kozmetik` rather than keeping a combining dot |
+| Indian / Singaporean forms | `pvt`, `llp` and `private limited` are stripped: `Aurora Beauty Pvt Ltd` → `aurora beauty`, `Sunbright LLP` → `sunbright` |
+| Indonesian forms | leading `PT` / `CV` and trailing `Tbk` are stripped: `PT Cantik Indonesia` → `cantik indonesia` |
+| Turkish forms | `A.Ş.`, `Ltd. Şti.`, `San. ve Tic.`, `Anonim Şirketi` are stripped: `ABC Kozmetik San. ve Tic. Ltd. Şti.` → `abc kozmetik` |
+
+**Required action.** Re-run `normalize_company.py` over every stored record before de-duplicating it
+against records produced by v0.2.0. Comparing an old `normalized_name` with a new one is comparing
+two different functions, and the failure is silent: two records for one company sit side by side
+with no `merges_suggested[]` entry, because on the stored spelling they genuinely do not match.
+`canonical_domain` is unaffected, so any record carrying a known domain merges as before; the risk
+is confined to the domainless fallback path.
+
+**A known consequence, accepted.** Stripping a leading `PT` / `CV` means `PT Cantik Indonesia` and
+`CV Cantik Indonesia` both normalise to `cantik indonesia` and so share the fallback name key. They
+are different legal entities. This is accepted because the fallback key is **always** paired with a
+known, equal country (§12 rule 2) and is used **only** when no `canonical_domain` is available, and
+because the rule never merges on its own: it raises a `merges_suggested[]` entry and a "possible
+duplicate" note for a human to resolve. Keeping the prefix instead would have left every Indonesian
+record un-mergeable against the same company written without its form, which is the commoner case.
+
+Three tokens are deliberately **end-only** for the mirror-image reason — `llp`, `pvt` and the
+Turkish `tic` / `aş` family. Tried at the start they would eat the first real word of `LLP
+Cosmetics`, `Pvt Beauty`, `Tic Tac Beauty` or `Aş Kozmetik`, and §12 rule 2 prefers a missed merge
+to a wrong one. `tests/fixtures/normalize.cases.json` pins all four.
 
 ---
 

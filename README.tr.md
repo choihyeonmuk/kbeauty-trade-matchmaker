@@ -6,7 +6,23 @@ Aynı klasör **Claude Code** ve **OpenAI Codex** üzerinde hiçbir değişiklik
 
 [English](README.md) · [한국어](README.ko.md) · [मराठी](README.mr.md) · [हिन्दी](README.hi.md) · [Bahasa Indonesia](README.id.md) · [Türkçe](README.tr.md) · [Proje sayfası](https://kbeauty.tradewith.kr/) · [LinkedIn](https://www.linkedin.com/in/hm-choi)
 
-> **Durum: v0.1.1.** Pipeline, kurgusal fixture'lar üzerinde 179 vakaya karşı test edilmiş ve canlı web üzerinde bir kez denenmiştir. Puanlama rubriği **henüz gerçek sonuçlara karşı doğrulanmamıştır**: puanlar tekrarlanabilir ve izlenebilirdir, ancak öngörü gücü henüz bilinmemektedir. RFQ Matching ve Outreach Draft modları canlı veri üzerinde çalıştırılmamıştır. Bir puana güvenmeden önce [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) dosyasını okuyun.
+![Doğru K-Beauty ticaret ortağını bulun](kbeauty-trade-partner-linkedin-cities.png)
+
+> İş akışına genel bakış: keşfet, doğrula, eşleştir ve son incelemeyi insana bırak.
+
+> **Durum: v0.2.0.** Pipeline, kurgusal fixture'lar üzerinde 252 vakaya karşı test edilmiş ve canlı web üzerinde bir kez denenmiştir. Puanlama rubriği **henüz gerçek sonuçlara karşı doğrulanmamıştır**: puanlar tekrarlanabilir ve izlenebilirdir, ancak öngörü gücü henüz bilinmemektedir. v0.2.0 bunu ölçmeye yarayan araçları ekler ([Puanları doğrulama](#puanları-doğrulama)), ancak henüz etiketlenmiş bir örneklem yoktur. RFQ Matching ve Outreach Draft modları canlı veri üzerinde çalıştırılmamıştır. Bir puana güvenmeden önce [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) dosyasını okuyun.
+
+---
+
+## Yenilikler
+
+**v0.2.0 (2026-09-19).** Mevcut hiçbir puan değişmez.
+
+- **Puan doğrulama araçları.** Bir ticaret operatörü için kör inceleme sayfası ve operatörün kabul/ret kararlarını puanlarla karşılaştıran bir rapor. Bkz. [Puanları doğrulama](#puanları-doğrulama).
+- **Hindistan, Endonezya ve Türkiye için pazar paketleri.** Yerel dilde alıcı araması, eşleştirmede kullanılan pazara giriş kuralları (CDSCO, BPOM, Endonezya'nın zorunlu helal sertifikasyonu, TİTCK), doğrudan pazarlama kontrol listesi satırları ve bildirim blokları ile `Pvt Ltd`, `PT`, `A.Ş.` ve benzeri şirket türü eklerinin şirket adlarında ele alınması. Bkz. [Pazar paketleri](#pazar-paketleri).
+- Testler: 179 → 252 vaka.
+
+Her sürümün tam notları: [CHANGELOG.md](CHANGELOG.md) (değişiklik günlüğü yalnızca İngilizcedir).
 
 ---
 
@@ -143,6 +159,7 @@ kbeauty-trade-matchmaker/
 │   ├── evidence.schema.json      # The smallest unit: one source, one claim
 │   ├── match-result.schema.json  # One complete matching run
 │   ├── discovery-result.schema.json
+│   ├── acceptance-report.schema.json  # One calibration measurement (v0.2.0)
 │   └── scoring.config.json       # Every weight, threshold and penalty lives in this one file
 ├── scripts/                      # Standard library only. No network, no credentials
 │   ├── _common.py                # Config, rounding, normalisation, tri-state helpers, schema validator
@@ -151,7 +168,9 @@ kbeauty-trade-matchmaker/
 │   ├── score_buyer.py
 │   ├── score_seller.py
 │   ├── score_match.py
-│   └── validate_output.py        # Schema plus contract invariants
+│   ├── validate_output.py        # Schema plus contract invariants
+│   ├── make_review_sheet.py      # Blind CSV review sheet for a trade operator (v0.2.0)
+│   └── acceptance_report.py      # Review sheets + scored runs -> Human Acceptance Rate report (v0.2.0)
 ├── templates/
 │   ├── buyer_outreach.md
 │   ├── seller_outreach.md        # With and without an RFQ
@@ -207,6 +226,45 @@ Puanlar içeriğin yaşıyla çarpılır: 90 gün içinde 1.00, bir yıl içinde
 - Hiçbir önemli iddiada **hiç kanıt bulunmaması**: Kayıt puanlamadan önce gerekçesi belirtilerek ("site açılamadı" veya "okundu, ancak önemli bir iddia yok") `excluded[]` listesine taşınır. Sıralı bir listeyi kanıtsız şirketlerle şişirmek, tam olarak bu kuralın önlediği hatadır.
 
 Depolama asgari düzeydedir: iddia, URL, gözlem zamanı ve kısa bir alıntı; asla sayfaların tamamı veya gereksiz kişisel profiller saklanmaz. Çelişen kaynaklar bir insanın görmesi için `conflicts[]` içinde kaydedilir, asla sessizce çözülmez ve çelişkiler güven düzeyini düşürür.
+
+---
+
+## Puanları doğrulama
+
+Buradaki puanlar tekrarlanabilirdir, ancak henüz kimse bunları bir insanın yargısıyla karşılaştırmamıştır. v0.2.0 ile eklenen iki bağımsız script bu kontrolü yapmanızı sağlar. Hiçbir puanı değiştirmezler.
+
+```bash
+cd kbeauty-trade-matchmaker
+
+# 1. Make a blind sheet from a scored run. No score, rank or qualified flag; rows in a fixed shuffled order.
+python3 scripts/make_review_sheet.py --input out/buyers.scored.json --include-excluded --output out/review.csv
+
+# 2. A trade operator fills in verdict (accept / reject / unsure), a reason_code for each reject,
+#    their role, and the date. Then:
+python3 scripts/acceptance_report.py --scored out/buyers.scored.json --reviews out/review.csv --as-of 2026-09-19 --pretty
+```
+
+Rapor, incelenen şirketlerden operatörün kabul ettiklerinin oranını hem genel olarak hem de `qualified` işaretine, puan bandına, ülkeye ve ret gerekçesine göre ayrılmış olarak verir. 50 ile 90 arasındaki her eşiğin hangi kesinlik (precision) ve duyarlılık (recall) değerlerini vereceğini gösterir. Toplam puan ve altı boyutun her biri için, puanın kabul edilen şirketleri reddedilenlerden ne kadar iyi ayırdığını ve ilgili boyutun kaç farklı değer ürettiğini gösterir. Operatörün kabul edeceği, ancak hariç tutulmuş şirketleri listeler.
+
+Karara bağlanmış inceleme sayısı 30'un altındaysa rapor kendisini `insufficient_sample` olarak işaretler ve bir ağırlık ya da eşik değişikliğini gerekçelendiremeyeceğini belirtir. Bilinmeyen verdict değerleri, gerekçesiz retler, birbiriyle çelişen mükerrer satırlar, farklı `score_version` değerleriyle puanlanmış çalıştırmalar ve e-posta adresi ya da telefon numarası içeren notlar bulunan sayfaları reddeder. İnceleyenler asla adlarıyla değil, rolleriyle tanımlanır.
+
+[`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) §7, örneklemin nasıl oluşturulacağını (en az iki ülke ve iki kategori, incelenmiş 100 ila 200 şirket) ve hangi sonucun her bir açık kalibrasyon sorusunu karara bağlayacağını açıklar. Bu yalnızca Human Acceptance Rate (insan kabul oranı) değerini ölçer. İletişime geçilen bir lead'in RFQ'ya dönüşüp dönüşmediğini bilmek için uygulama katmanından gelen sonuç verileri gerekir.
+
+## Pazar paketleri
+
+v0.2.0 Hindistan, Endonezya ve Türkiye'yi ekler. Hiçbir puanlama kuralı değişmedi; yeni bir test fixture'ı (varış pazarı Endonezya, helal zorunlu) mevcut rubriğin bunları zaten ele aldığını gösterir.
+
+| | Hindistan | Endonezya | Türkiye |
+|---|---|---|---|
+| Alıcı arama dili | Önce İngilizce, ek olarak Hintçe | Endonezce | Türkçe |
+| Eşleştirmede kullanılan pazara giriş kuralı | CDSCO ithalat kaydı | BPOM bildirimi; kozmetikler için zorunlu helal sertifikasyonu (`--as-of` tarihine bağlı) | ÜTS üzerinden TİTCK bildirimi |
+| Şirket adlarından çıkarılan şirket türü ekleri | `Pvt Ltd`, `Private Limited`, `LLP` | `PT`, `CV`, `Tbk` | `A.Ş.`, `Ltd. Şti.`, `San. ve Tic.` |
+| Bildirim blokları | `IN.corporate_email`, `IN.partnership_form` | `ID.corporate_email`, `ID.partnership_form` | `TR.corporate_email`, `TR.partnership_form` |
+
+- Kayıtlar pazar bazında `regulatory_registrations` içinde tutulur ve mevcut varış pazarı kriteriyle puanlanır: kayıtlı olan, süreci devam edenden; o da yayımlanmamış olandan üstündür.
+- `Helal`, `Sertifikat Halal` ve `हलाल` ifadeleri `HALAL` token'ına dönüşür; sertifikayı veren kuruluş ve kapsamı notlarda yer alır. Endonezya'da tanınma kuruluş ve kapsam bazındadır; dolayısıyla gıda için tanınan bir sertifika kozmetikleri kapsamaz.
+- Agent, RFQ'nun belirtmediği zorunlu bir sertifikayı asla eklemez. Bunu, bir insanın karar vermesi için risk olarak gündeme getirir.
+- Canlı bir çalıştırmada henüz denenmemiş kaynaklar [`buyer-discovery.md`](kbeauty-trade-matchmaker/references/buyer-discovery.md) dosyasında "not yet field-tested" olarak işaretlenmiştir. Uyumluluk satırları bir insanın neyi kontrol etmesi gerektiğini listeler; hukuki sonuç değildir.
 
 ---
 
@@ -267,7 +325,7 @@ sh kbeauty-trade-matchmaker/install.sh --runtime codex --project /path/to/your-r
 
 - Codex, çalışma dizininden repository köküne kadar her dizindeki `.agents/skills` klasörünü tarar. `~/.codex/skills` kullanımdan kaldırılmıştır (deprecated) ancak hâlâ desteklenmektedir; yeni kurulumlar için `~/.agents/skills` kullanın.
 - Açıkça çağırmak için CLI ve IDE eklentisinde `$kbeauty-trade-matchmaker` veya `/skills`, ChatGPT'de ise `@` kullanın. Örtük çağırma `description` alanına göre belirlenir.
-- Bağımsız bir skill klasörü yalnızca **ChatGPT masaüstü uygulaması, Codex CLI ve IDE eklentisinde** görünür. ChatGPT **web ve mobil** sürümleri, skill'in bir plugin olarak paketlenmesini gerektirir; v0.1.1 bunu içermez.
+- Bağımsız bir skill klasörü yalnızca **ChatGPT masaüstü uygulaması, Codex CLI ve IDE eklentisinde** görünür. ChatGPT **web ve mobil** sürümleri, skill'in bir plugin olarak paketlenmesini gerektirir; v0.2.0 bunu içermez.
 - `AGENTS.md` bir skill kurulum yöntemi değildir. Repository için sürekli geçerli talimatlar sağlayan ayrı bir Codex özelliğidir.
 
 > **2026-09-13 tarihinde resmi dokümantasyonla karşılaştırılarak kontrol edilmiştir.** Buradaki herhangi bir bilgi güncel dokümantasyonla çelişirse, dokümantasyon esas alınmalıdır.
@@ -361,7 +419,7 @@ Altı soru hâlâ açıktır. Her birinin bu uygulamada bir varsayılanı vardı
 
 | Sürüm | Değer | Neyi tanımlar | Nerede bulunur |
 |---|---|---|---|
-| `skill_version` | `0.1.1` | Paket: prompt'lar, referanslar, script'ler, şablonlar, testler | `SKILL.md` gövdesi, `match-result.skill_version` |
+| `skill_version` | `0.2.0` | Paket: prompt'lar, referanslar, script'ler, şablonlar, testler | `SKILL.md` gövdesi, `match-result.skill_version` |
 | `schema_version` | `0.1.0` | Yapı sözleşmesi: alan adları, enum'lar, zorunlu alan listeleri | Her belge, `schemas/*.json` |
 | `score_version` | `kbtm-score-0.1.0` | Rubrik: ağırlıklar, kriterler, sinyaller, cezalar, eşikler, kesin filtreler | `scoring.config.json`, puanlanmış her belge |
 

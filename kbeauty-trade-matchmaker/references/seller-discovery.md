@@ -240,6 +240,31 @@ Record the original printed token in a note either way. `CFDA` remains a legal `
 
 Rules: **`certifications_verified: true` only** when the list came from an official source presenting it as the company's complete set (a dedicated `인증현황` page, or a certifier registry) — only then can `HF-04` reject for a missing certificate; a blog mention, a banner logo strip or a partial list ⇒ `false` / `"unknown"`. An unmapped but well-formed token is preserved verbatim **with a note** and matches only exactly. `regulatory_registrations[]` is per destination market (`{"market":"AE","scheme":"MoHAP","registration_status":"registered|in_progress|not_registered|unknown","evidence_ids":[...]}`); absent = unknown, present-and-empty = checked and none found. Never read a *destination* registration from another market's certificate.
 
+### 8.2 Readiness for India, Indonesia and Türkiye — what a Korean seller's site actually says
+
+These three markets are new to `references/compliance-notes.md` §4.1 and §5.1, and a Korean maker that has done the work says so in a short, recognisable set of phrases. Every row below maps to a field; nothing here is a new token and nothing here changes the rubric.
+
+| Printed on the seller's own page (KO / EN) | Where it goes | Why |
+|---|---|---|
+| `인도 CDSCO 등록`, `CDSCO 등록 완료`, `COS-2`, `수입 등록증(RC)`, "CDSCO import registration" | `regulatory_registrations` entry `{"market": "IN", "scheme": "CDSCO cosmetic import registration (Form COS-2)", "registration_status": "registered"}` | A per-market registration, so it belongs in `regulatory_registrations` and not in `certifications[]` (§8.1). `S-CP3` reads it when the RFQ's destination is `IN` |
+| `BPOM 등록`, `BPOM 노티피케이션`, `인도네시아 BPOM 허가`, "BPOM notification" | `regulatory_registrations` entry `{"market": "ID", "scheme": "BPOM cosmetic notification (notifikasi kosmetika)", "registration_status": "registered"}` | Same. Note who holds it: the notification is held by an **Indonesian** notification holder, so a maker saying "our Indonesian partner holds the BPOM notification" is evidencing a registration that exists **for its product in ID** — record it, and put the holder relationship in `notes[]` |
+| `튀르키예 ÜTS 등록`, `터키 ÜTS 신고`, `TİTCK 등록`, "notified to TİTCK through ÜTS" | `regulatory_registrations` entry `{"market": "TR", "scheme": "TİTCK cosmetic product notification (ÜTS)", "registration_status": "registered"}` | Same. The Turkish responsible person is a company fact for `notes[]`, never a named individual |
+| `할랄 인증`, `인도네시아 할랄`, `BPJPH`, `KMF 할랄`, `MUI 할랄`, `Helal`, `Sertifikat Halal` | `HALAL` in `certifications[]`, **with the certifying body and the scope named in `notes[]`** | `HALAL` is a claim certification, not a market registration (§8.1). The body matters: recognition is **per body and per scope**, and a body recognised for food is not thereby recognised for cosmetics (`compliance-notes.md` §5.1). The agent normalises the local spelling; **no code synonym is added** (`compliance-notes.md` §5.2a) |
+| A **BPJPH registration of a foreign halal certificate** stated by the maker ("our halal certificate is registered with BPJPH") | **Both**: `HALAL` in `certifications[]` **and** a `regulatory_registrations` entry with `market: "ID"` and `scheme` naming BPJPH | They are two different facts — holding a certificate, and that certificate being recognised in the destination market. Recording only one of them loses the half `S-CP3` prices |
+
+**What does NOT count, in any of the three:**
+
+| Seen on the page | Why it is not the claim |
+|---|---|
+| `인도 수출 실적`, `인도네시아 수출`, `튀르키예 수출 경험` — export track record | That is `export_markets[]` (§9), not a registration. "We export to Indonesia" is not a BPOM notification (§5.3 rule 3 of `compliance-notes.md`) |
+| `CDSCO 등록 대행`, `BPOM 등록 지원`, `할랄 인증 컨설팅`, `ÜTS 신고 대행` | A **service sold to clients**, not a registration the maker holds. `notes[]` with its evidence id, exactly as for `CPNP 등록 대행` above |
+| `할랄 친화적`, "halal-friendly", `무슬림 친화`, `돼지 유래 원료 미사용` (no porcine-derived ingredients) | Marketing copy and an ingredient statement, not a certification. Never `HALAL` |
+| `인도네시아 파트너사 보유`, "we have a Türkiye partner" | A commercial relationship. It may support `overseas_partner_signal`; it is not a registration |
+| A halal certificate whose **stated expiry precedes `--as-of`**, or whose scope covers a different product line | Not held, or not held for this product. Record a `conflicts[]` or risk entry instead (`compliance-notes.md` §5.3 rules 1–2) |
+| The **buyer's** market making halal effectively mandatory | Not a fact about the seller at all. It never becomes a `required_certifications` token the RFQ did not state — raise it for the human (`references/matching-rules.md` HF-04) |
+
+Korean gloss: `인도 CDSCO 등록`·`BPOM 등록`·`튀르키예 ÜTS`는 `regulatory_registrations`에, `할랄`은 인증기관을 `notes[]`에 적고 `HALAL` 토큰으로. 수출 실적·등록 대행·"할랄 친화적"은 어느 쪽도 아니다.
+
 ---
 
 ## 9. Step 7 — write the record: observed text → field → claim key

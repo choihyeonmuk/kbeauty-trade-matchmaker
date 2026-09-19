@@ -6,7 +6,23 @@ Folder yang sama berjalan tanpa modifikasi di **Claude Code** dan **OpenAI Codex
 
 [English](README.md) · [한국어](README.ko.md) · [मराठी](README.mr.md) · [हिन्दी](README.hi.md) · [Bahasa Indonesia](README.id.md) · [Türkçe](README.tr.md) · [Halaman proyek](https://kbeauty.tradewith.kr/) · [LinkedIn](https://www.linkedin.com/in/hm-choi)
 
-> **Status: v0.1.1.** Pipeline ini telah diuji terhadap 179 kasus pada fixture fiktif dan telah diujicobakan satu kali terhadap web langsung. Rubrik penilaian **belum divalidasi terhadap hasil nyata**: skor dapat direproduksi dan ditelusuri, tetapi belum diketahui daya prediksinya. RFQ Matching dan Outreach Draft belum dijalankan pada data langsung. Bacalah [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) sebelum memercayai sebuah skor.
+![Temukan mitra dagang K-Beauty yang tepat](kbeauty-trade-partner-linkedin-cities.png)
+
+> Gambaran alur kerja: temukan, verifikasi, cocokkan, dan tetap libatkan manusia dalam peninjauan.
+
+> **Status: v0.2.0.** Pipeline ini telah diuji terhadap 252 kasus pada fixture fiktif dan telah diujicobakan satu kali terhadap web langsung. Rubrik penilaian **belum divalidasi terhadap hasil nyata**: skor dapat direproduksi dan ditelusuri, tetapi belum diketahui daya prediksinya. v0.2.0 menambahkan perangkat untuk mengukur hal tersebut ([Memvalidasi skor](#memvalidasi-skor)), tetapi sampel berlabel belum ada. RFQ Matching dan Outreach Draft belum dijalankan pada data langsung. Bacalah [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) sebelum memercayai sebuah skor.
+
+---
+
+## Yang baru
+
+**v0.2.0 (2026-09-19).** Tidak ada skor yang sudah ada yang berubah.
+
+- **Perangkat validasi skor.** Lembar tinjauan buta (blind) untuk seorang operator perdagangan, dan laporan yang membandingkan keputusan terima/tolak mereka dengan skor. Lihat [Memvalidasi skor](#memvalidasi-skor).
+- **Paket pasar untuk India, Indonesia, dan Türkiye.** Pencarian pembeli dalam bahasa setempat, aturan masuk pasar yang digunakan dalam pencocokan (CDSCO, BPOM, sertifikasi halal wajib di Indonesia, TİTCK), baris checklist dan blok pemberitahuan pemasaran langsung, serta penanganan nama perusahaan untuk `Pvt Ltd`, `PT`, `A.Ş.`, dan bentuk serupa. Lihat [Paket pasar](#paket-pasar).
+- Pengujian: 179 → 252 kasus.
+
+Catatan lengkap untuk setiap rilis: [CHANGELOG.md](CHANGELOG.md) (changelog hanya tersedia dalam bahasa Inggris).
 
 ---
 
@@ -143,6 +159,7 @@ kbeauty-trade-matchmaker/
 │   ├── evidence.schema.json      # The smallest unit: one source, one claim
 │   ├── match-result.schema.json  # One complete matching run
 │   ├── discovery-result.schema.json
+│   ├── acceptance-report.schema.json  # One calibration measurement (v0.2.0)
 │   └── scoring.config.json       # Every weight, threshold and penalty lives in this one file
 ├── scripts/                      # Standard library only. No network, no credentials
 │   ├── _common.py                # Config, rounding, normalisation, tri-state helpers, schema validator
@@ -151,7 +168,9 @@ kbeauty-trade-matchmaker/
 │   ├── score_buyer.py
 │   ├── score_seller.py
 │   ├── score_match.py
-│   └── validate_output.py        # Schema plus contract invariants
+│   ├── validate_output.py        # Schema plus contract invariants
+│   ├── make_review_sheet.py      # Blind CSV review sheet for a trade operator (v0.2.0)
+│   └── acceptance_report.py      # Review sheets + scored runs -> Human Acceptance Rate report (v0.2.0)
 ├── templates/
 │   ├── buyer_outreach.md
 │   ├── seller_outreach.md        # With and without an RFQ
@@ -207,6 +226,45 @@ Dua kondisi sengaja dibedakan:
 - **Tidak ada bukti sama sekali** untuk klaim material mana pun: record dipindahkan ke `excluded[]` sebelum penilaian, dengan alasan yang dinyatakan ("situs tidak dapat dibuka" atau "sudah dibaca, tetapi tidak ada klaim material"). Mengisi daftar peringkat dengan perusahaan tanpa bukti adalah kegagalan yang justru dicegah oleh aturan ini.
 
 Penyimpanan dibuat minimal: klaim, URL, waktu pengamatan, dan kutipan singkat; tidak pernah halaman utuh atau profil pribadi yang tidak diperlukan. Sumber yang saling bertentangan dicatat dalam `conflicts[]` agar dapat dilihat oleh manusia, tidak pernah diselesaikan secara diam-diam, dan konflik menurunkan confidence.
+
+---
+
+## Memvalidasi skor
+
+Skor di sini dapat direproduksi, tetapi belum ada yang memeriksanya terhadap penilaian seorang manusia. Dua skrip mandiri, yang ditambahkan di v0.2.0, memungkinkan Anda menjalankan pemeriksaan itu. Keduanya tidak mengubah skor apa pun.
+
+```bash
+cd kbeauty-trade-matchmaker
+
+# 1. Make a blind sheet from a scored run. No score, rank or qualified flag; rows in a fixed shuffled order.
+python3 scripts/make_review_sheet.py --input out/buyers.scored.json --include-excluded --output out/review.csv
+
+# 2. A trade operator fills in verdict (accept / reject / unsure), a reason_code for each reject,
+#    their role, and the date. Then:
+python3 scripts/acceptance_report.py --scored out/buyers.scored.json --reviews out/review.csv --as-of 2026-09-19 --pretty
+```
+
+Laporan ini menyajikan proporsi perusahaan yang ditinjau dan diterima oleh operator, secara keseluruhan maupun dipilah berdasarkan penanda `qualified`, rentang skor, negara, dan alasan penolakan. Laporan ini menunjukkan precision dan recall yang akan dihasilkan oleh setiap ambang dari 50 hingga 90. Untuk skor total dan masing-masing dari enam dimensi, laporan ini menunjukkan seberapa baik skor memisahkan perusahaan yang diterima dari yang ditolak, serta berapa banyak nilai berbeda yang dihasilkan dimensi tersebut. Laporan ini juga mendaftar perusahaan yang dikecualikan tetapi sebenarnya akan diterima oleh operator.
+
+Di bawah 30 tinjauan yang sudah diputuskan, laporan menandai dirinya sendiri `insufficient_sample` dan menyatakan bahwa ia tidak dapat membenarkan perubahan bobot atau ambang. Laporan menolak lembar dengan verdict yang tidak dikenal, penolakan tanpa alasan, duplikat yang saling bertentangan, proses yang dinilai dengan `score_version` yang berbeda, serta catatan yang memuat alamat email atau nomor telepon. Peninjau diidentifikasi berdasarkan peran, tidak pernah berdasarkan nama.
+
+[`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) §7 menjelaskan cara menyusun sampel (sedikitnya dua negara dan dua kategori, 100 hingga 200 perusahaan yang ditinjau) dan hasil apa yang akan menjawab setiap pertanyaan kalibrasi yang masih terbuka. Ini hanya mengukur Human Acceptance Rate (tingkat penerimaan oleh manusia). Apakah lead yang dihubungi berubah menjadi RFQ memerlukan data hasil dari lapisan aplikasi.
+
+## Paket pasar
+
+v0.2.0 menambahkan India, Indonesia, dan Türkiye. Tidak ada aturan penilaian yang berubah; sebuah fixture uji baru (tujuan Indonesia, halal diwajibkan) menunjukkan bahwa rubrik yang ada sudah menanganinya.
+
+| | India | Indonesia | Türkiye |
+|---|---|---|---|
+| Bahasa pencarian pembeli | Bahasa Inggris terlebih dahulu, ditambah bahasa Hindi | Bahasa Indonesia | Bahasa Turki |
+| Aturan masuk pasar yang digunakan dalam pencocokan | Registrasi impor CDSCO | Notifikasi BPOM; sertifikasi halal wajib untuk kosmetik (bergantung pada tanggal `--as-of`) | Notifikasi TİTCK melalui ÜTS |
+| Bentuk badan hukum yang dihapus dari nama perusahaan | `Pvt Ltd`, `Private Limited`, `LLP` | `PT`, `CV`, `Tbk` | `A.Ş.`, `Ltd. Şti.`, `San. ve Tic.` |
+| Blok pemberitahuan | `IN.corporate_email`, `IN.partnership_form` | `ID.corporate_email`, `ID.partnership_form` | `TR.corporate_email`, `TR.partnership_form` |
+
+- Registrasi dicatat per pasar di `regulatory_registrations` dan dinilai dengan kriteria pasar tujuan yang sudah ada: terdaftar lebih tinggi daripada sedang diproses, yang lebih tinggi daripada tidak dipublikasikan.
+- `Helal`, `Sertifikat Halal`, dan `हलाल` menjadi token `HALAL`, dengan lembaga pemberi sertifikat dan cakupannya dicantumkan dalam catatan. Pengakuan di Indonesia berlaku per lembaga dan per cakupan, sehingga sertifikat yang diakui untuk pangan tidak mencakup kosmetik.
+- Agent tidak pernah menambahkan sertifikasi wajib yang tidak dinyatakan dalam RFQ. Agent mengangkatnya sebagai risiko untuk diputuskan oleh manusia.
+- Sumber yang belum digunakan dalam proses langsung ditandai "not yet field-tested" (belum diuji di lapangan) di [`buyer-discovery.md`](kbeauty-trade-matchmaker/references/buyer-discovery.md). Baris-baris kepatuhan mendaftar apa yang harus diperiksa oleh manusia; baris-baris itu bukan kesimpulan hukum.
 
 ---
 
@@ -267,7 +325,7 @@ sh kbeauty-trade-matchmaker/install.sh --runtime codex --project /path/to/your-r
 
 - Codex memindai `.agents/skills` di setiap direktori mulai dari direktori kerja hingga root repositori. `~/.codex/skills` sudah deprecated tetapi masih didukung; gunakan `~/.agents/skills` untuk instalasi baru.
 - Panggil secara eksplisit dengan `$kbeauty-trade-matchmaker` atau `/skills` di CLI dan ekstensi IDE, atau `@` di ChatGPT. Pemanggilan implisit ditentukan oleh `description`.
-- Folder skill mandiri hanya terlihat di **aplikasi desktop ChatGPT, Codex CLI, dan ekstensi IDE**. ChatGPT **versi web dan mobile** memerlukan skill yang dikemas sebagai plugin, yang tidak disertakan dalam v0.1.1.
+- Folder skill mandiri hanya terlihat di **aplikasi desktop ChatGPT, Codex CLI, dan ekstensi IDE**. ChatGPT **versi web dan mobile** memerlukan skill yang dikemas sebagai plugin, yang tidak disertakan dalam v0.2.0.
 - `AGENTS.md` bukan cara untuk menginstal skill. Itu adalah fitur Codex terpisah untuk instruksi repositori yang selalu aktif.
 
 > **Diperiksa terhadap dokumentasi resmi pada 2026-09-13.** Jika ada hal di sini yang tidak sesuai dengan dokumentasi terkini, dokumentasilah yang benar.
@@ -361,7 +419,7 @@ Enam pertanyaan masih terbuka. Masing-masing memiliki nilai default dalam implem
 
 | Versi | Nilai | Menjelaskan | Lokasi |
 |---|---|---|---|
-| `skill_version` | `0.1.1` | Paket: prompt, referensi, skrip, template, pengujian | Badan `SKILL.md`, `match-result.skill_version` |
+| `skill_version` | `0.2.0` | Paket: prompt, referensi, skrip, template, pengujian | Badan `SKILL.md`, `match-result.skill_version` |
 | `schema_version` | `0.1.0` | Kontrak bentuk: nama field, enum, daftar field wajib | Setiap dokumen, `schemas/*.json` |
 | `score_version` | `kbtm-score-0.1.0` | Rubrik: bobot, kriteria, sinyal, penalti, ambang, hard filter | `scoring.config.json`, setiap dokumen yang dinilai |
 

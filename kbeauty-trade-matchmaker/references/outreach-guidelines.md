@@ -81,6 +81,19 @@ Non-negotiable envelope rules:
 | **R10.4.5** | `{{side}}` is `Buyer` or `Seller`. `{{language}}` is the recipient's business language; the envelope labels themselves stay English. |
 | **R10.4.6** | When `Advertising label / opt-out required` is `yes` or `unknown`, append the matching block from `templates/legal_notices.md` **verbatim** under a `Required legal notices` heading — or the literal fallback line when no block exists for that jurisdiction and channel. The drafts never invent legal wording. |
 
+**Draft language for IN / ID / TR recipients.** R10.4.5 already says `{{language}}` is the
+recipient's business language, and for these three markets that is not always English: a draft to an
+Indian recipient may be written in **English or Hindi**, to an Indonesian recipient in **English or
+Indonesian (Bahasa Indonesia)**, and to a Turkish recipient in **English or Turkish**. Pick the
+language the recipient's own site uses for trade enquiries and record which page you read. Three
+things do **not** move with the body language: the envelope labels stay English (R10.4.5); every
+personalization fact still appears under `Personalization facts` with its source URL (R10.4.2), in
+the envelope's English label form with the local-language fact after the dash, exactly as §5.3 does
+for Korean; and the `templates/legal_notices.md` block is copied **verbatim in English** and is
+never translated, shortened or merged into the body (R10.4.6, `legal_notices.md` §1 step 3).
+Korean gloss: 인도·인도네시아·튀르키예 수신자에게는 영어 외에 힌디어·인도네시아어·튀르키예어 본문도
+가능하지만, 봉투 라벨·근거 URL·법적 고지 블록은 그대로 둔다.
+
 **`Claims verified against evidence: blocked`** is a real, usable outcome. When a personalization
 fact cannot be traced, the correct move is to remove the sentence and re-render — not to mark the
 draft `yes` and hope. If removing it leaves nothing personal to say, the draft is generic, and a

@@ -10,7 +10,7 @@ citable URL, score both sides with deterministic scripts, match a buying request
 outreach drafts that a human reviews before anything is sent.
 *Korean gloss: K뷰티 바이어·셀러를 근거 기반으로 발굴·검증·점수화·매칭하고, 사람이 검토할 아웃리치 초안까지만 만든다.*
 
-`skill_version 0.1.1` · `schema_version 0.1.0` · `score_version kbtm-score-0.1.0`. Runtime tool names live **only**
+`skill_version 0.2.0` · `schema_version 0.1.0` · `score_version kbtm-score-0.1.0`. Runtime tool names live **only**
 in `references/runtime-adapters.md`; this file names capabilities ("the runtime's web-search capability", "the
 runtime's internal-data connector") so the folder runs unchanged in every runtime. `install.sh` installs it.
 
@@ -158,6 +158,29 @@ python3 scripts/validate_output.py --input match.134.json --schema match-result 
   `Auto-send: false`, ending with the reviewer checklist and `Next action: human review, then
   APPROVED_FOR_OUTREACH in the application layer`.
 
+## Calibration tooling (operator)
+
+The scores are reproducible, not yet **validated** against a labelled set (`references/calibration-notes.md`
+§6). Two standalone scripts exist to close that gap, and they run outside the pipeline: no mode calls them,
+and nothing they produce can change a score.
+*Korean gloss: 점수 검증용 도구 — 파이프라인 밖에서 돌고, 점수에는 영향을 주지 않는다.*
+
+```bash
+python3 scripts/make_review_sheet.py --input buyers.ae.scored.json --as-of 2026-09-12 --include-excluded --output reviews.ae.csv
+python3 scripts/acceptance_report.py --scored buyers.ae.scored.json --reviews reviews.ae.csv --as-of 2026-09-20 --pretty --output acceptance.json
+```
+
+`make_review_sheet.py` turns a scored `discovery-result` or `match-result` into a CSV a trade operator fills
+in. It is **blind by default** — no score, rank or qualified flag, rows shuffled by the record id's digest,
+and, under `--include-excluded`, the literal `not_shown` in any column that would otherwise mark out the
+excluded rows — because a reviewer who can see the rubric's answer tends to agree with it. A cell that came
+off a harvested page and begins with a spreadsheet formula character is escaped, never executed.
+`acceptance_report.py` joins the
+filled sheets back and reports **PRD 17 Human Acceptance Rate**, acceptance by score band, a threshold sweep,
+per-dimension discrimination and false exclusions. It measures that one metric; RFQ Conversion needs outcome
+data from the application layer. Reviewers are identified by a **role label**, never a name, and the report
+refuses a sheet carrying an address or a number. Read `references/calibration-notes.md` §7 before running it.
+
 ## Load this file when…
 
 | File | Load it when |
@@ -166,7 +189,8 @@ python3 scripts/validate_output.py --input match.134.json --schema match-result 
 | `references/seller-discovery.md` | Running Mode 2: Korean sources, OEM/ODM vs brand, MOQ and certification pages |
 | `references/matching-rules.md` | Running Mode 3, or explaining a hard filter (`HF-00`…`HF-08`), the rerank or a no-match |
 | `references/qualification-rubric.md` | Asked *why* a score is what it is, or which evidence earns which dimension |
-| `references/calibration-notes.md` | Asked whether a score is *validated*: what the two live trials measured, what changed in response, what is deferred to calibration |
+| `references/calibration-notes.md` | Asked whether a score is *validated*: what the two live trials measured, what changed in response, what is deferred to calibration — and §7 before running either calibration script |
+| `scripts/make_review_sheet.py`, `scripts/acceptance_report.py` | Building or reading a labelled set: cutting a blind operator review sheet, or measuring Human Acceptance Rate against the scores (`schemas/acceptance-report.schema.json`) |
 | `references/evidence-policy.md` | Deciding fact vs. inference vs. unknown, source tier, staleness, conflicting sources |
 | `references/outreach-guidelines.md` | Running Mode 4, or asked what a draft may and may not claim |
 | `references/compliance-notes.md` | Filling the compliance block, or asked about robots/ToS, data minimization, marketing rules |
@@ -174,7 +198,7 @@ python3 scripts/validate_output.py --input match.134.json --schema match-result 
 | `references/output-format.md` | Rendering any result block: 12.1 discovery, 12.2 match, 10.4 outreach envelope, shared line rules, Korean label map |
 | `references/runtime-adapters.md` | Binding a capability to this runtime's actual tool, or a capability is missing |
 | `schemas/*.json` | Binding shapes for `buyer`, `seller`, `rfq`, `evidence`, `match-result`, `discovery-result`, and every number in `scoring.config.json` |
-| `scripts/*.py` | Running the pipeline (`scripts/_common.py` is the shared library the six CLI scripts import) |
+| `scripts/*.py` | Running the pipeline (`scripts/_common.py` is the shared library every CLI script imports; the six pipeline scripts are listed above, the two calibration scripts below them) |
 | `templates/buyer_outreach.md`, `templates/seller_outreach.md` | Rendering a draft; the seller template has RFQ-present and RFQ-absent variants |
 | `templates/legal_notices.md` | Appending the `Required legal notices` block to a draft: the per-jurisdiction x per-channel wording, copied verbatim, keyed `{{country_alpha2}}.{{channel_type}}` (R10.4.6) |
 | `adapters/tradewith_adapter.md`, `adapters/tradewith_adapter.py` | Reading an RFQ or internal sellers, or queueing leads / matches / drafts for review |

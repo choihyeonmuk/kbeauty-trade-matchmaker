@@ -1,0 +1,618 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tradewith.example/kbeauty-trade-matchmaker/v0.1.0/acceptance-report.schema.json",
+  "title": "Acceptance Report",
+  "description": "One calibration report, as emitted by scripts/acceptance_report.py: filled operator review sheets joined back to the scored discovery-result / match-result runs they were cut from, reduced to the measurements that say whether the rubric discriminates. It carries PRD 17's Human Acceptance Rate and nothing else; PRD 17's RFQ Conversion needs outcome data from the application layer and is not derivable here. It is a MEASUREMENT document: nothing in it feeds a score, so a report can never change score_version. See references/calibration-notes.md section 7 for the protocol and references/data-contract.md section 9.3 for the field notes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "report_kind",
+    "schema_version",
+    "score_version",
+    "as_of",
+    "summary",
+    "by_qualified",
+    "by_score_band",
+    "threshold_sweep",
+    "discrimination",
+    "by_country",
+    "by_reason_code",
+    "false_exclusions",
+    "notes"
+  ],
+  "properties": {
+    "report_kind": {
+      "type": "string",
+      "description": "Document discriminator, so validate_output.py --schema auto can route this document without guessing.",
+      "const": "acceptance-report"
+    },
+    "schema_version": {
+      "type": "string",
+      "description": "Version of this schema contract, e.g. \"0.1.0\".",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "score_version": {
+      "$comment": "Inlined rather than referenced from the shared BUILD-CONTRACT 3.7 definition, and deliberately narrower: every record a report aggregates was produced by a scorer, so \"unscored\" is invalid here, and a report over two rubric versions is refused outright (BUILD-CONTRACT 12.3 rule 4, INV-23).",
+      "type": "string",
+      "description": "The one scoring rubric every aggregated record was scored with.",
+      "maxLength": 64,
+      "pattern": "^kbtm-score-[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "skill_version": {
+      "type": "string",
+      "description": "Version of the skill package that produced this document.",
+      "maxLength": 64
+    },
+    "as_of": {
+      "type": "string",
+      "description": "The date stamped onto this report (--as-of, or the latest as_of of the scored documents). Scripts never read the wall clock (INV-14).",
+      "format": "date",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "summary": {
+      "$ref": "#/$defs/report_summary"
+    },
+    "by_qualified": {
+      "type": "object",
+      "description": "Acceptance split by the rubric's qualified flag: the precision of the flag (qualified_true), what it misses (qualified_false), and the records it never judged (qualified_unknown). Three buckets, not two, because \"unknown is not false\" (BUILD-CONTRACT 3.2) - folding an absent or \"unknown\" flag into qualified_false would report a gap as a rejection in the one document whose job is to measure the flag.",
+      "additionalProperties": false,
+      "required": [
+        "qualified_true",
+        "qualified_false",
+        "qualified_unknown"
+      ],
+      "properties": {
+        "qualified_true": {
+          "$ref": "#/$defs/group_block"
+        },
+        "qualified_false": {
+          "$ref": "#/$defs/group_block"
+        },
+        "qualified_unknown": {
+          "$ref": "#/$defs/group_block"
+        }
+      }
+    },
+    "by_score_band": {
+      "type": "array",
+      "description": "One entry per scoring.config.json calibration.score_bands pair, in config order.",
+      "items": {
+        "$ref": "#/$defs/band_row"
+      }
+    },
+    "threshold_sweep": {
+      "type": "array",
+      "description": "What each candidate cut-off would have returned, over the calibration.threshold_sweep range.",
+      "items": {
+        "$ref": "#/$defs/sweep_row"
+      }
+    },
+    "discrimination": {
+      "$ref": "#/$defs/discrimination_block"
+    },
+    "by_country": {
+      "type": "array",
+      "description": "Acceptance per record country, \"unknown\" last. A match-result carries no country on its candidates, so a match report groups everything under \"unknown\".",
+      "items": {
+        "$ref": "#/$defs/country_row"
+      }
+    },
+    "by_reason_code": {
+      "type": "array",
+      "description": "One entry per reason_code of the _common.REVIEW_REASON_CODES vocabulary, in vocabulary order, whether or not it occurred.",
+      "items": {
+        "$ref": "#/$defs/reason_row"
+      }
+    },
+    "false_exclusions": {
+      "type": "array",
+      "description": "Records the rubric excluded that an operator nevertheless accepted, ordered by record_id. A non-empty list is the most actionable thing this report produces: it names a hard filter or evidence bar that is throwing away business.",
+      "items": {
+        "$ref": "#/$defs/false_exclusion"
+      }
+    },
+    "notes": {
+      "type": "array",
+      "description": "Run-level notes, including the insufficient-sample warning and the standing statement of what this report does not measure.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Reserved for consumer-specific additions; never read by this package.",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "rate_value": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "A rate in [0, 1] rounded half-up to calibration.rate_decimals, or null when its denominator is zero. Null means \"no number exists here\", never zero (BUILD-CONTRACT 3.2).",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "count_value": {
+      "type": "integer",
+      "description": "A record or review count.",
+      "minimum": 0
+    },
+    "group_block": {
+      "type": "object",
+      "description": "One population and how an operator judged it. `unsure` is counted and reported but never folded into either side of acceptance_rate.",
+      "additionalProperties": false,
+      "required": [
+        "n",
+        "reviewed",
+        "accept",
+        "reject",
+        "unsure",
+        "acceptance_rate"
+      ],
+      "properties": {
+        "n": {
+          "$ref": "#/$defs/count_value"
+        },
+        "reviewed": {
+          "$ref": "#/$defs/count_value"
+        },
+        "accept": {
+          "$ref": "#/$defs/count_value"
+        },
+        "reject": {
+          "$ref": "#/$defs/count_value"
+        },
+        "unsure": {
+          "$ref": "#/$defs/count_value"
+        },
+        "acceptance_rate": {
+          "$ref": "#/$defs/rate_value"
+        }
+      }
+    },
+    "band_row": {
+      "type": "object",
+      "description": "One score band and how an operator judged the records inside it.",
+      "additionalProperties": false,
+      "required": [
+        "band",
+        "min",
+        "max",
+        "n",
+        "reviewed",
+        "accept",
+        "reject",
+        "unsure",
+        "acceptance_rate"
+      ],
+      "properties": {
+        "band": {
+          "type": "string",
+          "description": "Human label, \"<min>-<max>\".",
+          "pattern": "^[0-9]+-[0-9]+$"
+        },
+        "min": {
+          "type": "integer",
+          "description": "Inclusive lower bound.",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "max": {
+          "type": "integer",
+          "description": "Inclusive upper bound.",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "n": {
+          "$ref": "#/$defs/count_value"
+        },
+        "reviewed": {
+          "$ref": "#/$defs/count_value"
+        },
+        "accept": {
+          "$ref": "#/$defs/count_value"
+        },
+        "reject": {
+          "$ref": "#/$defs/count_value"
+        },
+        "unsure": {
+          "$ref": "#/$defs/count_value"
+        },
+        "acceptance_rate": {
+          "$ref": "#/$defs/rate_value"
+        }
+      }
+    },
+    "sweep_row": {
+      "type": "object",
+      "description": "What one candidate threshold would have returned, and how well it would have separated. Every count here is over the RETURNED records of the scored run(s) only; `recall` is the one field whose denominator reaches wider, and its description says so.",
+      "additionalProperties": false,
+      "required": [
+        "threshold",
+        "n_at_or_above",
+        "reviewed_at_or_above",
+        "accept",
+        "reject",
+        "precision",
+        "recall"
+      ],
+      "properties": {
+        "threshold": {
+          "type": "integer",
+          "description": "The candidate cut-off this row asks about. A row BELOW the run's own threshold_used is only measurable when the run returned its below-threshold records; a match run does not, and the report then says so in notes[].",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "n_at_or_above": {
+          "type": "integer",
+          "description": "Returned records whose score is >= threshold, reviewed or not. Denominator: the returned population.",
+          "minimum": 0
+        },
+        "reviewed_at_or_above": {
+          "type": "integer",
+          "description": "Of those, how many carry any verdict (accept + reject + unsure). Denominator: n_at_or_above.",
+          "minimum": 0
+        },
+        "accept": {
+          "type": "integer",
+          "description": "Returned records at or above the threshold that an operator accepted.",
+          "minimum": 0
+        },
+        "reject": {
+          "type": "integer",
+          "description": "Returned records at or above the threshold that an operator rejected.",
+          "minimum": 0
+        },
+        "precision": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "accept / (accept + reject) among the records at or above this threshold. Denominator: the DECIDED reviews at or above the threshold; `unsure` is in neither half. Null when nothing at or above it was decided.",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "recall": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "accept-at-or-above / EVERY accepted record in the report, excluded ones included. Denominator: all accepted records, because an accepted record the rubric excluded is a lead this cut-off would also have lost - it sits at or above no threshold. Null when the report carries no accepted record at all.",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "auc_block": {
+      "type": "object",
+      "description": "One AUC measurement. `auc` and `reason` are mutually exclusive: a value carries reason null, and a null value carries the reason it could not be computed.",
+      "additionalProperties": false,
+      "required": [
+        "auc",
+        "reason",
+        "distinct_values"
+      ],
+      "properties": {
+        "auc": {
+          "$ref": "#/$defs/rate_value"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Why `auc` is null, or null when it is not.",
+          "minLength": 1
+        },
+        "distinct_values": {
+          "type": "integer",
+          "description": "How many distinct values this number took across the whole returned population. calibration-notes.md section 3 found the two heaviest buyer dimensions resolving to 2 and 3 distinct values over 20 real companies: a dimension with one value cannot separate anything, whatever its weight.",
+          "minimum": 0
+        }
+      }
+    },
+    "dimension_row": {
+      "type": "object",
+      "description": "The per-dimension (discovery) or per-component (match) AUC.",
+      "additionalProperties": false,
+      "required": [
+        "dimension",
+        "auc",
+        "reason",
+        "distinct_values"
+      ],
+      "properties": {
+        "dimension": {
+          "type": "string",
+          "description": "The dimension_scores / component_scores key.",
+          "minLength": 1
+        },
+        "auc": {
+          "$ref": "#/$defs/rate_value"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Why `auc` is null, or null when it is not.",
+          "minLength": 1
+        },
+        "distinct_values": {
+          "type": "integer",
+          "description": "How many distinct values this dimension took across the whole returned population.",
+          "minimum": 0
+        }
+      }
+    },
+    "discrimination_block": {
+      "type": "object",
+      "description": "Does a higher score mean an operator is more likely to accept? Reported on the total score and on each dimension separately, because a rubric whose total discriminates can still be carried by one light dimension (calibration-notes.md section 3).",
+      "additionalProperties": false,
+      "required": [
+        "metric",
+        "n_accept",
+        "n_reject",
+        "overall",
+        "by_dimension"
+      ],
+      "properties": {
+        "metric": {
+          "type": "string",
+          "description": "Plain-language definition of the number, so a reader never has to guess which AUC this is.",
+          "minLength": 1
+        },
+        "n_accept": {
+          "$ref": "#/$defs/count_value"
+        },
+        "n_reject": {
+          "$ref": "#/$defs/count_value"
+        },
+        "overall": {
+          "$ref": "#/$defs/auc_block"
+        },
+        "by_dimension": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/dimension_row"
+          }
+        }
+      }
+    },
+    "country_row": {
+      "type": "object",
+      "description": "One record country and how an operator judged it.",
+      "additionalProperties": false,
+      "required": [
+        "country",
+        "n",
+        "reviewed",
+        "accept",
+        "reject",
+        "unsure",
+        "acceptance_rate"
+      ],
+      "properties": {
+        "country": {
+          "type": "string",
+          "description": "ISO 3166-1 alpha-2 code, or the literal \"unknown\" when the scored document carries no country.",
+          "pattern": "^([A-Z]{2}|unknown)$"
+        },
+        "n": {
+          "$ref": "#/$defs/count_value"
+        },
+        "reviewed": {
+          "$ref": "#/$defs/count_value"
+        },
+        "accept": {
+          "$ref": "#/$defs/count_value"
+        },
+        "reject": {
+          "$ref": "#/$defs/count_value"
+        },
+        "unsure": {
+          "$ref": "#/$defs/count_value"
+        },
+        "acceptance_rate": {
+          "$ref": "#/$defs/rate_value"
+        }
+      }
+    },
+    "reason_row": {
+      "type": "object",
+      "description": "How often one reason_code was given, split by whether the record was returned or excluded.",
+      "additionalProperties": false,
+      "required": [
+        "reason_code",
+        "n",
+        "returned",
+        "excluded"
+      ],
+      "properties": {
+        "reason_code": {
+          "type": "string",
+          "description": "A member of the _common.REVIEW_REASON_CODES vocabulary.",
+          "enum": [
+            "wrong_company_type",
+            "wrong_vertical",
+            "wrong_market",
+            "inactive_or_unreachable",
+            "duplicate",
+            "evidence_wrong",
+            "other"
+          ]
+        },
+        "n": {
+          "$ref": "#/$defs/count_value"
+        },
+        "returned": {
+          "$ref": "#/$defs/count_value"
+        },
+        "excluded": {
+          "$ref": "#/$defs/count_value"
+        }
+      }
+    },
+    "false_exclusion": {
+      "type": "object",
+      "description": "One record the rubric excluded and an operator accepted.",
+      "additionalProperties": false,
+      "required": [
+        "record_id",
+        "company_name",
+        "exclusion_reason",
+        "failed_rule_ids",
+        "reason_code"
+      ],
+      "properties": {
+        "record_id": {
+          "type": "string",
+          "description": "The buyer_id / seller_id of the excluded record.",
+          "minLength": 1
+        },
+        "company_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Company name as the scored document carried it, or null when it carried none."
+        },
+        "exclusion_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The scored document's reason_summary, verbatim."
+        },
+        "failed_rule_ids": {
+          "type": "array",
+          "description": "The HF-nn ids that excluded the record, in document order; empty for a query-fit or evidence-bar exclusion.",
+          "items": {
+            "type": "string",
+            "pattern": "^HF-[0-9]{2}$"
+          }
+        },
+        "reason_code": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The reason_code the operator gave, if any."
+        }
+      }
+    },
+    "report_summary": {
+      "type": "object",
+      "description": "The headline block: how much of the run was reviewed, and what the Human Acceptance Rate came out as.",
+      "additionalProperties": false,
+      "required": [
+        "score_version",
+        "as_of",
+        "source_kind",
+        "entity",
+        "threshold_used",
+        "threshold_mode",
+        "min_sample",
+        "returned",
+        "excluded",
+        "reviewed",
+        "reviewed_excluded",
+        "review_coverage",
+        "accept",
+        "reject",
+        "unsure",
+        "human_acceptance_rate",
+        "insufficient_sample"
+      ],
+      "properties": {
+        "score_version": {
+          "type": "string",
+          "description": "Echo of the report-level score_version.",
+          "maxLength": 64
+        },
+        "as_of": {
+          "type": "string",
+          "description": "Echo of the report-level as_of.",
+          "format": "date",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "source_kind": {
+          "type": "string",
+          "description": "Which run shape was aggregated. A report never mixes the two.",
+          "enum": [
+            "discovery-result",
+            "match-result"
+          ]
+        },
+        "entity": {
+          "type": "string",
+          "description": "Which population was reviewed.",
+          "enum": [
+            "buyer",
+            "seller"
+          ]
+        },
+        "threshold_used": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "The cut-off in force in the scored run(s), or null when they disagreed.",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "threshold_mode": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The threshold mode in force, or null when the runs disagreed.",
+          "enum": [
+            "fixed",
+            "percentile",
+            null
+          ]
+        },
+        "min_sample": {
+          "type": "integer",
+          "description": "The accept+reject floor below which this report refuses to be evidence (scoring.config.json calibration.min_sample, or --min-sample).",
+          "minimum": 0
+        },
+        "returned": {
+          "$ref": "#/$defs/count_value"
+        },
+        "excluded": {
+          "$ref": "#/$defs/count_value"
+        },
+        "reviewed": {
+          "$ref": "#/$defs/count_value"
+        },
+        "reviewed_excluded": {
+          "$ref": "#/$defs/count_value"
+        },
+        "review_coverage": {
+          "$ref": "#/$defs/rate_value"
+        },
+        "accept": {
+          "$ref": "#/$defs/count_value"
+        },
+        "reject": {
+          "$ref": "#/$defs/count_value"
+        },
+        "unsure": {
+          "$ref": "#/$defs/count_value"
+        },
+        "human_acceptance_rate": {
+          "$ref": "#/$defs/rate_value"
+        },
+        "insufficient_sample": {
+          "type": "boolean",
+          "description": "True when accept + reject is below min_sample. A true here means notes[] carries the line saying this report cannot justify a weight or threshold change."
+        }
+      }
+    }
+  }
+}

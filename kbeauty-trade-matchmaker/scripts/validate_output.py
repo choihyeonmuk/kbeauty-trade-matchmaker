@@ -27,7 +27,12 @@ import _common  # noqa: E402
 
 SCRIPT_NAME = "validate_output.py"
 
-KINDS = ("buyer", "seller", "rfq", "evidence", "match-result", "discovery-result")
+KINDS = (
+    "buyer", "seller", "rfq", "evidence", "match-result", "discovery-result",
+    # A calibration MEASUREMENT document (scripts/acceptance_report.py). It carries no
+    # score of its own, so only the generic document-shape invariants apply to it.
+    "acceptance-report",
+)
 
 # BUILD-CONTRACT 7.5: the closed keyword subset _common.validate implements. A keyword
 # outside it, used in a shipped schema, is a build blocker rather than a silent no-op.
@@ -129,6 +134,10 @@ def _doc_id(document):
 def _detect_kind(document):
     if not isinstance(document, dict):
         return None
+    # report_kind is the acceptance report's own discriminator; it is checked first
+    # because the report echoes score_version and as_of like every other document.
+    if document.get("report_kind") == "acceptance-report":
+        return "acceptance-report"
     if "match_run_id" in document or "no_match" in document:
         return "match-result"
     if "entity" in document and "records" in document:

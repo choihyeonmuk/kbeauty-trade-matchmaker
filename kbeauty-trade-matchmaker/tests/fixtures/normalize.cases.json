@@ -122,6 +122,70 @@
     {
       "input": "ABC Trading LLC",
       "expected": "abc"
+    },
+    {
+      "input": "ABC Beauty Pvt. Ltd.",
+      "expected": "abc beauty"
+    },
+    {
+      "input": "ABC Beauty Private Limited",
+      "expected": "abc beauty"
+    },
+    {
+      "input": "ABC Beauty LLP",
+      "expected": "abc beauty"
+    },
+    {
+      "input": "PT Cantik Nusantara Tbk",
+      "expected": "cantik nusantara"
+    },
+    {
+      "input": "CV Sinar Kosmetik",
+      "expected": "sinar kosmetik"
+    },
+    {
+      "input": "ABC Kozmetik A.Ş.",
+      "expected": "abc kozmetik"
+    },
+    {
+      "input": "ABC Kozmetik San. ve Tic. Ltd. Şti.",
+      "expected": "abc kozmetik"
+    },
+    {
+      "input": "ABC KOZMETİK SANAYİ VE TİCARET ANONİM ŞİRKETİ",
+      "expected": "abc kozmetik"
+    },
+    {
+      "input": "Private Label Studio",
+      "expected": "private label studio"
+    },
+    {
+      "input": "Tic Beauty Studio",
+      "expected": "tic beauty studio"
+    },
+    {
+      "input": "Aş Kozmetik",
+      "expected": "aş kozmetik"
+    },
+    {
+      "input": "Beauty PT",
+      "expected": "beauty pt"
+    },
+    {
+      "input": "LLP Cosmetics",
+      "expected": "llp cosmetics"
+    },
+    {
+      "input": "Pvt Beauty",
+      "expected": "pvt beauty"
+    },
+    {
+      "input": "Aurora Beauty Pvt Ltd",
+      "expected": "aurora beauty"
+    },
+    {
+      "input": "Sunbright LLP",
+      "expected": "sunbright"
     }
   ]
 }

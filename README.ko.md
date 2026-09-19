@@ -2,10 +2,28 @@
 
 [English](README.md) · [한국어](README.ko.md) · [मराठी](README.mr.md) · [हिन्दी](README.hi.md) · [Bahasa Indonesia](README.id.md) · [Türkçe](README.tr.md) · [프로젝트 페이지](https://kbeauty.tradewith.kr/) · [LinkedIn으로 문의](https://www.linkedin.com/in/hm-choi)
 
+![K-Beauty 무역 파트너 찾기](kbeauty-trade-partner-linkedin-cities.png)
+
+> 작업 흐름 한눈에 보기: 발굴하고, 검증하고, 매칭하고, 마지막 검토는 사람이 한다.
+
 **해외 K-Beauty Buyer와 한국 Seller를 공개 정보 기반으로 발굴·검증·점수화·매칭하고, 사람이 검토할 아웃리치 초안까지만 만드는 재사용형 Agent Skill.**
 
 Claude Agent Skills와 OpenAI/Codex Skills 양쪽에서 **같은 폴더가 수정 없이** 동작한다.
 Python은 **표준 라이브러리만** 사용하며(3.9–3.14), 설치할 의존성이 없다.
+
+> **상태: v0.2.0.** 파이프라인은 가공 fixture 위에서 252개 케이스로 테스트되었고, 실제 웹을 대상으로 한 번 시험 운용되었다. 점수 루브릭은 **아직 실제 결과에 비추어 검증되지 않았다**: 점수는 재현 가능하고 추적 가능하지만, 예측력이 있는지는 아직 모른다. v0.2.0은 이를 측정할 도구를 추가했지만([점수 검증하기](#점수-검증하기)), 라벨이 붙은 표본은 아직 없다. RFQ Matching과 Outreach Draft는 실데이터로 돌려 본 적이 없다. 점수를 믿기 전에 [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md)를 읽으라.
+
+---
+
+## 무엇이 새로운가
+
+**v0.2.0 (2026-09-19).** 기존 점수는 하나도 바뀌지 않는다.
+
+- **점수 검증 도구.** 무역 운영자가 채우는 블라인드 리뷰 시트와, 운영자의 수락/거절 판단을 점수와 비교하는 리포트. [점수 검증하기](#점수-검증하기) 참고.
+- **인도·인도네시아·튀르키예 시장 팩(market pack).** 현지어 바이어 검색, 매칭에 쓰이는 시장 진입 규칙(CDSCO, BPOM, 인도네시아의 할랄 인증 의무, TİTCK), 다이렉트 마케팅 체크리스트 행과 고지 블록, 그리고 `Pvt Ltd`, `PT`, `A.Ş.` 같은 법인 형태 표기가 붙은 회사명 처리. [시장 팩](#시장-팩) 참고.
+- 테스트: 179 → 252 케이스.
+
+릴리스별 전체 변경 내역: [CHANGELOG.md](CHANGELOG.md) (변경 기록은 영어로만 제공된다).
 
 ---
 
@@ -102,6 +120,7 @@ kbeauty-trade-matchmaker/
 │   ├── evidence.schema.json      #   출처 하나 + 주장 하나의 최소 단위
 │   ├── match-result.schema.json  #   한 번의 매칭 실행 전체
 │   ├── discovery-result.schema.json  # 한 번의 발굴 실행 전체 (summary/records/excluded/partial/notes)
+│   ├── acceptance-report.schema.json  # 한 번의 calibration 측정 (v0.2.0)
 │   └── scoring.config.json       #   모든 가중치·임계값·페널티가 사는 단일 파일
 ├── scripts/                      # 표준 라이브러리만. 네트워크 없음, 자격증명 없음
 │   ├── _common.py                #   설정 로딩, 반올림, 정규화, tri-state 헬퍼, 의존성 없는 스키마 검증기
@@ -110,7 +129,9 @@ kbeauty-trade-matchmaker/
 │   ├── score_buyer.py            #   바이어 차원 점수 · 적격 점수 · confidence · missing
 │   ├── score_seller.py           #   셀러 동일 (쿼리 표면 기준)
 │   ├── score_match.py            #   RFQ → 셀러 파이프라인, match-result 문서 생성
-│   └── validate_output.py        #   스키마 + 계약 불변식 검증 (검증자의 진입점)
+│   ├── validate_output.py        #   스키마 + 계약 불변식 검증 (검증자의 진입점)
+│   ├── make_review_sheet.py      #   무역 운영자용 블라인드 CSV 리뷰 시트 (v0.2.0)
+│   └── acceptance_report.py      #   리뷰 시트 + 점수화된 실행 → Human Acceptance Rate 리포트 (v0.2.0)
 ├── templates/
 │   ├── buyer_outreach.md         # 바이어용 초안 템플릿 ({{token}} 자리표시자)
 │   ├── seller_outreach.md        # 셀러용 초안 템플릿 (RFQ 있는 경우 / 없는 경우)
@@ -132,6 +153,45 @@ kbeauty-trade-matchmaker/
 ## 5. 근거(evidence)는 어떻게 다뤄지는가
 
 이 스킬의 출력 단위는 "회사"가 아니라 **근거가 붙은 주장**이다. evidence 항목 하나는 주장 하나(`claim`)와 그 출처 URL, 출처 tier, 콘텐츠 날짜(`source_date`), 우리가 본 시각(`observed_at`), 사실인지 추론인지(fact/inference), 짧은 인용으로 이루어진다. 출처는 5단계로 등급이 매겨진다 — tier 1 회사 공식 사이트(100점), tier 2 박람회·협회·정부/무역기관 공식 디렉터리와 TradeWith 내부 레코드(82), tier 3 공식 LinkedIn·소셜(64), tier 4 평판 있는 제3자 디렉터리·보도자료(46), tier 5 커뮤니티·블로그(20, 보조 신호 전용). 여기에 콘텐츠 나이에 따른 배수가 곱해진다(90일 이내 1.00, 1년 이내 0.92, 2년 이내 0.80, 그 이상 0.60, 날짜 불명 0.85). 배수의 기준은 언제나 `source_date`이지 `observed_at`이 아니다 — 후자는 우리가 읽은 시각이지 내용의 나이가 아니기 때문이다. 차원 점수로 들어가는 `evidence_quality`는 `0.50 × 출처 강도 + 0.35 × 주요 주장 커버리지 + 0.15 × 교차검증`에 공식 출처 보너스·다중 출처 보너스·staleness/충돌/추론 페널티를 더한 뒤 0–100으로 clamp한 값이다. 여기서 서로 다른 두 상태를 구분해야 한다. **`unverified`** 는 근거가 있으나 주요 주장에 **공식(tier 1, `is_official`) 출처가 하나도 없는** 경우다 — 점수가 매겨지고 순위에 올라가며 출력 헤더에 ` — unverified` 표시가 붙는다. **탈락하지 않는다**(PRD 15.1). 반면 **주요 주장에 근거 항목이 아예 하나도 없는** 레코드는 `evidence_quality = 0`이고 DISC-06 근거 기준선에 따라 점수 산정 전에 `excluded[]`로 빠진다 — 이때 사유에는 "사이트를 열 수 없었다"인지 "읽었으나 주요 주장이 없었다"인지가 명시된다. 근거가 전혀 없는 회사를 순위 목록에 채워 넣는 것이야말로 DISC-06이 막으려는 실패다. 저장은 최소화 원칙을 따른다: 주장·URL·관찰 시각·짧은 인용만 남기고 페이지 전체나 불필요한 개인 프로필은 남기지 않는다. 상충하는 출처가 나오면 조용히 하나를 고르지 않고 `conflicts[]`에 기록해 사람이 보게 하며, 그 대가로 confidence가 내려간다.
+
+---
+
+## 점수 검증하기
+
+이 스킬의 점수는 재현 가능하지만, 사람의 판단과 맞는지는 아직 아무도 확인하지 않았다. v0.2.0에 추가된 독립 실행 스크립트 두 개로 그 확인을 해 볼 수 있다. 두 스크립트는 어떤 점수도 바꾸지 않는다.
+
+```bash
+cd kbeauty-trade-matchmaker
+
+# 1. Make a blind sheet from a scored run. No score, rank or qualified flag; rows in a fixed shuffled order.
+python3 scripts/make_review_sheet.py --input out/buyers.scored.json --include-excluded --output out/review.csv
+
+# 2. A trade operator fills in verdict (accept / reject / unsure), a reason_code for each reject,
+#    their role, and the date. Then:
+python3 scripts/acceptance_report.py --scored out/buyers.scored.json --reviews out/review.csv --as-of 2026-09-19 --pretty
+```
+
+리포트는 검토된 회사 가운데 운영자가 수락한 비율을 전체로, 그리고 `qualified` 플래그·점수 구간·국가·거절 사유별로 나누어 보여 준다. 50에서 90까지의 각 임계값을 썼다면 precision과 recall이 얼마였을지도 보여 준다. 총점과 여섯 차원 각각에 대해서는, 그 점수가 수락된 회사와 거절된 회사를 얼마나 잘 갈라놓는지, 그리고 그 차원이 서로 다른 값을 몇 개나 냈는지를 보여 준다. 제외되었지만 운영자라면 수락했을 회사도 나열한다.
+
+판정이 내려진 리뷰가 30건 미만이면 리포트는 스스로를 `insufficient_sample`로 표시하고, 가중치나 임계값 변경을 정당화할 수 없다고 밝힌다. 알 수 없는 verdict, 사유 없는 reject, 서로 충돌하는 중복 행, 서로 다른 `score_version`으로 채점된 실행, 이메일 주소나 전화번호가 들어 있는 notes가 있는 시트는 거부한다. 리뷰어는 이름이 아니라 역할로만 식별된다.
+
+[`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) §7은 표본을 어떻게 구성할지(최소 두 개 국가와 두 개 카테고리, 검토된 회사 100–200곳)와, 어떤 결과가 나와야 열려 있는 calibration 질문 각각이 정리되는지를 설명한다. 이 도구가 재는 것은 Human Acceptance Rate(운영자 수락률)뿐이다. 연락한 lead가 RFQ로 이어지는지는 애플리케이션 레이어의 성과 데이터가 있어야 알 수 있다.
+
+## 시장 팩
+
+v0.2.0은 인도, 인도네시아, 튀르키예를 추가한다. 점수 규칙은 하나도 바뀌지 않았다. 새 테스트 fixture(목적국 인도네시아, 할랄 필수)가 기존 루브릭이 이미 이 시장들을 처리한다는 것을 보여 준다.
+
+| | 인도 | 인도네시아 | 튀르키예 |
+|---|---|---|---|
+| 바이어 검색 언어 | 영어 우선, 힌디어 추가 | 인도네시아어 | 튀르키예어 |
+| 매칭에 쓰이는 시장 진입 규칙 | CDSCO 수입 등록 | BPOM 신고(notification); 화장품 할랄 인증 의무(`--as-of` 날짜에 따라 적용 여부가 달라진다) | ÜTS를 통한 TİTCK 신고(notification) |
+| 회사명에서 제거되는 법인 형태 표기 | `Pvt Ltd`, `Private Limited`, `LLP` | `PT`, `CV`, `Tbk` | `A.Ş.`, `Ltd. Şti.`, `San. ve Tic.` |
+| 고지 블록 | `IN.corporate_email`, `IN.partnership_form` | `ID.corporate_email`, `ID.partnership_form` | `TR.corporate_email`, `TR.partnership_form` |
+
+- 등록 정보는 시장별로 `regulatory_registrations`에 기록되고, 기존의 목적국 시장 criterion으로 채점된다: 등록 완료가 진행 중보다 높고, 진행 중이 미공개보다 높다.
+- `Helal`, `Sertifikat Halal`, `हलाल`은 `HALAL` 토큰이 되고, 인증 기관과 그 인증 범위는 notes에 남는다. 인도네시아에서의 인정은 기관별·범위별이므로, 식품에 대해 인정된 인증서는 화장품을 포함하지 않는다.
+- 에이전트는 RFQ에 명시되지 않은 필수 인증을 절대 추가하지 않는다. 사람이 결정할 리스크로 제기할 뿐이다.
+- 아직 실제 실행에서 써 보지 않은 출처는 [`buyer-discovery.md`](kbeauty-trade-matchmaker/references/buyer-discovery.md)에 "not yet field-tested"(현장 미검증)로 표시되어 있다. 컴플라이언스 행은 사람이 확인해야 할 항목을 나열한 것이지 법률적 결론이 아니다.
 
 ---
 
@@ -237,7 +297,7 @@ path = "/path/to/kbeauty-trade-matchmaker/SKILL.md"
 enabled = false
 ```
 
-**ChatGPT 표면 주의.** 단독 스킬 폴더는 **ChatGPT 데스크톱 앱, Codex CLI, IDE 확장**에서만 보인다. ChatGPT **웹·모바일**의 Chat/Work에서 쓰려면 스킬을 **플러그인으로 패키징**해야 한다. 이 패키지는 v0.1.1에서 단독 폴더로만 배포하며 플러그인 패키징은 범위 밖이다.
+**ChatGPT 표면 주의.** 단독 스킬 폴더는 **ChatGPT 데스크톱 앱, Codex CLI, IDE 확장**에서만 보인다. ChatGPT **웹·모바일**의 Chat/Work에서 쓰려면 스킬을 **플러그인으로 패키징**해야 한다. 이 패키지는 v0.2.0에서 단독 폴더로만 배포하며 플러그인 패키징은 범위 밖이다.
 
 > **2026-09-13 기준 공식 문서.** 설치 전에 재확인하고, 아래와 어긋나면 **공식 문서가 맞다.**
 > - Agent Skills 오픈 표준(규범): https://agentskills.io/specification
@@ -378,7 +438,7 @@ PRD가 열어 둔 여섯 가지다. 각 항목은 **아직 사람이 결정할 �
 
 | 버전 | 현재 값 | 무엇을 설명하나 | 어디에 사는가 |
 |---|---|---|---|
-| `skill_version` | `0.1.1` | 패키지 자체 — 프롬프트, references, scripts, templates, tests | `SKILL.md` 본문, 이 README, `match-result.skill_version` |
+| `skill_version` | `0.2.0` | 패키지 자체 — 프롬프트, references, scripts, templates, tests | `SKILL.md` 본문, 이 README, `match-result.skill_version` |
 | `schema_version` | `0.1.0` | **모양** 계약 — 필드 이름, enum, required 목록 | 모든 문서, `schemas/*.json` |
 | `score_version` | `kbtm-score-0.1.0` | **루브릭** — 가중치, criterion, 신호, 페널티, 임계값, 하드 필터, evidence 함수 | `schemas/scoring.config.json`, 점수가 매겨진 모든 문서 |
 
@@ -386,7 +446,7 @@ PRD가 열어 둔 여섯 가지다. 각 항목은 **아직 사람이 결정할 �
 
 ```bash
 python3 scripts/validate_output.py --version
-# validate_output.py skill_version=0.1.1 schema_version=0.1.0 score_version=kbtm-score-0.1.0
+# validate_output.py skill_version=0.2.0 schema_version=0.1.0 score_version=kbtm-score-0.1.0
 ```
 
 루브릭이 바뀌면 저장된 점수는 **정의상 낡은 것**이 된다. 원본 레코드를 그대로 보관하기 때문에(evidence·쿼리 표면·`as_of`를 함께 저장한다) 웹을 다시 긁지 않고 재계산할 수 있다. 과거 결과를 **재현**하려면 원래의 `--as-of`를, 최신 상태로 **갱신**하려면 새 `--as-of`를 넘긴다. 서로 다른 `score_version`의 결과를 한 목록에서 비교하거나 순위를 매기는 것은 금지이며, `validate_output.py`가 이를 잡아낸다.

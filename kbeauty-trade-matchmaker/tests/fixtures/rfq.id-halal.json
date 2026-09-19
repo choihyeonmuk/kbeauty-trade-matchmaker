@@ -1,0 +1,88 @@
+{
+  "schema_version": "0.1.0",
+  "score_version": "unscored",
+  "rfq_id": "ID-701",
+  "buyer_id": null,
+  "destination_country": "ID",
+  "product_category": "serum",
+  "product_categories_extra": [],
+  "product_description": "Brightening facial serum for the Indonesian market, halal certified, private-label under the buyer's own brand",
+  "product_forms": [],
+  "quantity": 20000,
+  "max_moq": null,
+  "moq_unit": "units",
+  "target_price": null,
+  "commercial_model": "private_label",
+  "required_certifications": [
+    "HALAL"
+  ],
+  "preferred_certifications": [
+    "ISO22716"
+  ],
+  "timeline": "unknown",
+  "max_lead_time_days": null,
+  "required_seller_countries": [
+    "KR"
+  ],
+  "excluded_seller_countries": [],
+  "status": "matching",
+  "qualification_score": 0,
+  "confidence": 0,
+  "unknown_penalty_applied": [],
+  "evidence": [
+    {
+      "schema_version": "0.1.0",
+      "evidence_id": "EV-001",
+      "claim": "product_category",
+      "value": "serum",
+      "source_url": "https://app.tradewith.example/rfqs/ID-701",
+      "source_domain": "app.tradewith.example",
+      "source_type": "internal_record",
+      "source_tier": 2,
+      "is_official": false,
+      "observed_at": "2026-09-11T10:00:00Z",
+      "source_date": "2026-09-05",
+      "confidence": 0.9,
+      "quote_or_summary": "RFQ #ID-701 product_category = serum, destination_country = ID.",
+      "retrieval_method": "internal_api"
+    },
+    {
+      "schema_version": "0.1.0",
+      "evidence_id": "EV-002",
+      "claim": "required_certifications",
+      "value": [
+        "HALAL"
+      ],
+      "source_url": "https://app.tradewith.example/rfqs/ID-701",
+      "source_domain": "app.tradewith.example",
+      "source_type": "internal_record",
+      "source_tier": 2,
+      "is_official": false,
+      "observed_at": "2026-09-11T10:00:00Z",
+      "source_date": "2026-09-05",
+      "confidence": 0.9,
+      "quote_or_summary": "RFQ #ID-701 required_certifications = [HALAL], preferred = [ISO22716].",
+      "retrieval_method": "internal_api"
+    },
+    {
+      "schema_version": "0.1.0",
+      "evidence_id": "EV-003",
+      "claim": "commercial_model",
+      "value": "private_label",
+      "source_url": "https://app.tradewith.example/rfqs/ID-701",
+      "source_domain": "app.tradewith.example",
+      "source_type": "internal_record",
+      "source_tier": 2,
+      "is_official": false,
+      "observed_at": "2026-09-11T10:00:00Z",
+      "source_date": "2026-09-05",
+      "confidence": 0.9,
+      "quote_or_summary": "RFQ #ID-701 commercial_model = private_label, quantity = 20,000 units.",
+      "retrieval_method": "internal_api"
+    }
+  ],
+  "as_of": "2026-09-12",
+  "notes": [
+    "the buyer stated HALAL itself; the agent never adds a required certification the RFQ did not state, however the destination market's own rules read (references/compliance-notes.md 5.1)"
+  ]
+}

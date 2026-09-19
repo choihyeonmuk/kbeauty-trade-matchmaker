@@ -1,0 +1,21 @@
+record_id,entity_type,company_name,website,country,verdict,reason_code,note,reviewer_role,reviewed_on
+BUY-northgateimport-example,buyer,Northgate Import Co Ltd,https://northgateimport.example/,not_shown,,,,,
+BUY-gulfglow-example,buyer,Gulf Glow Trading FZ-LLC,https://gulfglow.example/,not_shown,accept,,,trade operator,2026-09-12
+BUY-www-luminaglow-example,buyer,Lumina Glow Distribution Limited,https://www.luminaglow.example/,not_shown,,,,,
+BUY-rheinkosmetik-example,buyer,Rhein Kosmetik Handels GmbH,https://rheinkosmetik.example/,not_shown,,,,,
+BUY-quietharbour-example,buyer,Quiet Harbour Trading Ltd,https://quietharbour.example/,not_shown,accept,,site was down on the run date but the company is a live importer,trade operator,2026-09-12
+BUY-cascademarket-example,buyer,Cascade Marketplace Inc,https://cascademarket.example/,not_shown,reject,wrong_company_type,,trade operator,2026-09-12
+BUY-dunesourcing-example,buyer,Dune Sourcing Partners LLC,https://dunesourcing.example/,not_shown,accept,,,trade operator,2026-09-12
+BUY-luminaglow-example,buyer,Lumina Glow Distribution Ltd,https://luminaglow.example/,not_shown,accept,,,trade operator,2026-09-12
+BUY-pacificglowdist-example,buyer,Pacific Glow Distributors Inc,https://pacificglowdist.example/,not_shown,,,,,
+BUY-britsun-example,buyer,Britannia Sun Collective Ltd,https://britsun.example/,not_shown,accept,,,trade operator,2026-09-12
+BUY-sakurabeautytrading-example,buyer,Sakura Beauty Trading KK,https://sakurabeautytrading.example/,not_shown,reject,wrong_market,,trade operator,2026-09-12
+BUY-desertbulk-example,buyer,Desert Bulk Supplies LLC,https://desertbulk.example/,not_shown,accept,,buys in bulk and would take a K-Beauty line; no Korean page yet,trade operator,2026-09-12
+BUY-marinaretail-example,buyer,Marina Retail Boutique LLC,https://marinaretail.example/,not_shown,reject,wrong_company_type,"single retail boutique, no buying function",trade operator,2026-09-12
+BUY-straitswholesale-example,buyer,Straits Wholesale Pte Ltd,https://straitswholesale.example/,not_shown,,,,,
+BUY-lioncitybeauty-example,buyer,Lion City Beauty Pte Ltd,https://lioncitybeauty.example/,not_shown,unsure,,cannot tell whether the wholesale arm is still trading,trade operator,2026-09-12
+BUY-novadrift-example,buyer,Nova Drift Trading Ltd,https://novadrift.example/,not_shown,reject,wrong_vertical,,trade operator,2026-09-12
+BUY-libertybeautysupply-example,buyer,Liberty Beauty Supply LLC,https://libertybeautysupply.example/,not_shown,,,,,
+BUY-albionbeautyhall-example,buyer,Albion Beauty Hall Ltd,https://albionbeautyhall.example/,not_shown,,,,,
+BUY-palefade-example,buyer,Pale Fade Trading Ltd,https://palefade.example/,not_shown,reject,wrong_vertical,,trade operator,2026-09-12
+BUY-kantoimport-example,buyer,Kanto Import Partners KK,https://kantoimport.example/,not_shown,reject,evidence_wrong,,trade operator,2026-09-12

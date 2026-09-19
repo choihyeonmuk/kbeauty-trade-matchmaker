@@ -6,7 +6,23 @@
 
 [English](README.md) · [한국어](README.ko.md) · [मराठी](README.mr.md) · [हिन्दी](README.hi.md) · [Bahasa Indonesia](README.id.md) · [Türkçe](README.tr.md) · [प्रकल्प पृष्ठ](https://kbeauty.tradewith.kr/) · [LinkedIn](https://www.linkedin.com/in/hm-choi)
 
-> **स्थिती: v0.1.1.** हा pipeline काल्पनिक fixtures वरील 179 cases वर तपासला गेला आहे आणि live वेबवर एकदा चाचणी घेतली गेली आहे. गुणांकन पद्धत (scoring rubric) **प्रत्यक्ष व्यावसायिक परिणामांशी अद्याप पडताळलेली नाही**: गुण पुन्हा तसेच मिळवता येतात आणि त्यांचा मागोवा घेता येतो, पण ते भविष्याचा अचूक अंदाज देतात हे अजून सिद्ध झालेले नाही. RFQ Matching आणि Outreach Draft हे live डेटावर अजून चालवलेले नाहीत. कोणत्याही गुणांवर विश्वास ठेवण्यापूर्वी [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) वाचा.
+![योग्य K-Beauty व्यापार भागीदार शोधा](kbeauty-trade-partner-linkedin-cities.png)
+
+> कार्यप्रवाहाचे दृश्य स्वरूप: शोधा, पडताळा, जुळवा आणि अंतिम निर्णय माणसाकडेच ठेवा.
+
+> **स्थिती: v0.2.0.** हा pipeline काल्पनिक fixtures वरील 252 cases वर तपासला गेला आहे आणि live वेबवर एकदा चाचणी घेतली गेली आहे. गुणांकन पद्धत (scoring rubric) **प्रत्यक्ष व्यावसायिक परिणामांशी अद्याप पडताळलेली नाही**: गुण पुन्हा तसेच मिळवता येतात आणि त्यांचा मागोवा घेता येतो, पण ते भविष्याचा अचूक अंदाज देतात हे अजून सिद्ध झालेले नाही. v0.2.0 मध्ये ते मोजण्यासाठीची साधने जोडली आहेत ([गुणांची पडताळणी](#गुणांची-पडताळणी)), पण label केलेला नमुना (labelled sample) अजून अस्तित्वात नाही. RFQ Matching आणि Outreach Draft हे live डेटावर अजून चालवलेले नाहीत. कोणत्याही गुणांवर विश्वास ठेवण्यापूर्वी [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) वाचा.
+
+---
+
+## नवीन काय आहे
+
+**v0.2.0 (2026-09-19).** विद्यमान कोणतेही गुण बदलत नाहीत.
+
+- **गुण-पडताळणीची साधने.** Trade operator (व्यापाराचे प्रत्यक्ष कामकाज पाहणारी व्यक्ती) साठी एक blind review sheet, आणि त्यांच्या accept/reject (स्वीकार/नकार) निर्णयांची गुणांशी तुलना करणारा एक report. [गुणांची पडताळणी](#गुणांची-पडताळणी) पहा.
+- **भारत, इंडोनेशिया आणि तुर्किये (Türkiye) साठी market packs.** स्थानिक भाषेत खरेदीदार शोध, matching मध्ये वापरले जाणारे बाजारपेठ-प्रवेशाचे नियम (CDSCO, BPOM, इंडोनेशियाचे अनिवार्य halal प्रमाणन, TİTCK), direct-marketing checklist च्या ओळी आणि notice blocks, आणि `Pvt Ltd`, `PT`, `A.Ş.` व तत्सम स्वरूपांसाठी कंपनीच्या नावांची हाताळणी. [Market packs](#market-packs-बाजारपेठनिहाय-संच) पहा.
+- Tests: 179 → 252 cases.
+
+प्रत्येक release च्या संपूर्ण नोंदी: [CHANGELOG.md](CHANGELOG.md) (फक्त इंग्रजीत उपलब्ध).
 
 ---
 
@@ -143,6 +159,7 @@ kbeauty-trade-matchmaker/
 │   ├── evidence.schema.json      # The smallest unit: one source, one claim
 │   ├── match-result.schema.json  # One complete matching run
 │   ├── discovery-result.schema.json
+│   ├── acceptance-report.schema.json  # One calibration measurement (v0.2.0)
 │   └── scoring.config.json       # Every weight, threshold and penalty lives in this one file
 ├── scripts/                      # Standard library only. No network, no credentials
 │   ├── _common.py                # Config, rounding, normalisation, tri-state helpers, schema validator
@@ -151,7 +168,9 @@ kbeauty-trade-matchmaker/
 │   ├── score_buyer.py
 │   ├── score_seller.py
 │   ├── score_match.py
-│   └── validate_output.py        # Schema plus contract invariants
+│   ├── validate_output.py        # Schema plus contract invariants
+│   ├── make_review_sheet.py      # Blind CSV review sheet for a trade operator (v0.2.0)
+│   └── acceptance_report.py      # Review sheets + scored runs -> Human Acceptance Rate report (v0.2.0)
 ├── templates/
 │   ├── buyer_outreach.md
 │   ├── seller_outreach.md        # With and without an RFQ
@@ -207,6 +226,45 @@ Output चे एकक "एक कंपनी" नसून **पुराव�
 - कोणत्याही महत्त्वाच्या दाव्यासाठी **अजिबात पुरावा नसणे**: अशी नोंद गुणांकनापूर्वीच `excluded[]` मध्ये हलवली जाते आणि कारण नमूद केले जाते ("site उघडता आली नाही" किंवा "वाचली, पण कोणतेही महत्त्वाचे दावे नाहीत"). पुरावा नसलेल्या कंपन्या भरून क्रमवारीची यादी फुगवणे हीच चूक यामुळे टाळली जाते.
 
 साठवण किमान ठेवली जाते: दावा, URL, पाहिल्याची वेळ आणि एक छोटे अवतरण; संपूर्ण पृष्ठे किंवा अनावश्यक वैयक्तिक profiles कधीही नाहीत. परस्परविरोधी स्रोत `conflicts[]` मध्ये माणसाने पाहण्यासाठी नोंदवले जातात, ते कधीही गुपचूप सोडवले जात नाहीत, आणि अशा विरोधांमुळे confidence कमी होतो.
+
+---
+
+## गुणांची पडताळणी
+
+येथील गुण पुन्हा तसेच मिळवता येतात, पण ते एखाद्या व्यक्तीच्या निर्णयाशी अजून कोणीही ताडून पाहिलेले नाहीत. v0.2.0 मध्ये जोडलेल्या दोन स्वतंत्र scripts द्वारे तुम्ही ती तपासणी करू शकता. त्या कोणतेही गुण बदलत नाहीत.
+
+```bash
+cd kbeauty-trade-matchmaker
+
+# 1. Make a blind sheet from a scored run. No score, rank or qualified flag; rows in a fixed shuffled order.
+python3 scripts/make_review_sheet.py --input out/buyers.scored.json --include-excluded --output out/review.csv
+
+# 2. A trade operator fills in verdict (accept / reject / unsure), a reason_code for each reject,
+#    their role, and the date. Then:
+python3 scripts/acceptance_report.py --scored out/buyers.scored.json --reviews out/review.csv --as-of 2026-09-19 --pretty
+```
+
+Report मध्ये, review केलेल्या कंपन्यांपैकी operator ने किती प्रमाणात स्वीकारल्या हे दिले जाते: एकूण, आणि `qualified` flag, score band, देश व reject चे कारण यांनुसार विभागून. 50 ते 90 पर्यंतच्या प्रत्येक threshold ने किती precision आणि recall दिले असते हे तो दाखवतो. एकूण गुण आणि सहा निकषांपैकी प्रत्येकासाठी, ते गुण स्वीकारलेल्या आणि नाकारलेल्या कंपन्यांना किती चांगल्या प्रकारे वेगळे करतात आणि त्या निकषाने किती वेगवेगळी मूल्ये दिली हे तो दाखवतो. Operator ने स्वीकारल्या असत्या अशा वगळलेल्या (excluded) कंपन्यांची यादीही तो देतो.
+
+निर्णय दिलेले (accept किंवा reject) reviews 30 पेक्षा कमी असल्यास report स्वतःला `insufficient_sample` म्हणून चिन्हांकित करतो आणि weight किंवा threshold मधील बदलाचे समर्थन तो करू शकत नाही असे सांगतो. तो पुढील गोष्टी असलेल्या sheets नाकारतो: अज्ञात verdict, कारण नसलेले reject, परस्परविरोधी duplicates, वेगवेगळ्या `score_version` खाली गुणांकित झालेले runs, आणि ईमेल पत्ता किंवा फोन नंबर असलेल्या notes. Reviewers ची ओळख त्यांच्या भूमिकेने (role) होते, नावाने कधीही नाही.
+
+[`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) §7 मध्ये नमुना कसा तयार करायचा (किमान दोन देश आणि दोन श्रेणी, review केलेल्या 100 ते 200 कंपन्या) आणि कोणता निकाल calibration चा प्रत्येक खुला प्रश्न निकाली काढेल हे सांगितले आहे. हे फक्त Human Acceptance Rate (माणसाने स्वीकारण्याचे प्रमाण) मोजते. संपर्क केलेला lead पुढे RFQ बनतो की नाही हे समजण्यासाठी application स्तरावरील outcome डेटा लागतो.
+
+## Market packs (बाजारपेठनिहाय संच)
+
+v0.2.0 मध्ये भारत, इंडोनेशिया आणि तुर्किये जोडले आहेत. गुणांकनाचा कोणताही नियम बदललेला नाही; एक नवीन test fixture (गंतव्य इंडोनेशिया, halal आवश्यक) दाखवतो की विद्यमान rubric त्यांना आधीच हाताळते.
+
+| | भारत | इंडोनेशिया | तुर्किये |
+|---|---|---|---|
+| खरेदीदार शोधाची भाषा | आधी इंग्रजी, सोबत हिंदी | इंडोनेशियन | तुर्की |
+| Matching मध्ये वापरला जाणारा बाजारपेठ-प्रवेशाचा नियम | CDSCO आयात नोंदणी (import registration) | BPOM notification; सौंदर्यप्रसाधनांसाठी अनिवार्य halal प्रमाणन (`--as-of` च्या तारखेवर अवलंबून) | ÜTS मार्फत TİTCK notification |
+| कंपनीच्या नावांतून काढली जाणारी कायदेशीर स्वरूपे (legal forms) | `Pvt Ltd`, `Private Limited`, `LLP` | `PT`, `CV`, `Tbk` | `A.Ş.`, `Ltd. Şti.`, `San. ve Tic.` |
+| Notice blocks | `IN.corporate_email`, `IN.partnership_form` | `ID.corporate_email`, `ID.partnership_form` | `TR.corporate_email`, `TR.partnership_form` |
+
+- नोंदण्या (registrations) प्रत्येक बाजारपेठेनुसार `regulatory_registrations` मध्ये नोंदवल्या जातात आणि विद्यमान गंतव्य-बाजारपेठ उप-निकषाद्वारे गुणांकित होतात: नोंदणी झालेली (registered) ही प्रक्रियेत असलेल्यापेक्षा (in progress) वरचढ ठरते, आणि ती प्रकाशित न केलेल्यापेक्षा (not published) वरचढ ठरते.
+- `Helal`, `Sertifikat Halal` आणि `हलाल` हे `HALAL` token बनतात, आणि प्रमाणित करणारी संस्था व तिची व्याप्ती (scope) notes मध्ये नोंदवली जाते. इंडोनेशियात मान्यता प्रत्येक संस्थेनुसार आणि प्रत्येक व्याप्तीनुसार दिली जाते, त्यामुळे अन्नपदार्थांसाठी मान्य असलेले प्रमाणपत्र सौंदर्यप्रसाधनांना लागू होत नाही.
+- RFQ मध्ये नमूद नसलेले आवश्यक प्रमाणपत्र agent कधीही स्वतःहून जोडत नाही. तो ते एक जोखीम (risk) म्हणून मांडतो, ज्यावर निर्णय माणूस घेतो.
+- Live run मध्ये अजून न वापरलेले स्रोत [`buyer-discovery.md`](kbeauty-trade-matchmaker/references/buyer-discovery.md) मध्ये "not yet field-tested" (अद्याप प्रत्यक्ष वापरात न तपासलेले) असे चिन्हांकित केले आहेत. Compliance च्या ओळी माणसाने काय तपासायचे ते सांगतात; ते कायदेशीर निष्कर्ष नाहीत.
 
 ---
 
@@ -267,7 +325,7 @@ sh kbeauty-trade-matchmaker/install.sh --runtime codex --project /path/to/your-r
 
 - Codex working directory पासून repository root पर्यंतच्या प्रत्येक directory मध्ये `.agents/skills` शोधतो. `~/.codex/skills` deprecated आहे पण अजूनही समर्थित आहे; नवीन installation साठी `~/.agents/skills` वापरा.
 - CLI आणि IDE extension मध्ये `$kbeauty-trade-matchmaker` किंवा `/skills` वापरून, किंवा ChatGPT मध्ये `@` वापरून स्पष्टपणे सुरू करा. आपोआप सुरू होणे (implicit invocation) `description` वरून ठरते.
-- स्वतंत्र skill फोल्डर फक्त **ChatGPT desktop app, Codex CLI आणि IDE extension** मध्ये दिसते. ChatGPT **web आणि mobile** साठी skill plugin स्वरूपात package करावे लागते, जे v0.1.1 मध्ये समाविष्ट नाही.
+- स्वतंत्र skill फोल्डर फक्त **ChatGPT desktop app, Codex CLI आणि IDE extension** मध्ये दिसते. ChatGPT **web आणि mobile** साठी skill plugin स्वरूपात package करावे लागते, जे v0.2.0 मध्ये समाविष्ट नाही.
 - `AGENTS.md` हा skills install करण्याचा मार्ग नाही. ते repository साठी नेहमी लागू असणाऱ्या सूचनांचे वेगळे Codex वैशिष्ट्य आहे.
 
 > **2026-09-13 रोजी अधिकृत documentation शी तपासले.** येथील काही माहिती सध्याच्या docs शी जुळत नसेल, तर docs बरोबर आहेत.
@@ -361,7 +419,7 @@ Environment variables import च्या वेळी नव्हे तर ca
 
 | आवृत्ती | मूल्य | काय दर्शवते | कुठे असते |
 |---|---|---|---|
-| `skill_version` | `0.1.1` | Package: prompts, references, scripts, templates, tests | `SKILL.md` चा मुख्य मजकूर, `match-result.skill_version` |
+| `skill_version` | `0.2.0` | Package: prompts, references, scripts, templates, tests | `SKILL.md` चा मुख्य मजकूर, `match-result.skill_version` |
 | `schema_version` | `0.1.0` | रचनेचा contract: field names, enums, आवश्यक fields च्या याद्या | प्रत्येक document, `schemas/*.json` |
 | `score_version` | `kbtm-score-0.1.0` | Rubric: weights, निकष, संकेत, दंड, thresholds, hard filters | `scoring.config.json`, प्रत्येक गुणांकित document |
 

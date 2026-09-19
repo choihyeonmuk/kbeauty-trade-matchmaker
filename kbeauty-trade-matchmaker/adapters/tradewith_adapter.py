@@ -70,7 +70,7 @@ PACKAGE_ROOT = os.path.dirname(ADAPTER_DIR)
 SCHEMA_DIR = os.path.join(PACKAGE_ROOT, "schemas")
 SCRIPTS_DIR = os.path.join(PACKAGE_ROOT, "scripts")
 
-SKILL_VERSION = "0.1.1"
+SKILL_VERSION = "0.2.0"
 SCHEMA_VERSION = "0.1.0"
 
 # --------------------------------------------------------------------------
