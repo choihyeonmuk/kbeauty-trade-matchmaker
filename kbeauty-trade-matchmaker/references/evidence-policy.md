@@ -265,6 +265,51 @@ If **no** permitted method works, that is an honest dead end: the facts stay `"u
 says which method failed, and if the candidate ends with no evidenced material claim it leaves for
 `excluded[]` with the reason naming the retrieval failure (`references/output-format.md`).
 
+### 5.6 The re-check queue
+
+`scripts/stale_evidence.py` lists what to re-read on records that are already stored. It fetches
+nothing, changes no record and no score, and no scorer reads its output
+(`schemas/recheck-queue.schema.json`). Run it with the re-check date as `--as-of`; it is required,
+because falling back to the newest `observed_at` would make every item look as fresh as its last
+reading.
+
+Korean gloss: 재확인 대기열 — 저장된 근거 중 다시 읽어야 할 것을 이유와 함께 우선순위로 나열한다.
+
+An evidence item is **current** when it is not flagged `stale` and either its `source_date` falls in a
+bucket before `aging`, or it is undated and its `observed_at` does. An undated page is not a stale page
+(`evidence.unknown_source_date_note` in `scoring.config.json`): Korean company pages almost never print
+a date, and queueing every one of them would bury the records that really are old. The bucket edges
+and `stale_threshold_days` come from the `evidence` block, so the queue and the score always agree on
+what "old" means.
+
+| Reason (priority order) | Level | Means |
+|---|---|---|
+| `site_unreachable` | buyer / seller record | `operational_status` is `unreachable`. `closed` is a determined fact for `HF-06`, and `unknown` is not a finding, so neither is listed |
+| `record_flagged_stale` | buyer / seller record | `record.stale` is `true` (§5.3) |
+| `past_stale_threshold` | item | Dated, more than `stale_threshold_days` old (exactly that many days is still `aging`, as in the scorer), and its claim has no current item |
+| `source_flagged_stale` | item | `evidence[].stale` is `true` (§5.3) |
+| `unresolved_conflict` | item | `conflicts_with` names at least one evidence id (a lone string counts as one) and the claim has no `conflicts[]` entry (§6) |
+| `aging` | item | Dated, in the `aging` bucket or later but within the threshold, and its claim has no current item |
+| `undated` | item | No `source_date`, its last reading is itself due (or unreadable), and its claim has no current item |
+
+A covered **material** claim with no current item is reported once more as `no_current_evidence`, with
+its evidence ids, the newest dated `source_date` and counts of old, undated and flagged items. An
+item whose claim already has a current item gets no age reason: a superseded old page no longer drives
+the score, so it is not worth a trip. A resolved conflict is not listed. Record-level reasons never
+apply to an RFQ, which has no `stale` flag or `operational_status`. Records rank by their most urgent
+reason (a non-material item ranks after every material one), then by the number of material claims
+without current evidence, then by the oldest queued item; `--top N` lists only the first N while the
+summary still counts all of them. Every queued record must be findable again, so a record whose id is
+missing, blank or not a string is refused (exit 1) rather than queued as `unknown`.
+
+Working the queue: re-open each `source_url` with a permitted method (§5.5), write a new evidence item
+with a new `observed_at` and whatever `source_date` the page now shows, set or clear the flags of §5.3,
+then re-run normalize → dedupe → score. The queue copies only locators and dates, never a value, a
+quote or a contact channel. A `source_url` is echoed as stored; if a personal profile URL was stored
+against §7 and `references/compliance-notes.md`, fix the record rather than following the link.
+**Staleness never deletes a value** (§5.4), and neither does re-checking: a page that no longer says
+something makes the field `"unknown"` only through a new evidence reading, never through the queue.
+
 ---
 
 ## 6. Conflicts — when two sources disagree (PRD test T08)

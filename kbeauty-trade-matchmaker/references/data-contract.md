@@ -44,7 +44,8 @@ changes.
 
 ## 1. The document set
 
-Five document kinds, two run envelopes and one measurement document:
+Five document kinds, two run envelopes, and four operator documents (measurement, comparison,
+audit, export):
 
 ```
                     +---------------------+
@@ -88,6 +89,9 @@ Five document kinds, two run envelopes and one measurement document:
 | `match-result` | `score_match.py` | Yes | One full RFQ → seller run; scored profile only |
 | `discovery-result` | `score_buyer.py` / `score_seller.py` | Yes | The run envelope around scored buyer/seller records |
 | `acceptance-report` | `acceptance_report.py` | Yes | A **measurement** document (§9.3): operator labels joined back to a scored run. No scorer reads it, so producing one never moves `score_version` |
+| `run-diff` | `diff_runs.py` | Yes | A **comparison** document (§9.4): what changed between two scored runs of the same search or RFQ. No scorer reads it, so producing one never moves `score_version` |
+| `recheck-queue` | `stale_evidence.py` | Yes | An **audit** document (§9.5): the stored evidence to re-read, most urgent first. It fetches nothing and no scorer reads it, so producing one never moves `score_version` |
+| `tradewith-bulk-buyers` | `export_leads.py --format tradewith-json` | Yes | An **export** document (§9.6): the TradeWith admin bulk-import body. It has no version fields, no scorer reads it, and it never carries a contact name, a phone number or notes |
 
 ### 1.1 Profiles
 
@@ -573,7 +577,7 @@ outcome, and the run must say so: when `returned < top_n_requested`, append
 
 | Field | Type | Notes |
 |---|---|---|
-| `match_run_id` | string | `MR-<rfq_id>-<as_of>-<NN>` — the key that lets an old run be diffed against a re-computed one |
+| `match_run_id` | string | `MR-<rfq_id>-<as_of>-<NN>` — run provenance; `diff_runs.py` echoes it but joins two match runs on `rfq_id` (§9.4) |
 | `rfq_constraints` | object | read-only echo of the RFQ constraints, so the header block renders from this document alone |
 | `weights_used` | `{product_fit, model_fit, operation_fit, compliance_fit, market_fit, evidence_quality}` | pins the run so a stored score can be re-derived after a config change |
 | `threshold` | `{mode, value, percentile?, population_size?, fallback_reason?, …}` | the **resolved** cut-off and its full derivation |
@@ -711,6 +715,248 @@ therefore needs a telephone **signal**: a leading `+`, a trunk-prefix `0` on a r
 more, or a `tel` / `phone` / `mobile` / `전화`-style label just in front. Input is NFKC-normalised
 first, so full-width digits cannot walk past the scan, and URLs and ISO dates are removed before it.
 
+### 9.4 `run-diff` — comparing two runs
+
+`scripts/diff_runs.py --before <run> --after <run>` compares two scored documents of the same kind
+and reports what changed. It is an operator tool outside every mode: it reads two finished runs,
+writes one JSON document, and nothing it produces feeds a score.
+*Korean gloss: 두 실행 결과 비교 문서 — 점수에 영향을 주지 않는다.*
+
+**What it refuses** (exit 1, exactly one `ERROR:` line, nothing on stdout or `--output`), checked in
+this order:
+
+1. a document that is not a run: a bare `--records-only` array, or neither a `discovery-result` nor
+   a `match-result`;
+2. a document that fails its own schema (discovery records are checked against `buyer` / `seller`);
+3. a run whose records disagree with its envelope on `score_version` (INV-23);
+4. two runs with different `score_version`s. There is no opt-in: scores from two rubrics are not on
+   one scale, and even returned-versus-excluded is a rubric output (§11.3 rule 4);
+5. a discovery run against a match run, a buyer run against a seller run, or match runs for
+   different `rfq_id`s. A different discovery `query` is **not** refused — widening a query is a
+   legitimate reason to diff — and is flagged in `context.query_changed`;
+6. a record id that appears twice inside one run, or a match record whose `rank` is not its
+   position in `results` plus one (the diff reports position as rank, so a disagreeing `rank` is
+   refused rather than silently overridden);
+7. an explicit `--as-of` earlier than either input's `as_of`. Without `--as-of` the diff is dated at
+   the later of the two.
+
+The rubric-version check comes before the kind check, as in `acceptance_report.py`, because it is
+the more fundamental defect. A malformed or empty flag, an unreadable file or both sides on stdin
+is a usage error (exit 2).
+
+**Pairing.** Records are paired by identical id first. A still-unpaired record is then paired
+through `merged_from`: an after-record (ascending id) takes the smallest unpaired before-id it lists,
+then the same the other way round. Such a pair carries `matched_by: "merged_from"` and `before_id`,
+and is always listed, even with equal numbers, because the id change is itself news: under
+`changed[]` when both sides are returned, otherwise under `newly_excluded[]` / `newly_returned[]`.
+Excluded entries carry no `merged_from`, so two excluded records are only ever paired by id. A before-record that some after-record's `merged_from` absorbed is
+listed under `gone[]` with `merged_into`: a dedupe merge, not a lost lead. The literal id `"unknown"`
+is never paired; such records are listed under `new` / `gone` with a note. `canonical_domain` is not
+a pairing key — two legal entities can share one — and `match_run_id` is echoed but not a key either,
+because it changes with `as_of`; match runs are joined on `rfq_id`.
+
+**The lists.**
+
+| List | Holds | Item fields |
+|---|---|---|
+| `new` / `gone` | listed in one run, absent from the other | `record_id`, `company_name`, `canonical_domain`, `state`; `score` / `rank` (match) / `qualified` when returned, `reason_summary` / `failed_rule_ids` when excluded; `gone` adds `merged_into` |
+| `newly_excluded` | returned before, excluded after | `before_score`, `before_rank` (match), `before_qualified`, `reason_summary`, `failed_rule_ids` |
+| `newly_returned` | excluded before, returned after | `before_reason_summary`, `before_failed_rule_ids`, `after_score`, `after_rank` (match), `after_qualified` |
+| `exclusion_changes` | excluded in both, reason or rule set differs | `before_reason_summary`, `after_reason_summary`, `rules_added`, `rules_removed` |
+| `changed` | returned in both, a compared field differs | only the changed keys among `score`, `base_score` (match), `rank` (match), `dimensions`, `qualified`, `confidence`, `missing` |
+
+Every paired item starts with `record_id` (the after id), `before_id` (only when not paired by id),
+`matched_by` and `company_name`. In `changed[]`, a dimension the scorer dropped on one side reads
+`"absent"` with a `null` delta; `qualified.flip` is `gained`, `lost`, or `undetermined` when a side
+does not carry the flag (unknown is not false); `confidence.delta` is computed in Decimal and
+rounded half-up to two places; `missing` lists labels `added` (after order) and `removed` (before
+order), compared only when both sides carry a list. `changed[]` sorts by |score delta| descending,
+then `record_id`; every other list sorts by `record_id` in codepoint order.
+
+**Run-level fields.** `before` / `after` echo each run's `as_of`, `score_version`, `skill_version` (`"unknown"` when absent or empty),
+`match_run_id` and `rfq_id` (`null` on discovery), `threshold_used`, `threshold_mode`, `partial`
+(`"unknown"` when the document omits it) and the returned / excluded counts. `context` flags an
+`as_of`, threshold, query (discovery) or `weights_used` (match) change; the inapplicable one is
+`null`.
+
+**Notes.** Fixed English sentences: on every match diff, that a seller absent from one run may have
+been cut by the threshold or `top_n` rather than dropped, so new / gone mean *listed / not listed*;
+that the runs have different `as_of` dates (recency moves scores with no change in evidence); that
+`--before` is dated later than `--after`; that the runs came from different skill versions; that
+records with id `"unknown"` could not be paired; that a run is `partial`.
+
+**What is never copied.** Contact channels, evidence, websites, observed / required values and whole
+`failed_rules` objects stay behind; only the rule ids travel. A diff therefore carries nothing
+harvested beyond a company name and a domain.
+
+**Validated before anything is written**, as the acceptance report is: on a schema failure nothing
+reaches stdout or `--output`, and the output file is opened only after the diff has passed.
+
+### 9.5 `recheck-queue` — the evidence to re-read
+
+An **audit** document produced by `scripts/stale_evidence.py` from records already on disk: a
+`discovery-result`, a golden bundle, dedupe output, a match input (its `rfq` is scanned as one more
+record), a list of records or a single record. It fetches nothing, changes no record and no score,
+and no scorer reads it. The reason codes and how to work the queue are
+`references/evidence-policy.md` §5.6.
+*Korean gloss: 재확인 대기열 — 다시 읽을 근거 목록. 점수와 레코드는 바꾸지 않는다.*
+
+| Field | Notes |
+|---|---|
+| `report_kind` | Always `recheck-queue`; the discriminator `validate_output.py --schema auto` routes on |
+| `score_version` | The config whose `evidence` block (buckets, `stale_threshold_days`, material claims) was applied. Input records scored under another rubric are **not refused** — the queue aggregates no score — and `notes[]` names their version |
+| `as_of` | The required `--as-of`; every age is measured to it. An `observed_at` later than it is refused (INV-24) |
+| `policy` | `due_from_bucket` (`aging`), `stale_threshold_days`, the bucket labels and edges, `reason_order` |
+| `summary` | `records_scanned`, `records_queued`, `records_listed` (after `--top`), `records_without_evidence`, `evidence_items_scanned`, `evidence_items_queued`, `evidence_items_undated`, `claims_without_current_evidence`, `by_reason` (every code, records for record-level codes and items for item-level codes), `by_bucket` (every scanned item by `source_date` bucket, plus `unknown`) |
+| `queue[]` | `position`, `entity` (`buyer` \| `seller` \| `rfq`), `record_id`, `input_index`, optional `company_name` / `canonical_domain`, `priority_reason`, `record_reasons[]`, `claims[]`, `items[]` |
+| `claims[]` | A covered material claim with no current item: `claim`, `reason` (`no_current_evidence`), `evidence_ids`, `newest_source_date` (or `unknown`), `counts{old, undated, flagged}` |
+| `items[]` | `evidence_id`, `claim`, `material`, `source_url` (or `unknown`), optional `source_tier`, `source_date`, `age_days`, `recency_bucket`, `last_read` (the `observed_at` date), `days_since_read`, `reasons[]`, and `conflicts_with` on an unresolved conflict. Unknown ages are the string `unknown`, never `0` |
+| `notes[]` | At most one note per kind of tolerated input problem (an `evidence` value that is not a list; a `source_date` that is not a date), with the count and the first 10 cases, each echoed value cut to 40 characters. Always ends with the line saying the queue changed no record and no score |
+
+Only locators and dates are copied: never `value`, `quote_or_summary` or `contact_channels`. A
+`match-result` is refused with exit 1, because its `evidence_index[]` carries no `source_date` and its
+candidates carry no `operational_status` or `conflicts[]`; pass the match input instead. An
+`acceptance-report` or another report is refused the same way, and so is a duplicate record id or a
+record whose `buyer_id` / `seller_id` / `rfq_id` is missing, blank or not a string, even when the
+bundle's `entity` names the kind. A copied locator longer than its input schema allows (id 128,
+`evidence_id` 128, `claim` 200, `source_url` 2048, a `conflicts_with` id 128) is refused rather than
+cut, because a cut locator points somewhere else; an over-long `company_name` (300) or
+`canonical_domain` (253) is only left out. Valid input can therefore never fail the queue's own
+schema.
+
+### 9.6 Export files — generic CSV and the TradeWith import
+
+`scripts/export_leads.py` writes the leads of **one scored `discovery-result`** as a file a person
+imports. It is a file format, not an adapter capability: it opens no connection, posts nothing and
+changes no score, and no scorer reads what it writes. A `match-result` is refused with exit 1 (a
+document that parses but is the wrong kind, BUILD-CONTRACT 7.3, as in `diff_runs.py` and
+`stale_evidence.py`), because a match candidate carries no company fields.
+*Korean gloss: 점수화된 발굴 결과를 CSV 또는 TradeWith 일괄 등록 파일로 내보낸다 — 전송하지 않는다.*
+
+| `--format` | Entity | What it is |
+|---|---|---|
+| `csv` (default) | buyer, seller | Generic spreadsheet / CRM file, operator-held |
+| `tradewith-csv` | buyer | The CSV that TradeWith's admin buyer-import page reads (header by name) |
+| `tradewith-json` | buyer | The exact request body of the admin bulk-import endpoint, `{"buyers": [...]}`, for an admin posting through an authenticated API client. The admin page does **not** read this file |
+
+A seller run with a TradeWith format is a usage error: TradeWith has no seller bulk import (sellers
+self-register).
+
+**Filters**, applied in this order; only the first that fires is counted on stderr:
+
+1. `operational_status` is `closed` or `unreachable` → skipped in every format;
+2. `qualified` is not `true` → skipped unless `--include-unqualified` (an absent flag counts here);
+3. `--min-score N` given and `qualification_score` is below N or absent → skipped (a NaN or
+   infinite score is refused, not skipped);
+4. TradeWith formats only: `country` is absent or `unknown` → skipped (the CSV keeps the row, with
+   `country` written as `unknown`).
+
+`excluded[]` is never exported: those records were never scored and are not leads. Record order is
+the document's own order (INV-30); nothing is re-sorted. `stale: true` records are kept and the flag
+is carried in the CSV and in the TradeWith `originalSource`. When two exported records share a normalized name or a `www.`-stripped
+domain, stderr prints a `WARNING: possible duplicate …` line — run `dedupe_companies.py` first, or
+the import creates two rows for one company.
+
+**Generic CSV.** UTF-8 without BOM, LF, header first. Columns, in this order:
+
+`record_id, entity_type, company_name, canonical_domain, website, country, company_type,
+product_categories, qualification_score, qualified, confidence, status, operational_status, stale`,
+then six `dim_<name>` columns — buyer `kbeauty_fit, b2b_role, sourcing_intent, market_relevance,
+reachability, evidence_quality`; seller `product_fit, commercial_model, operational_fit,
+compliance_readiness, export_readiness, evidence_quality` — then `contact_channels, missing,
+score_version, as_of` (`as_of` is the record's, else the envelope's).
+
+| Cell | Means |
+|---|---|
+| `unknown` | the field is absent or holds `"unknown"` (§2) |
+| `none` | a present-and-empty list — verified none |
+| `not_applicable` | `dim_market_relevance` when the scorer dropped the dimension as inapplicable |
+| `withheld` | `contact_channels` when every stored channel was withheld by the rules below |
+| `true` / `false` | a boolean |
+
+Lists are joined with `"; "`. `contact_channels` is `type=value` per channel joined with `" | "`, in
+stored order; **labels are never exported**. A `corporate_email` value is kept only when it is a role
+mailbox: an exact local part from the script's role list (`info`, `sales`, `sourcing`, `partners`,
+`trade`, `export` …) on the record's own `canonical_domain` / `alias_domains` (`www.` stripped), not
+a free-mail provider. Any other address is dropped and counted on stderr, and so is a `linkedin`
+value that is not an organisation page — a member profile names a person. The URL is parsed, not
+prefix-matched: its first path segment must be `company`, `showcase` or `school`, followed by a
+name, and no segment may be empty, `.` or `..` (percent-encoded dots included), so
+`/company/../in/<name>` is withheld. A `phone` or `messenger` value may be a published company
+number (BUILD-CONTRACT 3.6), so the phone shape does not refuse those two types **when the whole
+value is a number** (digits, spaces, `+ ( ) . / -`) or, for `messenger`, a `wa.me` /
+`api.whatsapp.com` link to one; any other text in them — a name, "mobile" — gets the full scan, and
+an address always refuses. Every cell goes through the spreadsheet formula guard (§9.3): a leading
+`=`, `+`, `-`, `@`, tab or CR gets an apostrophe, and so does one that follows leading whitespace or
+is a full-width form (`＝`), because an importer that trims cells would store the bare formula.
+
+**TradeWith mapping** (`tradewith-json` rows; `schemas/tradewith-bulk-buyers.schema.json`). A key is
+written only when the rule yields a real value — never `null`, `""`, `"unknown"` or `[]` — because
+an omitted key leaves the stored TradeWith value alone on re-import, while an explicit one
+overwrites an admin's edit.
+
+| DTO key | Source |
+|---|---|
+| `sourceId` | `kbtm:` + `canonical_domain` with `www.` stripped (`kbtm:gulfglow.example`), or `kbtm:id:` + `buyer_id` when the domain is unknown. The domain is the merge key and survives dedupe survivor-id churn, so re-importing a later run updates the same row; the `kbtm:` prefix keeps these ids apart from every other CSV import. Two exported records on one domain are refused |
+| `companyName` | `company_name` |
+| `country` | `country` (ISO alpha-2) |
+| `website` | `website`, when it is an `http(s)://` URL |
+| `industry` | `BEAUTY` (the IndustryCode TradeWith's buyer matching filters on) |
+| `category` | `company_type`, unless `unknown` |
+| `productsSummary` | `product_categories` joined `", "`, then `"Korean brands: "` + `korean_brands_carried`, joined `"; "` |
+| `originalSource` | `kbeauty-trade-matchmaker \| score_version=<v> \| as_of=<d> \| record_id=<id> \| stale=<true\|false\|unknown>` — the provenance, and the only place a TradeWith row says the company may be stale |
+| `sourceUrl` | the first evidence item with `is_official: true` and `source_tier: 1`, else `website` |
+| `social` | the first `linkedin` channel that is an organisation page (parsed as in the generic CSV above: `/company/`, `/showcase/` or `/school/` plus a name, no empty, `.` or `..` segment). TradeWith shows `social` to sellers unmasked, so a member profile is withheld and counted on stderr |
+
+`tradewith-csv` carries `sourceId, companyName, country, website, industry` — the only columns of
+that set the admin page maps. It therefore **drops** `originalSource`, `sourceUrl`, `category`,
+`productsSummary` and `social`: rows imported through the page arrive with no provenance, and their
+matching embedding is built from name, industry and country only. stderr says so on every such
+export; prefer `tradewith-json` whenever an authenticated API client is available. Because that page splits on newlines and toggles on every
+double quote, a value holding `"` or a line break is refused, and so is one that would need the
+formula guard, including after leading whitespace (an apostrophe would be stored as part of the
+name); use `tradewith-json` instead. `tradewith-json` keeps such a value verbatim and prints a
+`WARNING` naming the rows, because a later spreadsheet export from TradeWith would evaluate it.
+`validate_output.py --schema tradewith-bulk-buyers` (or `--schema auto`, which detects a document
+whose only discriminator is `buyers`) re-checks a `tradewith-json` file edited by hand; only the
+generic invariants apply to it.
+
+**Never sent, and why.** `contactName`, `contactEmail`, `contactPhone` — not even a company role
+mailbox (INV-11, INV-31; they are the fields TradeWith masks). A present `contactEmail` makes
+TradeWith store `contactConfidence: high`, a verified-contact signal this package never produced,
+and re-importing an explicit address would overwrite one an admin corrected by hand. `qualityTierLabel`: without it an insert lands as **tier C**, which TradeWith's buyer matching
+leaves out by default, and an update keeps the admin's label — promoting a row to A or B is a human
+decision after review. `notes` and `extraNotes`: re-import would overwrite an admin's notes, and the
+matching endpoints show both to sellers. `hsCodes`, `annualVolumeUsd`, `city`, `logoUrl`,
+`imageUrl`, `scaleRevenue`, `displayFlag`, `postedDate`, `altWebsites`: the record has no source for
+them (`alias_domains` are bare domains, not URLs). The DTO has no `tags` field, so tags are also
+added by the admin; until then a row cannot category-match.
+
+**Know before importing.** Every exported row lands with `contactConfidence: low`, and a re-import
+resets it to `low` even when an admin has since added a contact by hand; the contact values
+themselves survive, because an omitted key is not written. On import TradeWith builds an embedding from
+`companyName`, `industry`, `category`, `productsSummary` and `country` — company-level fields only.
+The default JSON body limit is about 100 KB; a larger body prints a `WARNING` and should be split
+(for example with a higher `--min-score`).
+
+**Refusals** (exit 1, one `ERROR:` line, nothing written): a schema-invalid input (the envelope and
+each record against its entity schema; `--no-validate` skips only this step — here it skips *input*
+validation, unlike BUILD-CONTRACT 7.2 where it skips output self-validation); an unscored run or a
+record whose `score_version` differs from the envelope's (INV-23); a missing or duplicate record id;
+two TradeWith rows with one `sourceId`; a wrong-typed field or a NaN / infinite number (typed guards
+hold even under `--no-validate`); an email address or a phone-number-like string in any exported
+text — URLs included, and read again after percent-decoding, so `%40` and `%2B` do not hide an
+address or a `+` prefix, and a `tel`/`phone`/`mobile`/`whatsapp` label joined to a number by `-` or
+`_` in a URL slug counts — except the phone shape of a bare-number `phone` or `messenger` channel in
+the generic CSV; a TradeWith body that fails its own schema
+(checked always, even under `--no-validate`); a `tradewith-csv` value the admin page cannot parse;
+a `match-result` or other input that parses but is not a scored `discovery-result`.
+Exit 2: a bad flag, `--pretty` with a CSV format, `--min-score` outside 0–100, a malformed,
+impossible (`2026-13-01`) or empty `--as-of`, a seller run with a TradeWith format, an unreadable
+input, an unwritable `--output`. An export in which no record passes the filters is exit 0 with a
+header-only CSV or `{"buyers":[]}` and a `WARNING`. Everything is checked before the first byte is
+written; only a disk error during the write can leave a partial file.
+
 ---
 
 ## 10. State machine
@@ -813,8 +1059,14 @@ A `score_version` PATCH is permitted **only** when every golden fixture reproduc
 6. **A merge invalidates scores.** A merged record drops back to `score_version = "unscored"`,
    `qualification_score = 0`, and must be re-scored before it is ranked or rendered.
 7. **Deprecation window.** Keep the previous `score_version`'s stored documents readable for at
-   least one MINOR cycle. `match_run_id` is the key that lets an old run be diffed against a
-   re-computed one.
+   least one MINOR cycle, so they can be re-scored under the new version and compared with
+   `diff_runs.py` among same-version runs. Runs are joined on `rfq_id`; `match_run_id` is echoed
+   only as provenance.
+
+`scripts/diff_runs.py` (§9.4) compares two runs only when both carry the same `score_version`; a
+diff across a rubric change is refused, not approximated. After a rubric change, re-score the stored
+raw records on the new config and diff runs of the new version against each other (for example the
+original `--as-of` against a new one). Runs of the old version stay comparable among themselves.
 
 A minimal re-computation:
 

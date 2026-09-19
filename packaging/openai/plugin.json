@@ -1,0 +1,26 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "kbeauty-trade-matchmaker",
+  "version": "0.3.0",
+  "description": "Discovers, verifies, scores and matches K-Beauty trade counterparties: overseas buyers, distributors and importers; Korean cosmetics sellers and OEM/ODM manufacturers; RFQ-to-seller matching; and evidence-backed outreach drafts. Evidence-first with deterministic scoring scripts. Ends at READY_FOR_REVIEW and never sends a message.",
+  "author": {
+    "name": "choihyeonmuk",
+    "url": "https://github.com/choihyeonmuk"
+  },
+  "homepage": "https://kbeauty.tradewith.kr",
+  "repository": "https://github.com/choihyeonmuk/kbeauty-trade-matchmaker",
+  "keywords": ["k-beauty", "cosmetics", "b2b-trade", "rfq", "sourcing"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "K-Beauty Trade Matchmaker",
+        "shortDescription": "Find & match K-Beauty partners",
+        "longDescription": "Four modes: Buyer Discovery finds overseas K-Beauty buyers, distributors and importers; Seller Discovery sources Korean cosmetics brands and OEM/ODM manufacturers; RFQ Matching ranks sellers against a buying request with hard filters and a weighted score; Outreach Draft prepares a message a human reviews. Every material claim cites a public URL, unknown facts stay unknown, and scores come from bundled deterministic Python scripts. Nothing is ever sent: drafts stop at READY_FOR_REVIEW. Scores need code execution (use Work mode); where the scripts cannot run, the skill returns evidence-backed records marked unscored instead of estimating a score.",
+        "developerName": "choihyeonmuk",
+        "category": "Business & Operations",
+        "websiteURL": "https://kbeauty.tradewith.kr",
+        "defaultPrompt": ["Find 5 K-Beauty distributors in the UAE that carry sunscreen."]
+      }
+    }
+  }
+}

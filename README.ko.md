@@ -11,19 +11,22 @@
 Claude Agent Skills와 OpenAI/Codex Skills 양쪽에서 **같은 폴더가 수정 없이** 동작한다.
 Python은 **표준 라이브러리만** 사용하며(3.9–3.14), 설치할 의존성이 없다.
 
-> **상태: v0.2.0.** 파이프라인은 가공 fixture 위에서 252개 케이스로 테스트되었고, 실제 웹을 대상으로 한 번 시험 운용되었다. 점수 루브릭은 **아직 실제 결과에 비추어 검증되지 않았다**: 점수는 재현 가능하고 추적 가능하지만, 예측력이 있는지는 아직 모른다. v0.2.0은 이를 측정할 도구를 추가했지만([점수 검증하기](#점수-검증하기)), 라벨이 붙은 표본은 아직 없다. RFQ Matching과 Outreach Draft는 실데이터로 돌려 본 적이 없다. 점수를 믿기 전에 [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md)를 읽으라.
+> **상태: v0.3.0.** 파이프라인은 가공 fixture 위에서 536개 케이스로 테스트되었고, 실제 웹을 대상으로 한 번 시험 운용되었다. 점수 루브릭은 **아직 실제 결과에 비추어 검증되지 않았다**: 점수는 재현 가능하고 추적 가능하지만, 예측력이 있는지는 아직 모른다. v0.2.0에서 이를 측정할 도구를 추가했지만([점수 검증하기](#점수-검증하기)), 라벨이 붙은 표본은 아직 없다. RFQ Matching과 Outreach Draft는 실데이터로 돌려 본 적이 없다. 점수를 믿기 전에 [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md)를 읽으라.
 
 ---
 
 ## 무엇이 새로운가
 
-**v0.2.0 (2026-09-19).** 기존 점수는 하나도 바뀌지 않는다.
+**v0.3.0 (2026-09-19).** 기존 점수는 하나도 바뀌지 않는다. 새로 추가된 것은 모두 점수 파이프라인 바깥에 있다.
 
-- **점수 검증 도구.** 무역 운영자가 채우는 블라인드 리뷰 시트와, 운영자의 수락/거절 판단을 점수와 비교하는 리포트. [점수 검증하기](#점수-검증하기) 참고.
-- **인도·인도네시아·튀르키예 시장 팩(market pack).** 현지어 바이어 검색, 매칭에 쓰이는 시장 진입 규칙(CDSCO, BPOM, 인도네시아의 할랄 인증 의무, TİTCK), 다이렉트 마케팅 체크리스트 행과 고지 블록, 그리고 `Pvt Ltd`, `PT`, `A.Ş.` 같은 법인 형태 표기가 붙은 회사명 처리. [시장 팩](#시장-팩) 참고.
-- 테스트: 179 → 252 케이스.
+- **실행 비교(run diff).** `scripts/diff_runs.py`는 같은 검색이나 RFQ를 두 번 점수화한 실행을 비교해, 새로 나타난 회사와 사라진 회사, 바뀐 제외(exclusion), 그리고 점수·순위·qualified 플래그·confidence·Missing 줄의 변화를 나열한다. 서로 다른 루브릭 버전으로 채점된 실행은 거부하고, 연락처 정보는 옮겨 적지 않는다. [두 실행 비교하기](#두-실행-비교하기) 참고.
+- **재확인 대기열.** `scripts/stale_evidence.py`는 저장된 레코드와 근거 페이지 가운데 다시 읽어야 할 것을 급한 순서대로 나열한다. 아무것도 가져오지(fetch) 않고, 레코드나 점수도 바꾸지 않는다. [재확인 대기열](#재확인-대기열) 참고.
+- **lead 내보내기.** `scripts/export_leads.py`는 점수화된 실행을 스프레드시트/CRM용 CSV나 TradeWith 관리자 일괄 가져오기(bulk import) 파일로 쓴다. 파일을 쓰기만 한다. TradeWith 행에는 연락처 필드가 없고, 관리자가 검토하도록 tier C로 들어간다. [스프레드시트, CRM, TradeWith로 내보내기](#스프레드시트-crm-tradewith로-내보내기) 참고.
+- **MCP 도구로 쓰는 스크립트.** 선택 사항인 로컬 도구 서버(MCP, stdio)를 쓰면 에이전트가 스크립트 11개를 도구로 호출할 수 있다. 한 프로젝트 폴더 안에서만 읽고 쓰며, 파일을 덮어쓰지 않고, 아무것도 보내지 않는다. [스크립트를 MCP 도구로 쓰기](#스크립트를-mcp-도구로-쓰기) 참고.
+- **플러그인.** Claude Code는 이 저장소에서 스킬을 플러그인으로 설치할 수 있다. ChatGPT와 Codex용으로는 릴리스마다 스킬만 담은(skills-only) 플러그인 ZIP이 붙으며, 스킬이 ChatGPT 웹·모바일에 닿는 경로가 바로 이것이다. [플러그인으로 설치](#플러그인으로-설치) 참고.
+- 테스트: 252 → 536 케이스.
 
-릴리스별 전체 변경 내역: [CHANGELOG.md](CHANGELOG.md) (변경 기록은 영어로만 제공된다).
+v0.2.0은 [점수 검증 도구](#점수-검증하기)와 인도·인도네시아·튀르키예 [시장 팩](#시장-팩)을 추가했다. 릴리스별 전체 변경 내역: [CHANGELOG.md](CHANGELOG.md) (변경 기록은 영어로만 제공된다).
 
 ---
 
@@ -121,6 +124,9 @@ kbeauty-trade-matchmaker/
 │   ├── match-result.schema.json  #   한 번의 매칭 실행 전체
 │   ├── discovery-result.schema.json  # 한 번의 발굴 실행 전체 (summary/records/excluded/partial/notes)
 │   ├── acceptance-report.schema.json  # 한 번의 calibration 측정 (v0.2.0)
+│   ├── run-diff.schema.json      #   점수화된 두 실행의 비교 한 건 (v0.3.0)
+│   ├── recheck-queue.schema.json #   다시 읽어야 할 근거 (v0.3.0)
+│   ├── tradewith-bulk-buyers.schema.json  # TradeWith 일괄 가져오기 본문. 연락처 필드 없음 (v0.3.0)
 │   └── scoring.config.json       #   모든 가중치·임계값·페널티가 사는 단일 파일
 ├── scripts/                      # 표준 라이브러리만. 네트워크 없음, 자격증명 없음
 │   ├── _common.py                #   설정 로딩, 반올림, 정규화, tri-state 헬퍼, 의존성 없는 스키마 검증기
@@ -131,7 +137,11 @@ kbeauty-trade-matchmaker/
 │   ├── score_match.py            #   RFQ → 셀러 파이프라인, match-result 문서 생성
 │   ├── validate_output.py        #   스키마 + 계약 불변식 검증 (검증자의 진입점)
 │   ├── make_review_sheet.py      #   무역 운영자용 블라인드 CSV 리뷰 시트 (v0.2.0)
-│   └── acceptance_report.py      #   리뷰 시트 + 점수화된 실행 → Human Acceptance Rate 리포트 (v0.2.0)
+│   ├── acceptance_report.py      #   리뷰 시트 + 점수화된 실행 → Human Acceptance Rate 리포트 (v0.2.0)
+│   ├── diff_runs.py              #   점수화된 두 실행 → 둘 사이에 바뀐 것 (v0.3.0)
+│   ├── stale_evidence.py         #   저장된 레코드 → 다시 읽을 근거, 급한 순 (v0.3.0)
+│   ├── export_leads.py           #   점수화된 실행 → CSV 또는 TradeWith 가져오기 파일. 발송하지 않는다 (v0.3.0)
+│   └── mcp_server.py             #   위 스크립트들을 도구로 노출하는 선택형 stdio MCP 서버 (v0.3.0)
 ├── templates/
 │   ├── buyer_outreach.md         # 바이어용 초안 템플릿 ({{token}} 자리표시자)
 │   ├── seller_outreach.md        # 셀러용 초안 템플릿 (RFQ 있는 경우 / 없는 경우)
@@ -143,6 +153,14 @@ kbeauty-trade-matchmaker/
 ```
 
 설치되는 것은 `kbeauty-trade-matchmaker/` 폴더뿐이고, 런타임이 필요로 하는 계약 내용은 `references/data-contract.md`(스키마·정규화)와 `references/output-format.md`(출력 렌더링)에 동봉되어 있다.
+
+패키지 바깥, 저장소 수준에 있는 파일(설치되지 않는다):
+
+```
+.claude-plugin/marketplace.json   # Claude Code 플러그인 마켓플레이스: 플러그인 하나, 곧 패키지 폴더
+packaging/openai/plugin.json      # ChatGPT/Codex 플러그인 ZIP의 매니페스트
+tools/build_release.py            # HEAD 커밋에서 두 릴리스 ZIP을 결정론적으로 빌드한다
+```
 
 ---
 
@@ -195,6 +213,104 @@ v0.2.0은 인도, 인도네시아, 튀르키예를 추가한다. 점수 규칙�
 
 ---
 
+## 두 실행 비교하기
+
+같은 검색이나 RFQ를 한 달 뒤에 다시 돌리면 `diff_runs.py`가 무엇이 움직였는지 알려 준다. 완료된 실행 두 개를 읽을 뿐, 어떤 점수도 바꾸지 않는다.
+
+```bash
+cd kbeauty-trade-matchmaker
+python3 scripts/diff_runs.py --before out/buyers.2026-09-12.json --after out/buyers.2026-10-12.json --pretty --output out/diff.json
+```
+
+diff는 새로 나타난 회사와 사라진 회사, 새로 제외되었거나 제외에서 돌아온 회사, 제외 규칙이 바뀐 경우를 나열하고, 회사별로 점수·순위(매칭 실행)·차원·qualified 플래그·confidence·Missing 줄의 변화를 보여 준다. `as_of`, 임계값, 쿼리, 가중치가 바뀌었으면 그것도 표시한다.
+
+- 레코드는 id로 짝을 짓고, 그다음 `merged_from`을 따라 짝을 짓는다. dedupe가 다른 회사로 병합한 회사는 잃어버린 lead가 아니라 `merged_into`로 표시된다. 그 밖에는 아무것도 추측하지 않으므로, `merged_from` 없이 이름만 바뀐 회사는 사라짐 + 새로 나타남으로 보인다.
+- 매칭 실행에서 "사라짐"은 "목록에 없음"이라는 뜻이다. 셀러는 임계값이나 `--top` 컷 때문에 빠질 수 있고, diff가 그 사실을 밝힌다.
+- 서로 다른 `score_version`으로 채점된 두 실행, 바이어 실행과 셀러 실행, 발굴 실행과 매칭 실행, 서로 다른 RFQ의 매칭 실행은 근사해서 비교하지 않고 거부한다.
+- 연락 채널, 근거, 웹사이트는 옮겨 적지 않는다. 회사명, 도메인, 규칙 id만 넘어간다.
+
+자세한 내용: [`data-contract.md`](kbeauty-trade-matchmaker/references/data-contract.md) §9.4.
+
+## 재확인 대기열
+
+근거는 낡는다. `stale_evidence.py`는 저장된 레코드를 읽고 다시 읽어야 할 것을 급한 순서대로 나열한다. 아무것도 가져오지 않고, 레코드나 점수도 바꾸지 않는다.
+
+```bash
+cd kbeauty-trade-matchmaker
+python3 scripts/stale_evidence.py --input out/buyers.scored.json --as-of 2026-09-19 --top 20 --pretty
+```
+
+- `--as-of`는 필수다: 나이는 재확인 날짜를 기준으로 재며, 시계는 절대 읽지 않는다. `--top N`은 앞의 N개 레코드만 나열하지만, 요약은 여전히 전부를 센다.
+- 사유는 급한 순서대로 다음과 같다: 사이트 접속 불가, 레코드에 stale 표시, stale 임계값(730일)을 넘긴 근거, 출처에 stale 표시, 해결되지 않은 충돌, 노화(1년 초과), 날짜 없음. 현재 유효한 근거가 없는 주요 주장은 따로 보고된다.
+- 나이 한계값은 `scoring.config.json`에서 오므로, 대기열과 점수는 무엇이 "오래된" 것인지에 대해 같은 기준을 쓴다. 같은 주장에 이미 현재 유효한 출처가 있으면 오래된 페이지는 대기열에 오르지 않는다. 날짜 없는 페이지는 마지막으로 읽은 시점이 현재 유효한 동안 현재 유효한 것으로 친다.
+- 점수화된 실행, golden 번들, dedupe 출력, 매칭 입력, 레코드 목록, 레코드 하나를 받는다. match-result는 거부하므로 대신 매칭 입력을 넘긴다.
+
+대기열을 처리하는 방법: [`evidence-policy.md`](kbeauty-trade-matchmaker/references/evidence-policy.md) §5.6.
+
+## 스프레드시트, CRM, TradeWith로 내보내기
+
+`export_leads.py`는 점수화된 발굴 실행 하나의 lead를 사람이 가져오기(import)할 파일로 쓴다. **파일을 쓰기만 한다.** 어떤 연결도 열지 않으며, 게시·업로드·발송도 절대 하지 않는다.
+
+```bash
+cd kbeauty-trade-matchmaker
+python3 scripts/export_leads.py --input out/buyers.scored.json --output out/leads.csv                     # Spreadsheet / CRM
+python3 scripts/export_leads.py --input out/buyers.scored.json --format tradewith-json --output out/tw.json # TradeWith bulk-import body
+python3 scripts/export_leads.py --input out/buyers.scored.json --format tradewith-csv --output out/tw.csv   # TradeWith admin import page
+```
+
+| `--format` | 대상 | 무엇인가 |
+|---|---|---|
+| `csv` (기본) | 바이어, 셀러 | 고정 열: 점수, 차원, 상태, 회사 단위 채널, Missing 줄, `score_version` |
+| `tradewith-json` | 바이어 | TradeWith 관리자 일괄 가져오기 엔드포인트의 `{"buyers": [...]}` 본문 |
+| `tradewith-csv` | 바이어 | 관리자 바이어 가져오기 페이지가 읽는 다섯 열(`sourceId, companyName, country, website, industry`). 출처 정보(provenance)와 매칭 필드가 빠지므로 `tradewith-json`을 권한다 |
+
+기본적으로 qualified 레코드만 내보낸다. 바꾸려면 `--include-unqualified`나 `--min-score N`을 더한다. 폐업했거나 접속할 수 없는 회사와 `excluded[]`는 절대 내보내지 않는다.
+
+**TradeWith에서 일어나는 일.** 행은 **검토되지 않은 tier C로** 들어간다: export는 품질 tier를 지정하지 않으며, tier C는 기본적으로 바이어 매칭에서 빠진다. 관리자가 각 행을 검토해 tier A나 B로 올리고 태그를 붙인다. 그 전까지 그 행은 셀러에게 제시되지 않는다.
+
+- `contactName`, `contactEmail`, `contactPhone`은 **절대 채우지 않는다.** `sales@` 같은 회사 대표 메일함조차 넣지 않는다. `contactEmail`이 채워지면 그 행은 검증된 연락처로 표시되고, 다시 가져오기를 하면 관리자가 고쳐 둔 주소를 덮어쓰게 된다.
+- `sourceId`는 `kbtm:<company domain>`이므로, 나중 실행을 가져오면 새 행이 추가되지 않고 같은 행이 갱신된다.
+- `originalSource`에는 패키지, `score_version`, `as_of`, 레코드 id, 레코드가 stale인지 여부가 기록된다. `social`은 LinkedIn 회사 페이지만 담으며, 개인 프로필은 절대 넣지 않는다.
+
+**일반 CSV**는 회사 단위 채널만 남긴다. 이메일은 회사 자체 도메인의 대표 메일함(`info@`, `sales@` …)일 때만 남고, LinkedIn 개인 프로필은 빠진다. 내보내는 모든 값은 개인정보 검사를 거치며, 하나라도 걸리면 export 전체를 거부한다. 스프레드시트가 수식으로 실행할 셀에는 앞에 아포스트로피를 붙인다.
+
+자세한 내용: [`data-contract.md`](kbeauty-trade-matchmaker/references/data-contract.md) §9.6.
+
+## 스크립트를 MCP 도구로 쓰기
+
+`scripts/mcp_server.py`는 선택 사항인, 표준 라이브러리만 쓰는 stdio MCP 서버다. 셸이 아니라 도구를 호출하는 런타임을 위해 스크립트 11개를 도구로 노출한다: `normalize_company`, `dedupe_companies`, `score_buyer`, `score_seller`, `score_match`, `validate_output`, `make_review_sheet`, `acceptance_report`, `diff_runs`, `stale_evidence`, `export_leads`. 각 도구는 해당 스크립트를 플래그의 일부만으로 실행하며, 명령줄과 같은 결과를 낸다. 내부 데이터 어댑터는 노출하지 않는다.
+
+- **`--root DIR`은 필수다**: 도구가 읽고 쓸 수 있는 단 하나의 폴더다. 서버는 `/`, 홈 디렉터리, 또는 그 상위 디렉터리를 거부한다. `../`나 symlink로도 밖으로 나갈 수 없다.
+- **모든 호출에 `as_of`가 필수다.** 서버는 날짜를 대신 채워 넣지 않는다.
+- **덮어쓰기 없음.** `output_path`는 root 안의 새 `.json` 또는 `.csv` 파일이어야 하고, 스킬 패키지 바깥이면서 숨김 폴더 안이 아니어야 한다. 전체 실행 결과는 보통 인라인 한도 32,768바이트보다 크므로, 실제 실행에서는 `output_path`를 넘긴다.
+- 아무것도 보내거나 가져오지 않는다. 스크립트는 `python3 -I`로, `TRADEWITH_*` 변수 없이 실행된다.
+
+**Claude Code.** 플러그인이 서버를 대신 띄운다([플러그인으로 설치](#플러그인으로-설치) 참고). `install.sh`로 설치했다면 손으로 추가한다:
+
+```bash
+claude mcp add --transport stdio kbtm -- python3 /abs/path/kbeauty-trade-matchmaker/scripts/mcp_server.py --root /abs/path/to/project
+```
+
+**Codex CLI.** `~/.codex/config.toml`에 넣는다. `tool_timeout_sec`는 서버의 `--tool-timeout`(기본 120초)보다 크게 둔다:
+
+```toml
+[mcp_servers.kbtm]
+command = "python3"
+args = ["/abs/path/kbeauty-trade-matchmaker/scripts/mcp_server.py", "--root", "/abs/path/to/project"]
+tool_timeout_sec = 180
+```
+
+**Cursor.** `.cursor/mcp.json`(프로젝트) 또는 `~/.cursor/mcp.json`(전역)에 넣는다:
+
+```json
+{"mcpServers": {"kbtm": {"type": "stdio", "command": "python3",
+  "args": ["/abs/path/kbeauty-trade-matchmaker/scripts/mcp_server.py", "--root", "${workspaceFolder}"]}}}
+```
+
+클라이언트 설정은 2026-09-19에 각 벤더의 문서와 대조해 확인했다. 전체 규칙, 프로토콜 버전, 노출하지 않은 플래그: [`runtime-adapters.md`](kbeauty-trade-matchmaker/references/runtime-adapters.md) §5.6.
+
+---
+
 ## 6. 설치
 
 ### 6.0 claude.ai에서 쓰기 — 터미널 없이
@@ -204,6 +320,37 @@ v0.2.0은 인도, 인도네시아, 튀르키예를 추가한다. 점수 규칙�
 3. 새 채팅에서 웹 검색을 켜고 평소 말투로 요청한다. 예: "UAE에서 선크림을 취급하는 K-뷰티 유통사 후보 5곳을 찾아줘". 후보 5곳 기준 10–15분 걸린다.
 
 2026-09-14 유료 플랜에서 끝까지 동작을 확인했다 — 스킬 이름을 말하지 않아도 호출됐고, 스킬 실행 중 웹 검색과 페이지 조회가 됐으며, 점수 스크립트가 샌드박스에서 실행됐다. **2026-09-19 무료 플랜에서도 3곳 규모의 요청이 점수 스크립트까지 끝까지 동작했고, 사용량 한도에 걸리지 않았다.** 요청 규모가 크면 무료 플랜 한도에 걸릴 수 있다. 화면별 안내는 [한국어 설치 가이드](https://kbeauty.tradewith.kr/install-ko)에 있다. 막히면 [LinkedIn으로 문의](https://www.linkedin.com/in/hm-choi).
+
+### 플러그인으로 설치
+
+런타임마다 설치 방법은 **하나만** 고른다. 같은 런타임에 플러그인과 `install.sh` 사본을 함께 두면, 같은 요청에 둘 다 반응하는 스킬 두 개가 로드된다.
+
+**Claude Code.** 이 저장소는 플러그인 하나, 곧 패키지 폴더 자체를 담은 플러그인 마켓플레이스다:
+
+```
+/plugin marketplace add choihyeonmuk/kbeauty-trade-matchmaker
+/plugin install kbeauty-trade-matchmaker@kbeauty-trade-matchmaker
+```
+
+스킬은 `/kbeauty-trade-matchmaker:kbeauty-trade-matchmaker`로 부르거나 암묵적으로 호출된다. 플러그인은 번들 MCP 서버(`kbtm`)도 프로젝트 폴더를 root로 삼아 띄우며, `PATH`에 `python3`가 있어야 한다. Claude Code는 프로젝트 폴더 안에서 시작한다: 홈 디렉터리에서 실행하면 서버가 시작을 거부하고 실패로 표시된다. 나중에 갱신하려면 `/plugin marketplace update kbeauty-trade-matchmaker`를 실행한다.
+
+**ChatGPT와 Codex.** 릴리스마다 두 번째 자산인 [`kbeauty-trade-matchmaker-plugin.zip`](https://github.com/choihyeonmuk/kbeauty-trade-matchmaker/releases/latest/download/kbeauty-trade-matchmaker-plugin.zip)이 붙는다. MCP 서버 없이 **스킬만** 담았다: OpenAI는 MCP 서버를 선언한 플러그인을 데스크톱 전용으로 표시하는데, 이 ZIP은 ChatGPT **웹·모바일**에 닿기 위해 존재하기 때문이다.
+
+1. `~/.codex/plugins/kbeauty-trade-matchmaker`에 압축을 푼다.
+2. `~/.agents/plugins/marketplace.json`의 `plugins` 배열에 다음 항목을 추가한다(파일이 이미 있으면 손으로 병합한다. 경로는 `~` 기준 상대 경로다):
+
+```json
+{"name": "kbeauty-trade-matchmaker",
+ "source": {"source": "local", "path": "./.codex/plugins/kbeauty-trade-matchmaker"},
+ "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
+ "category": "Business & Operations"}
+```
+
+3. ChatGPT 데스크톱 앱을 재시작하고 Plugins에서 설치하거나, Codex CLI에서 `/plugins`를 실행한다.
+4. ChatGPT 웹·모바일에서는 워크스페이스 관리자가 플러그인을 워크스페이스에 게시한다. 공개 디렉터리에 등재될지는 제출물에 대한 OpenAI의 심사에 달려 있다.
+5. 분석은 **Work** 모드에서 돌린다. 일반 Chat 모드가 번들 스크립트를 실행한다는 내용은 OpenAI 문서에 없다. 스크립트를 실행할 수 없는 곳에서는 스킬이 그 사실을 밝히고 점수 없이 근거만 돌려주며, 점수를 손으로 추정하는 일은 절대 없다.
+
+Codex IDE 확장은 플러그인을 지원하지 않으므로, 거기서는 `install.sh --runtime codex`를 쓴다. ZIP 구조와 마켓플레이스 항목은 2026-09-19에 확인한 OpenAI 문서를 따른다. 웹·모바일의 Work 모드에서 스크립트가 실행되는지는 테스트한 것이 아니라 추론한 것이다. 자세한 내용: [`runtime-adapters.md`](kbeauty-trade-matchmaker/references/runtime-adapters.md) §5.5.
 
 ### 개발자용 설치 스크립트
 
@@ -297,7 +444,7 @@ path = "/path/to/kbeauty-trade-matchmaker/SKILL.md"
 enabled = false
 ```
 
-**ChatGPT 표면 주의.** 단독 스킬 폴더는 **ChatGPT 데스크톱 앱, Codex CLI, IDE 확장**에서만 보인다. ChatGPT **웹·모바일**의 Chat/Work에서 쓰려면 스킬을 **플러그인으로 패키징**해야 한다. 이 패키지는 v0.2.0에서 단독 폴더로만 배포하며 플러그인 패키징은 범위 밖이다.
+**ChatGPT 표면 주의.** 단독 스킬 폴더는 **ChatGPT 데스크톱 앱, Codex CLI, IDE 확장**에서만 보인다. ChatGPT **웹·모바일**의 Chat/Work에서 쓰려면 플러그인 ZIP이 필요하다. [플러그인으로 설치](#플러그인으로-설치) 참고.
 
 > **2026-09-13 기준 공식 문서.** 설치 전에 재확인하고, 아래와 어긋나면 **공식 문서가 맞다.**
 > - Agent Skills 오픈 표준(규범): https://agentskills.io/specification
@@ -346,6 +493,8 @@ python3 tests/run_tests.py -v         # 실패만이 아니라 모든 케이스�
 러너는 표준 라이브러리만 쓰고, fixture를 `__file__` 기준으로 스스로 찾으며, 모든 스크립트에 `--as-of 2026-09-12`를 넘겨 재현 가능하게 실행한 뒤 expected fixture와 **바이트 단위로** 비교한다. 마지막에 `PASS n / FAIL m` 요약을 낸다.
 
 fixture 케이스보다 먼저 도는 것이 **스키마 자체 검사**다: `schemas/*.json`이 파싱되는지, `$ref`가 자기 파일 안에서 풀리는지, 검증기가 지원하지 않는 키워드를 쓴 곳이 없는지, 공유 `$defs`가 파일 간에 구조적으로 일치하는지, 그리고 스키마에 박힌 `schema_version` / `score_version`이 `scoring.config.json`과 어긋나지 않는지를 본다. 그 다음 각 문서 종류의 golden fixture 하나씩을 `validate_output.py --strict --invariants`로 통과시킨다. 이 두 검사가 PRD 완료 조건 "스키마가 validator를 통과한다"의 기계 검증 형태다.
+
+`plugins` 단계는 저장소 수준의 매니페스트와 빌더를 읽으므로, 536개라는 전체 수는 저장소 체크아웃에서 돌릴 때의 값이다. 설치된 사본에서는 SKIP 두 개(`plugins` 단계와 MCP 케이스 하나)가 보고된다. 이 단계는 릴리스 빌더를 일회용 git 저장소에서 실행하므로, 커밋하지 않은 작업은 결과에 영향을 주지 않는다.
 
 개별 스크립트를 직접 돌려볼 수도 있다. `stdout`에는 JSON만, 진단은 전부 `stderr`로 나가므로 파이프가 안전하다.
 
@@ -438,7 +587,7 @@ PRD가 열어 둔 여섯 가지다. 각 항목은 **아직 사람이 결정할 �
 
 | 버전 | 현재 값 | 무엇을 설명하나 | 어디에 사는가 |
 |---|---|---|---|
-| `skill_version` | `0.2.0` | 패키지 자체 — 프롬프트, references, scripts, templates, tests | `SKILL.md` 본문, 이 README, `match-result.skill_version` |
+| `skill_version` | `0.3.0` | 패키지 자체 — 프롬프트, references, scripts, templates, tests | `SKILL.md` 본문, 이 README, `match-result.skill_version`, 두 플러그인 매니페스트 |
 | `schema_version` | `0.1.0` | **모양** 계약 — 필드 이름, enum, required 목록 | 모든 문서, `schemas/*.json` |
 | `score_version` | `kbtm-score-0.1.0` | **루브릭** — 가중치, criterion, 신호, 페널티, 임계값, 하드 필터, evidence 함수 | `schemas/scoring.config.json`, 점수가 매겨진 모든 문서 |
 
@@ -446,7 +595,7 @@ PRD가 열어 둔 여섯 가지다. 각 항목은 **아직 사람이 결정할 �
 
 ```bash
 python3 scripts/validate_output.py --version
-# validate_output.py skill_version=0.2.0 schema_version=0.1.0 score_version=kbtm-score-0.1.0
+# validate_output.py skill_version=0.3.0 schema_version=0.1.0 score_version=kbtm-score-0.1.0
 ```
 
 루브릭이 바뀌면 저장된 점수는 **정의상 낡은 것**이 된다. 원본 레코드를 그대로 보관하기 때문에(evidence·쿼리 표면·`as_of`를 함께 저장한다) 웹을 다시 긁지 않고 재계산할 수 있다. 과거 결과를 **재현**하려면 원래의 `--as-of`를, 최신 상태로 **갱신**하려면 새 `--as-of`를 넘긴다. 서로 다른 `score_version`의 결과를 한 목록에서 비교하거나 순위를 매기는 것은 금지이며, `validate_output.py`가 이를 잡아낸다.

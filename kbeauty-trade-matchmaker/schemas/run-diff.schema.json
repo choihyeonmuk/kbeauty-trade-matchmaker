@@ -1,0 +1,879 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tradewith.example/kbeauty-trade-matchmaker/v0.1.0/run-diff.schema.json",
+  "title": "Run Diff",
+  "description": "One comparison of two scored runs of the same search or RFQ, as emitted by scripts/diff_runs.py: which records were listed or dropped, moved between returned and excluded, or changed score, rank, dimension, qualified flag, confidence or Missing line. Both runs carry the same score_version; a diff across rubric versions is refused, never emitted. It is a COMPARISON document: nothing in it feeds a score, and it copies no contact channel, evidence, website or observed value. See references/data-contract.md section 9.4 for the field notes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "report_kind",
+    "schema_version",
+    "score_version",
+    "skill_version",
+    "as_of",
+    "kind",
+    "entity",
+    "before",
+    "after",
+    "context",
+    "summary",
+    "new",
+    "gone",
+    "newly_excluded",
+    "newly_returned",
+    "exclusion_changes",
+    "changed",
+    "notes"
+  ],
+  "properties": {
+    "report_kind": {
+      "const": "run-diff"
+    },
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "score_version": {
+      "type": "string",
+      "description": "The one rubric version both input runs were scored with.",
+      "maxLength": 64,
+      "pattern": "^kbtm-score-[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "skill_version": {
+      "type": "string",
+      "description": "Version of the skill package that produced this diff.",
+      "maxLength": 64
+    },
+    "as_of": {
+      "type": "string",
+      "format": "date",
+      "description": "The diff's date: --as-of, or the later of the two input as_of values. Never earlier than either input.",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "discovery-result",
+        "match-result"
+      ]
+    },
+    "entity": {
+      "type": "string",
+      "enum": [
+        "buyer",
+        "seller"
+      ]
+    },
+    "before": {
+      "$ref": "#/$defs/diff_run_ref"
+    },
+    "after": {
+      "$ref": "#/$defs/diff_run_ref"
+    },
+    "context": {
+      "type": "object",
+      "description": "Run-level differences that can move scores with no change in the companies. query_changed is null on a match diff and weights_changed null on a discovery diff.",
+      "additionalProperties": false,
+      "required": [
+        "as_of_changed",
+        "threshold_changed",
+        "query_changed",
+        "weights_changed"
+      ],
+      "properties": {
+        "as_of_changed": {
+          "type": "boolean"
+        },
+        "threshold_changed": {
+          "type": "boolean"
+        },
+        "query_changed": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "weights_changed": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "description": "Counts over the lists below. rank_changed is null for a discovery diff, which has no rank.",
+      "additionalProperties": false,
+      "required": [
+        "paired",
+        "unchanged",
+        "new",
+        "gone",
+        "newly_excluded",
+        "newly_returned",
+        "exclusion_changed",
+        "changed",
+        "score_changed",
+        "score_up",
+        "score_down",
+        "qualified_gained",
+        "qualified_lost",
+        "confidence_changed",
+        "rank_changed",
+        "missing_changed"
+      ],
+      "properties": {
+        "paired": {
+          "$ref": "#/$defs/diff_count"
+        },
+        "unchanged": {
+          "$ref": "#/$defs/diff_count"
+        },
+        "new": {
+          "$ref": "#/$defs/diff_count"
+        },
+        "gone": {
+          "$ref": "#/$defs/diff_count"
+        },
+        "newly_excluded": {
+          "$ref": "#/$defs/diff_count"
+        },
+        "newly_returned": {
+          "$ref": "#/$defs/diff_count"
+        },
+        "exclusion_changed": {
+          "$ref": "#/$defs/diff_count"
+        },
+        "changed": {
+          "$ref": "#/$defs/diff_count"
+        },
+        "score_changed": {
+          "$ref": "#/$defs/diff_count"
+        },
+        "score_up": {
+          "$ref": "#/$defs/diff_count"
+        },
+        "score_down": {
+          "$ref": "#/$defs/diff_count"
+        },
+        "qualified_gained": {
+          "$ref": "#/$defs/diff_count"
+        },
+        "qualified_lost": {
+          "$ref": "#/$defs/diff_count"
+        },
+        "confidence_changed": {
+          "$ref": "#/$defs/diff_count"
+        },
+        "rank_changed": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/diff_count"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "missing_changed": {
+          "$ref": "#/$defs/diff_count"
+        }
+      }
+    },
+    "new": {
+      "type": "array",
+      "description": "Sorted by record_id (codepoint), then canonical_domain, company_name, state.",
+      "items": {
+        "$ref": "#/$defs/diff_new_item"
+      },
+      "maxItems": 1000
+    },
+    "gone": {
+      "type": "array",
+      "description": "Sorted like new.",
+      "items": {
+        "$ref": "#/$defs/diff_gone_item"
+      },
+      "maxItems": 1000
+    },
+    "newly_excluded": {
+      "type": "array",
+      "description": "Sorted by record_id.",
+      "items": {
+        "$ref": "#/$defs/diff_newly_excluded_item"
+      },
+      "maxItems": 1000
+    },
+    "newly_returned": {
+      "type": "array",
+      "description": "Sorted by record_id.",
+      "items": {
+        "$ref": "#/$defs/diff_newly_returned_item"
+      },
+      "maxItems": 1000
+    },
+    "exclusion_changes": {
+      "type": "array",
+      "description": "Sorted by record_id.",
+      "items": {
+        "$ref": "#/$defs/diff_exclusion_change_item"
+      },
+      "maxItems": 1000
+    },
+    "changed": {
+      "type": "array",
+      "description": "Sorted by |score delta| descending (0 when the score did not change), then record_id.",
+      "items": {
+        "$ref": "#/$defs/diff_changed_item"
+      },
+      "maxItems": 1000
+    },
+    "notes": {
+      "type": "array",
+      "description": "Fixed English sentences on how to read this diff.",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1000
+      },
+      "maxItems": 50
+    }
+  },
+  "$defs": {
+    "diff_record_id": {
+      "description": "buyer_id / seller_id as the run carried it. The literal \"unknown\" (a record the scorer received without an id) is never paired and only appears in new / gone.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "diff_rule_ids": {
+      "type": "array",
+      "description": "Sorted hard-filter rule ids (HF-nn) taken from failed_rules[].rule_id. Only the ids are copied, never the observed / required values. Empty for an exclusion that carries no failed rule (a discovery query-fit or evidence-bar exclusion).",
+      "items": {
+        "type": "string",
+        "pattern": "^HF-[0-9]{2}$"
+      },
+      "maxItems": 20,
+      "uniqueItems": true
+    },
+    "diff_matched_by": {
+      "type": "string",
+      "enum": [
+        "id",
+        "merged_from"
+      ],
+      "description": "How the two records were paired: an identical id, or one run's merged_from naming the other run's id (a dedupe merge changed the surviving id)."
+    },
+    "diff_qualified": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "const": "unknown"
+        }
+      ]
+    },
+    "diff_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100000
+    },
+    "diff_run_ref": {
+      "type": "object",
+      "description": "What the diff read from one input run's envelope and summary.",
+      "additionalProperties": false,
+      "required": [
+        "as_of",
+        "score_version",
+        "skill_version",
+        "match_run_id",
+        "rfq_id",
+        "threshold_used",
+        "threshold_mode",
+        "partial",
+        "returned",
+        "excluded"
+      ],
+      "properties": {
+        "as_of": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "score_version": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^kbtm-score-[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "skill_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "The input's skill_version, or \"unknown\" when the document does not carry one or carries an empty string."
+        },
+        "match_run_id": {
+          "description": "Echoed from a match run; null for a discovery run. Not a pairing key: it changes with as_of.",
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rfq_id": {
+          "description": "The RFQ a match run answers; null for a discovery run.",
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "threshold_used": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "threshold_mode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "partial": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "const": "unknown"
+            }
+          ]
+        },
+        "returned": {
+          "$ref": "#/$defs/diff_count"
+        },
+        "excluded": {
+          "$ref": "#/$defs/diff_count"
+        }
+      }
+    },
+    "diff_new_item": {
+      "type": "object",
+      "description": "A record listed in --after and in no form in --before. score / rank (match only) / qualified appear when state is returned; reason_summary / failed_rule_ids when it is excluded.",
+      "additionalProperties": false,
+      "required": [
+        "record_id",
+        "company_name",
+        "canonical_domain",
+        "state"
+      ],
+      "properties": {
+        "record_id": {
+          "$ref": "#/$defs/diff_record_id"
+        },
+        "company_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "canonical_domain": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 253
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "returned",
+            "excluded"
+          ]
+        },
+        "score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "rank": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "qualified": {
+          "$ref": "#/$defs/diff_qualified"
+        },
+        "reason_summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "failed_rule_ids": {
+          "$ref": "#/$defs/diff_rule_ids"
+        }
+      }
+    },
+    "diff_gone_item": {
+      "type": "object",
+      "description": "A record listed in --before and in no form in --after; same shape as a new item, read from the --before side.",
+      "additionalProperties": false,
+      "required": [
+        "record_id",
+        "company_name",
+        "canonical_domain",
+        "state"
+      ],
+      "properties": {
+        "record_id": {
+          "$ref": "#/$defs/diff_record_id"
+        },
+        "company_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "canonical_domain": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 253
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "returned",
+            "excluded"
+          ]
+        },
+        "score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "rank": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "qualified": {
+          "$ref": "#/$defs/diff_qualified"
+        },
+        "reason_summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "failed_rule_ids": {
+          "$ref": "#/$defs/diff_rule_ids"
+        },
+        "merged_into": {
+          "$ref": "#/$defs/diff_record_id",
+          "description": "The --after record whose merged_from absorbed this id: a dedupe merge, not a lost lead."
+        }
+      }
+    },
+    "diff_newly_excluded_item": {
+      "type": "object",
+      "description": "Returned in --before, excluded in --after.",
+      "additionalProperties": false,
+      "required": [
+        "record_id",
+        "matched_by",
+        "company_name",
+        "before_score",
+        "before_qualified",
+        "reason_summary",
+        "failed_rule_ids"
+      ],
+      "properties": {
+        "record_id": {
+          "$ref": "#/$defs/diff_record_id",
+          "description": "The --after id."
+        },
+        "before_id": {
+          "$ref": "#/$defs/diff_record_id",
+          "description": "The --before id; present only when matched_by is not id."
+        },
+        "matched_by": {
+          "$ref": "#/$defs/diff_matched_by"
+        },
+        "company_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "before_score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "before_rank": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "before_qualified": {
+          "$ref": "#/$defs/diff_qualified"
+        },
+        "reason_summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "failed_rule_ids": {
+          "$ref": "#/$defs/diff_rule_ids"
+        }
+      }
+    },
+    "diff_newly_returned_item": {
+      "type": "object",
+      "description": "Excluded in --before, returned in --after.",
+      "additionalProperties": false,
+      "required": [
+        "record_id",
+        "matched_by",
+        "company_name",
+        "before_reason_summary",
+        "before_failed_rule_ids",
+        "after_score",
+        "after_qualified"
+      ],
+      "properties": {
+        "record_id": {
+          "$ref": "#/$defs/diff_record_id",
+          "description": "The --after id."
+        },
+        "before_id": {
+          "$ref": "#/$defs/diff_record_id",
+          "description": "The --before id; present only when matched_by is not id."
+        },
+        "matched_by": {
+          "$ref": "#/$defs/diff_matched_by"
+        },
+        "company_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "before_reason_summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "before_failed_rule_ids": {
+          "$ref": "#/$defs/diff_rule_ids"
+        },
+        "after_score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "after_rank": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "after_qualified": {
+          "$ref": "#/$defs/diff_qualified"
+        }
+      }
+    },
+    "diff_exclusion_change_item": {
+      "type": "object",
+      "description": "Excluded in both runs with a different reason_summary or a different failed rule set.",
+      "additionalProperties": false,
+      "required": [
+        "record_id",
+        "matched_by",
+        "company_name",
+        "before_reason_summary",
+        "after_reason_summary",
+        "rules_added",
+        "rules_removed"
+      ],
+      "properties": {
+        "record_id": {
+          "$ref": "#/$defs/diff_record_id",
+          "description": "The --after id."
+        },
+        "before_id": {
+          "$ref": "#/$defs/diff_record_id",
+          "description": "The --before id; present only when matched_by is not id."
+        },
+        "matched_by": {
+          "$ref": "#/$defs/diff_matched_by"
+        },
+        "company_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "before_reason_summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "after_reason_summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "rules_added": {
+          "$ref": "#/$defs/diff_rule_ids"
+        },
+        "rules_removed": {
+          "$ref": "#/$defs/diff_rule_ids"
+        }
+      }
+    },
+    "diff_score_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "before",
+        "after",
+        "delta"
+      ],
+      "properties": {
+        "before": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "after": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "delta": {
+          "type": "integer",
+          "minimum": -100,
+          "maximum": 100
+        }
+      }
+    },
+    "diff_rank_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "before",
+        "after"
+      ],
+      "properties": {
+        "before": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "after": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        }
+      }
+    },
+    "diff_dimension_change": {
+      "type": "object",
+      "description": "One changed dimension (discovery dimension_scores) or component (match component_scores). \"absent\" means the scorer dropped it on that side (market_relevance when inapplicable); its delta is then null.",
+      "additionalProperties": false,
+      "required": [
+        "dimension",
+        "before",
+        "after",
+        "delta"
+      ],
+      "properties": {
+        "dimension": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "before": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            {
+              "const": "absent"
+            }
+          ]
+        },
+        "after": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            {
+              "const": "absent"
+            }
+          ]
+        },
+        "delta": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": -100,
+              "maximum": 100
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "diff_qualified_change": {
+      "type": "object",
+      "description": "flip: false->true gained, true->false lost; undetermined when either side does not carry the flag (unknown is not false).",
+      "additionalProperties": false,
+      "required": [
+        "before",
+        "after",
+        "flip"
+      ],
+      "properties": {
+        "before": {
+          "$ref": "#/$defs/diff_qualified"
+        },
+        "after": {
+          "$ref": "#/$defs/diff_qualified"
+        },
+        "flip": {
+          "type": "string",
+          "enum": [
+            "gained",
+            "lost",
+            "undetermined"
+          ]
+        }
+      }
+    },
+    "diff_confidence_change": {
+      "type": "object",
+      "description": "delta = round_half_up(after - before, 2), computed in Decimal.",
+      "additionalProperties": false,
+      "required": [
+        "before",
+        "after",
+        "delta"
+      ],
+      "properties": {
+        "before": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "after": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "delta": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        }
+      }
+    },
+    "diff_missing_change": {
+      "type": "object",
+      "description": "Missing-line labels added (in --after order) and removed (in --before order).",
+      "additionalProperties": false,
+      "required": [
+        "added",
+        "removed"
+      ],
+      "properties": {
+        "added": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "maxItems": 40
+        },
+        "removed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "maxItems": 40
+        }
+      }
+    },
+    "diff_changed_item": {
+      "type": "object",
+      "description": "Returned in both runs with at least one compared field different. A key is present only when that field changed; base_score and rank exist on match runs only.",
+      "additionalProperties": false,
+      "required": [
+        "record_id",
+        "matched_by",
+        "company_name"
+      ],
+      "properties": {
+        "record_id": {
+          "$ref": "#/$defs/diff_record_id",
+          "description": "The --after id."
+        },
+        "before_id": {
+          "$ref": "#/$defs/diff_record_id",
+          "description": "The --before id; present only when matched_by is not id."
+        },
+        "matched_by": {
+          "$ref": "#/$defs/diff_matched_by"
+        },
+        "company_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "score": {
+          "$ref": "#/$defs/diff_score_change"
+        },
+        "base_score": {
+          "$ref": "#/$defs/diff_score_change"
+        },
+        "rank": {
+          "$ref": "#/$defs/diff_rank_change"
+        },
+        "dimensions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/diff_dimension_change"
+          },
+          "maxItems": 20
+        },
+        "qualified": {
+          "$ref": "#/$defs/diff_qualified_change"
+        },
+        "confidence": {
+          "$ref": "#/$defs/diff_confidence_change"
+        },
+        "missing": {
+          "$ref": "#/$defs/diff_missing_change"
+        }
+      }
+    }
+  }
+}

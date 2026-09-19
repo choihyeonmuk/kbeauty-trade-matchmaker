@@ -1,0 +1,352 @@
+{
+  "report_kind": "run-diff",
+  "schema_version": "0.1.0",
+  "score_version": "kbtm-score-0.1.0",
+  "skill_version": "0.3.0",
+  "as_of": "2026-09-12",
+  "kind": "discovery-result",
+  "entity": "buyer",
+  "before": {
+    "as_of": "2026-09-12",
+    "score_version": "kbtm-score-0.1.0",
+    "skill_version": "0.3.0",
+    "match_run_id": null,
+    "rfq_id": null,
+    "threshold_used": 70,
+    "threshold_mode": "fixed",
+    "partial": false,
+    "returned": 19,
+    "excluded": 1
+  },
+  "after": {
+    "as_of": "2026-09-12",
+    "score_version": "kbtm-score-0.1.0",
+    "skill_version": "0.3.0",
+    "match_run_id": null,
+    "rfq_id": null,
+    "threshold_used": 70,
+    "threshold_mode": "fixed",
+    "partial": false,
+    "returned": 19,
+    "excluded": 1
+  },
+  "context": {
+    "as_of_changed": false,
+    "threshold_changed": false,
+    "query_changed": true,
+    "weights_changed": null
+  },
+  "summary": {
+    "paired": 20,
+    "unchanged": 5,
+    "new": 0,
+    "gone": 0,
+    "newly_excluded": 0,
+    "newly_returned": 0,
+    "exclusion_changed": 0,
+    "changed": 15,
+    "score_changed": 11,
+    "score_up": 7,
+    "score_down": 4,
+    "qualified_gained": 2,
+    "qualified_lost": 1,
+    "confidence_changed": 0,
+    "rank_changed": null,
+    "missing_changed": 9
+  },
+  "new": [],
+  "gone": [],
+  "newly_excluded": [],
+  "newly_returned": [],
+  "exclusion_changes": [],
+  "changed": [
+    {
+      "record_id": "BUY-britsun-example",
+      "matched_by": "id",
+      "company_name": "Britannia Sun Collective Ltd",
+      "score": {
+        "before": 81,
+        "after": 96,
+        "delta": 15
+      },
+      "dimensions": [
+        {
+          "dimension": "market_relevance",
+          "before": 0,
+          "after": 100,
+          "delta": 100
+        }
+      ]
+    },
+    {
+      "record_id": "BUY-desertbulk-example",
+      "matched_by": "id",
+      "company_name": "Desert Bulk Supplies LLC",
+      "score": {
+        "before": 53,
+        "after": 38,
+        "delta": -15
+      },
+      "dimensions": [
+        {
+          "dimension": "market_relevance",
+          "before": 100,
+          "after": 0,
+          "delta": -100
+        }
+      ],
+      "missing": {
+        "added": [
+          "Requested category not evidenced: sunscreen"
+        ],
+        "removed": []
+      }
+    },
+    {
+      "record_id": "BUY-dunesourcing-example",
+      "matched_by": "id",
+      "company_name": "Dune Sourcing Partners LLC",
+      "score": {
+        "before": 84,
+        "after": 69,
+        "delta": -15
+      },
+      "dimensions": [
+        {
+          "dimension": "market_relevance",
+          "before": 100,
+          "after": 0,
+          "delta": -100
+        }
+      ],
+      "qualified": {
+        "before": true,
+        "after": false,
+        "flip": "lost"
+      }
+    },
+    {
+      "record_id": "BUY-gulfglow-example",
+      "matched_by": "id",
+      "company_name": "Gulf Glow Trading FZ-LLC",
+      "score": {
+        "before": 96,
+        "after": 81,
+        "delta": -15
+      },
+      "dimensions": [
+        {
+          "dimension": "market_relevance",
+          "before": 100,
+          "after": 0,
+          "delta": -100
+        }
+      ]
+    },
+    {
+      "record_id": "BUY-luminaglow-example",
+      "matched_by": "id",
+      "company_name": "Lumina Glow Distribution Ltd",
+      "score": {
+        "before": 71,
+        "after": 86,
+        "delta": 15
+      },
+      "dimensions": [
+        {
+          "dimension": "market_relevance",
+          "before": 0,
+          "after": 100,
+          "delta": 100
+        }
+      ]
+    },
+    {
+      "record_id": "BUY-marinaretail-example",
+      "matched_by": "id",
+      "company_name": "Marina Retail Boutique LLC",
+      "score": {
+        "before": 53,
+        "after": 38,
+        "delta": -15
+      },
+      "dimensions": [
+        {
+          "dimension": "market_relevance",
+          "before": 100,
+          "after": 0,
+          "delta": -100
+        }
+      ],
+      "missing": {
+        "added": [
+          "Requested category not evidenced: sunscreen"
+        ],
+        "removed": []
+      }
+    },
+    {
+      "record_id": "BUY-palefade-example",
+      "matched_by": "id",
+      "company_name": "Pale Fade Trading Ltd",
+      "score": {
+        "before": 57,
+        "after": 72,
+        "delta": 15
+      },
+      "dimensions": [
+        {
+          "dimension": "market_relevance",
+          "before": 0,
+          "after": 100,
+          "delta": 100
+        }
+      ],
+      "qualified": {
+        "before": false,
+        "after": true,
+        "flip": "gained"
+      }
+    },
+    {
+      "record_id": "BUY-www-luminaglow-example",
+      "matched_by": "id",
+      "company_name": "Lumina Glow Distribution Limited",
+      "score": {
+        "before": 53,
+        "after": 68,
+        "delta": 15
+      },
+      "dimensions": [
+        {
+          "dimension": "market_relevance",
+          "before": 0,
+          "after": 100,
+          "delta": 100
+        }
+      ]
+    },
+    {
+      "record_id": "BUY-albionbeautyhall-example",
+      "matched_by": "id",
+      "company_name": "Albion Beauty Hall Ltd",
+      "score": {
+        "before": 43,
+        "after": 55,
+        "delta": 12
+      },
+      "dimensions": [
+        {
+          "dimension": "market_relevance",
+          "before": 0,
+          "after": 78,
+          "delta": 78
+        }
+      ],
+      "missing": {
+        "added": [
+          "Requested category not evidenced: sunscreen"
+        ],
+        "removed": []
+      }
+    },
+    {
+      "record_id": "BUY-northgateimport-example",
+      "matched_by": "id",
+      "company_name": "Northgate Import Co Ltd",
+      "score": {
+        "before": 50,
+        "after": 61,
+        "delta": 11
+      },
+      "dimensions": [
+        {
+          "dimension": "market_relevance",
+          "before": 0,
+          "after": 78,
+          "delta": 78
+        }
+      ],
+      "missing": {
+        "added": [
+          "Requested category not evidenced: sunscreen"
+        ],
+        "removed": []
+      }
+    },
+    {
+      "record_id": "BUY-novadrift-example",
+      "matched_by": "id",
+      "company_name": "Nova Drift Trading Ltd",
+      "score": {
+        "before": 63,
+        "after": 74,
+        "delta": 11
+      },
+      "dimensions": [
+        {
+          "dimension": "market_relevance",
+          "before": 0,
+          "after": 68,
+          "delta": 68
+        }
+      ],
+      "qualified": {
+        "before": false,
+        "after": true,
+        "flip": "gained"
+      },
+      "missing": {
+        "added": [
+          "Requested category not evidenced: sunscreen"
+        ],
+        "removed": []
+      }
+    },
+    {
+      "record_id": "BUY-cascademarket-example",
+      "matched_by": "id",
+      "company_name": "Cascade Marketplace Inc",
+      "missing": {
+        "added": [
+          "Requested category not evidenced: sunscreen"
+        ],
+        "removed": []
+      }
+    },
+    {
+      "record_id": "BUY-kantoimport-example",
+      "matched_by": "id",
+      "company_name": "Kanto Import Partners KK",
+      "missing": {
+        "added": [
+          "Category match against the request"
+        ],
+        "removed": []
+      }
+    },
+    {
+      "record_id": "BUY-libertybeautysupply-example",
+      "matched_by": "id",
+      "company_name": "Liberty Beauty Supply LLC",
+      "missing": {
+        "added": [
+          "Requested category not evidenced: sunscreen"
+        ],
+        "removed": []
+      }
+    },
+    {
+      "record_id": "BUY-straitswholesale-example",
+      "matched_by": "id",
+      "company_name": "Straits Wholesale Pte Ltd",
+      "missing": {
+        "added": [
+          "Requested category not evidenced: sunscreen"
+        ],
+        "removed": []
+      }
+    }
+  ],
+  "notes": []
+}

@@ -1,0 +1,631 @@
+{
+  "report_kind": "recheck-queue",
+  "schema_version": "0.1.0",
+  "score_version": "kbtm-score-0.1.0",
+  "skill_version": "0.3.0",
+  "as_of": "2026-09-12",
+  "policy": {
+    "due_from_bucket": "aging",
+    "stale_threshold_days": 730,
+    "recency_buckets": [
+      {
+        "label": "fresh",
+        "max_age_days": 90
+      },
+      {
+        "label": "current",
+        "max_age_days": 365
+      },
+      {
+        "label": "aging",
+        "max_age_days": 730
+      },
+      {
+        "label": "stale",
+        "max_age_days": null
+      }
+    ],
+    "reason_order": [
+      "site_unreachable",
+      "record_flagged_stale",
+      "past_stale_threshold",
+      "source_flagged_stale",
+      "unresolved_conflict",
+      "aging",
+      "undated"
+    ]
+  },
+  "summary": {
+    "records_scanned": 20,
+    "records_queued": 3,
+    "records_listed": 3,
+    "records_without_evidence": 0,
+    "evidence_items_scanned": 171,
+    "evidence_items_queued": 19,
+    "evidence_items_undated": 2,
+    "claims_without_current_evidence": 17,
+    "by_reason": {
+      "site_unreachable": 1,
+      "record_flagged_stale": 1,
+      "past_stale_threshold": 9,
+      "source_flagged_stale": 9,
+      "unresolved_conflict": 0,
+      "aging": 10,
+      "undated": 0
+    },
+    "by_bucket": {
+      "fresh": 39,
+      "current": 111,
+      "aging": 10,
+      "stale": 9,
+      "unknown": 2
+    }
+  },
+  "queue": [
+    {
+      "position": 1,
+      "entity": "seller",
+      "record_id": "SEL-sopoongworks-example",
+      "input_index": 13,
+      "company_name": "Sopoong Works Co., Ltd.",
+      "canonical_domain": "sopoongworks.example",
+      "priority_reason": "site_unreachable",
+      "record_reasons": [
+        "site_unreachable"
+      ],
+      "claims": [
+        {
+          "claim": "company_type",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-1401"
+          ],
+          "newest_source_date": "2025-05-04",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 0
+          }
+        },
+        {
+          "claim": "product_categories",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-1402"
+          ],
+          "newest_source_date": "2025-05-04",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 0
+          }
+        },
+        {
+          "claim": "oem_odm",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-1403"
+          ],
+          "newest_source_date": "2025-05-04",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 0
+          }
+        },
+        {
+          "claim": "private_label",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-1404"
+          ],
+          "newest_source_date": "2025-05-04",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 0
+          }
+        },
+        {
+          "claim": "moq",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-1405"
+          ],
+          "newest_source_date": "2025-05-04",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 0
+          }
+        },
+        {
+          "claim": "certifications",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-1406"
+          ],
+          "newest_source_date": "2025-05-04",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 0
+          }
+        },
+        {
+          "claim": "export_markets",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-1407"
+          ],
+          "newest_source_date": "2025-05-04",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 0
+          }
+        },
+        {
+          "claim": "overseas_partner_signal",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-1408"
+          ],
+          "newest_source_date": "2025-05-04",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 0
+          }
+        }
+      ],
+      "items": [
+        {
+          "evidence_id": "EV-1401",
+          "claim": "company_type",
+          "material": true,
+          "source_url": "https://koreacosmeticassociation.example/members/sopoong",
+          "source_tier": 2,
+          "source_date": "2025-05-04",
+          "age_days": 496,
+          "recency_bucket": "aging",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "aging"
+          ]
+        },
+        {
+          "evidence_id": "EV-1402",
+          "claim": "product_categories",
+          "material": true,
+          "source_url": "https://koreacosmeticassociation.example/members/sopoong",
+          "source_tier": 2,
+          "source_date": "2025-05-04",
+          "age_days": 496,
+          "recency_bucket": "aging",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "aging"
+          ]
+        },
+        {
+          "evidence_id": "EV-1403",
+          "claim": "oem_odm",
+          "material": true,
+          "source_url": "https://koreacosmeticassociation.example/members/sopoong",
+          "source_tier": 2,
+          "source_date": "2025-05-04",
+          "age_days": 496,
+          "recency_bucket": "aging",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "aging"
+          ]
+        },
+        {
+          "evidence_id": "EV-1404",
+          "claim": "private_label",
+          "material": true,
+          "source_url": "https://koreacosmeticassociation.example/members/sopoong",
+          "source_tier": 2,
+          "source_date": "2025-05-04",
+          "age_days": 496,
+          "recency_bucket": "aging",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "aging"
+          ]
+        },
+        {
+          "evidence_id": "EV-1405",
+          "claim": "moq",
+          "material": true,
+          "source_url": "https://koreacosmeticassociation.example/members/sopoong",
+          "source_tier": 2,
+          "source_date": "2025-05-04",
+          "age_days": 496,
+          "recency_bucket": "aging",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "aging"
+          ]
+        },
+        {
+          "evidence_id": "EV-1406",
+          "claim": "certifications",
+          "material": true,
+          "source_url": "https://koreacosmeticassociation.example/members/sopoong",
+          "source_tier": 2,
+          "source_date": "2025-05-04",
+          "age_days": 496,
+          "recency_bucket": "aging",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "aging"
+          ]
+        },
+        {
+          "evidence_id": "EV-1407",
+          "claim": "export_markets",
+          "material": true,
+          "source_url": "https://koreacosmeticassociation.example/members/sopoong",
+          "source_tier": 2,
+          "source_date": "2025-05-04",
+          "age_days": 496,
+          "recency_bucket": "aging",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "aging"
+          ]
+        },
+        {
+          "evidence_id": "EV-1408",
+          "claim": "overseas_partner_signal",
+          "material": true,
+          "source_url": "https://koreacosmeticassociation.example/members/sopoong",
+          "source_tier": 2,
+          "source_date": "2025-05-04",
+          "age_days": 496,
+          "recency_bucket": "aging",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "aging"
+          ]
+        },
+        {
+          "evidence_id": "EV-1409",
+          "claim": "operational_status",
+          "material": false,
+          "source_url": "https://koreacosmeticassociation.example/members/sopoong",
+          "source_tier": 2,
+          "source_date": "2025-05-04",
+          "age_days": 496,
+          "recency_bucket": "aging",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "source_flagged_stale",
+            "aging"
+          ]
+        }
+      ]
+    },
+    {
+      "position": 2,
+      "entity": "seller",
+      "record_id": "SEL-areumfactory-example",
+      "input_index": 14,
+      "company_name": "Areum Factory Co., Ltd.",
+      "canonical_domain": "areumfactory.example",
+      "priority_reason": "record_flagged_stale",
+      "record_reasons": [
+        "record_flagged_stale"
+      ],
+      "claims": [
+        {
+          "claim": "company_type",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-1501"
+          ],
+          "newest_source_date": "2023-03-12",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 1
+          }
+        },
+        {
+          "claim": "product_categories",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-1502"
+          ],
+          "newest_source_date": "2023-03-12",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 1
+          }
+        },
+        {
+          "claim": "oem_odm",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-1503"
+          ],
+          "newest_source_date": "2023-03-12",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 1
+          }
+        },
+        {
+          "claim": "private_label",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-1504"
+          ],
+          "newest_source_date": "2023-03-12",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 1
+          }
+        },
+        {
+          "claim": "moq",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-1505"
+          ],
+          "newest_source_date": "2023-03-12",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 1
+          }
+        },
+        {
+          "claim": "certifications",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-1506"
+          ],
+          "newest_source_date": "2023-03-12",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 1
+          }
+        },
+        {
+          "claim": "export_markets",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-1507"
+          ],
+          "newest_source_date": "2023-03-12",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 1
+          }
+        },
+        {
+          "claim": "overseas_partner_signal",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-1508"
+          ],
+          "newest_source_date": "2023-03-12",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 1
+          }
+        }
+      ],
+      "items": [
+        {
+          "evidence_id": "EV-1501",
+          "claim": "company_type",
+          "material": true,
+          "source_url": "https://areumfactory.example/about",
+          "source_tier": 1,
+          "source_date": "2023-03-12",
+          "age_days": 1280,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold",
+            "source_flagged_stale"
+          ]
+        },
+        {
+          "evidence_id": "EV-1502",
+          "claim": "product_categories",
+          "material": true,
+          "source_url": "https://areumfactory.example/products/sun",
+          "source_tier": 1,
+          "source_date": "2023-03-12",
+          "age_days": 1280,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold",
+            "source_flagged_stale"
+          ]
+        },
+        {
+          "evidence_id": "EV-1503",
+          "claim": "oem_odm",
+          "material": true,
+          "source_url": "https://areumfactory.example/oem",
+          "source_tier": 1,
+          "source_date": "2023-03-12",
+          "age_days": 1280,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold",
+            "source_flagged_stale"
+          ]
+        },
+        {
+          "evidence_id": "EV-1504",
+          "claim": "private_label",
+          "material": true,
+          "source_url": "https://areumfactory.example/oem",
+          "source_tier": 1,
+          "source_date": "2023-03-12",
+          "age_days": 1280,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold",
+            "source_flagged_stale"
+          ]
+        },
+        {
+          "evidence_id": "EV-1505",
+          "claim": "moq",
+          "material": true,
+          "source_url": "https://areumfactory.example/oem",
+          "source_tier": 1,
+          "source_date": "2023-03-12",
+          "age_days": 1280,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold",
+            "source_flagged_stale"
+          ]
+        },
+        {
+          "evidence_id": "EV-1506",
+          "claim": "certifications",
+          "material": true,
+          "source_url": "https://areumfactory.example/quality",
+          "source_tier": 1,
+          "source_date": "2023-03-12",
+          "age_days": 1280,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold",
+            "source_flagged_stale"
+          ]
+        },
+        {
+          "evidence_id": "EV-1507",
+          "claim": "export_markets",
+          "material": true,
+          "source_url": "https://areumfactory.example/global",
+          "source_tier": 1,
+          "source_date": "2023-03-12",
+          "age_days": 1280,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold",
+            "source_flagged_stale"
+          ]
+        },
+        {
+          "evidence_id": "EV-1508",
+          "claim": "overseas_partner_signal",
+          "material": true,
+          "source_url": "https://areumfactory.example/global",
+          "source_tier": 1,
+          "source_date": "2023-03-12",
+          "age_days": 1280,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold",
+            "source_flagged_stale"
+          ]
+        },
+        {
+          "evidence_id": "EV-1509",
+          "claim": "named_product_page",
+          "material": false,
+          "source_url": "https://areumfactory.example/products/sun",
+          "source_tier": 1,
+          "source_date": "2023-03-12",
+          "age_days": 1280,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold"
+          ]
+        }
+      ]
+    },
+    {
+      "position": 3,
+      "entity": "seller",
+      "record_id": "SEL-yeonhwalab-example",
+      "input_index": 2,
+      "company_name": "Yeonhwa Lab Co., Ltd.",
+      "canonical_domain": "yeonhwalab.example",
+      "priority_reason": "aging",
+      "record_reasons": [],
+      "claims": [
+        {
+          "claim": "certifications",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-305"
+          ],
+          "newest_source_date": "2024-11-20",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 0
+          }
+        }
+      ],
+      "items": [
+        {
+          "evidence_id": "EV-305",
+          "claim": "certifications",
+          "material": true,
+          "source_url": "https://yeonhwalab.example/quality",
+          "source_tier": 1,
+          "source_date": "2024-11-20",
+          "age_days": 661,
+          "recency_bucket": "aging",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "aging"
+          ]
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "2 undated evidence item(s) were not queued: an undated page is current while its last reading (observed_at) is, because an undated page is not a stale page (evidence.unknown_source_date_note). They are queued as 'undated' once that reading reaches the aging bucket.",
+    "This queue lists what to re-read; it changed no record and no score. Re-reading is done by the agent under references/evidence-policy.md section 5, then the pipeline is re-run."
+  ]
+}

@@ -103,6 +103,19 @@ PRD 11.3 allows the minimum, with a source — but v0.1.0's schemas deliberately
 live, so in practice: **do not**. If an operator insists, that is a product decision (PRD 21 Open
 Question 4), not something the agent may decide mid-run. Escalate (§6).
 
+### 3.3a Exported files carry company-level data only
+
+`scripts/export_leads.py` (data-contract §9.6) is the one place this package writes leads into a file
+meant for another system, so the minimisation rule is enforced there by code, not by habit. A generic
+CSV carries only the stored company-level channels, with every channel `label` dropped and every
+`corporate_email` that is not a role mailbox on the company's own domain withheld, and every LinkedIn
+member profile withheld. A TradeWith import file carries no contact field at all — no name, phone or
+email, not even a role mailbox — no LinkedIn member profile, and no free-text notes, because
+TradeWith shows the non-contact fields to sellers unmasked. Every exported text value, URLs included, passes the
+personal-data scan; a hit refuses the whole export rather than silently dropping the value. On
+import TradeWith sends `companyName`, `industry`, `category`, `productsSummary` and `country` to its
+embedding provider — company-level fields only.
+
 ### 3.4 Retention and purpose
 
 - Store a claim because it feeds a score or a match rationale, not because it was there.

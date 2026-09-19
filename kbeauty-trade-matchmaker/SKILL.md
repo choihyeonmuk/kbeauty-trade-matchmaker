@@ -10,9 +10,10 @@ citable URL, score both sides with deterministic scripts, match a buying request
 outreach drafts that a human reviews before anything is sent.
 *Korean gloss: K뷰티 바이어·셀러를 근거 기반으로 발굴·검증·점수화·매칭하고, 사람이 검토할 아웃리치 초안까지만 만든다.*
 
-`skill_version 0.2.0` · `schema_version 0.1.0` · `score_version kbtm-score-0.1.0`. Runtime tool names live **only**
+`skill_version 0.3.0` · `schema_version 0.1.0` · `score_version kbtm-score-0.1.0`. Runtime tool names live **only**
 in `references/runtime-adapters.md`; this file names capabilities ("the runtime's web-search capability", "the
-runtime's internal-data connector") so the folder runs unchanged in every runtime. `install.sh` installs it.
+runtime's internal-data connector") so the folder runs unchanged in every runtime. `install.sh` installs it;
+plugin packaging and the release archives are described in `references/runtime-adapters.md` §5.5.
 
 ## The mandatory pipeline
 
@@ -181,6 +182,85 @@ per-dimension discrimination and false exclusions. It measures that one metric; 
 data from the application layer. Reviewers are identified by a **role label**, never a name, and the report
 refuses a sheet carrying an address or a number. Read `references/calibration-notes.md` §7 before running it.
 
+## Comparing two runs (operator)
+
+When an operator asks what changed between two runs of the same search or the same RFQ, one standalone
+script answers it. Like the calibration scripts it runs outside every mode and changes no score.
+*Korean gloss: 같은 검색이나 같은 RFQ를 두 번 돌린 결과를 비교한다 — 점수는 바꾸지 않는다.*
+
+```bash
+python3 scripts/diff_runs.py --before buyers.ae.2026-09-12.json --after buyers.ae.2026-10-12.json --pretty --output diff.json
+```
+
+`diff_runs.py` reads two scored `discovery-result` or `match-result` documents and reports which records are
+new or gone, which moved between returned and excluded, and which changed score, rank, dimension, qualified
+flag, confidence or Missing line (`schemas/run-diff.schema.json`). It pairs records by id, then through
+`merged_from`, so a dedupe merge reads as `merged_into` rather than as a lost lead. It **refuses** two runs
+scored with different `score_version`s, a discovery run against a match run, a buyer run against a seller
+run and match runs for different RFQs. It copies no contact channel, evidence or observed value.
+
+## Re-check stale evidence (standalone)
+
+Before re-using stored records after time has passed — or before a draft goes out on a record whose
+evidence is a year old — list what needs re-reading. The script reads records already on disk and fetches
+nothing; it changes no record and no score, and no mode calls it.
+*Korean gloss: 저장된 근거 중 다시 확인할 것을 우선순위대로 나열한다. 아무것도 가져오거나 고치지 않는다.*
+
+```bash
+python3 scripts/stale_evidence.py --input buyers.ae.json --as-of 2026-09-19 --pretty --output recheck.json
+```
+
+`--as-of` is required: age is measured to the re-check date and the clock is never read. The queue puts an
+unreachable site or a record flagged `stale` first, then evidence past `stale_threshold_days`, evidence the
+source marked stale, unresolved conflicts, then evidence in the `aging` bucket. An undated page is not a
+stale page: it is listed only once its last reading (`observed_at`) is itself due. For each queued item,
+re-open its `source_url` under `references/evidence-policy.md` §5, record what the page says now, then
+re-run the pipeline. Staleness never deletes a value (§5.4).
+
+## Exporting leads (operator, after Mode 1 or 2)
+
+`scripts/export_leads.py` turns one scored `discovery-result` into a file a person imports. It writes a
+file and nothing else: it never posts, uploads or sends, and it changes no score.
+*Korean gloss: 점수화된 발굴 결과를 파일로 내보낸다 — 전송하지 않고 점수도 바꾸지 않는다.*
+
+```bash
+python3 scripts/export_leads.py --input buyers.ae.scored.json --output buyers.ae.csv
+python3 scripts/export_leads.py --input buyers.ae.scored.json --format tradewith-csv --output buyers.ae.tradewith.csv
+python3 scripts/export_leads.py --input buyers.ae.scored.json --format tradewith-json --pretty --output buyers.ae.tradewith.json
+```
+
+- `csv` (the default) is a generic spreadsheet / CRM file for buyers or sellers: fixed columns, the
+  literal `unknown` for a value the run does not carry, and a formula guard on every cell.
+- `tradewith-csv` is the file TradeWith's admin buyer-import page reads; `tradewith-json` is the body
+  an admin posts to the bulk-import endpoint through an authenticated API client. Buyers only.
+- Only `qualified` records are exported unless `--include-unqualified` is given; `--min-score N` adds
+  a floor. A closed or unreachable company is never exported.
+- TradeWith rows carry **no quality tier label**, so they land as tier C (unreviewed). An admin
+  reviews them, promotes a row to A or B and adds its tags; until then sellers do not see it.
+- No contact field is ever exported to TradeWith — no name, phone or `contactEmail`, not even a
+  company role mailbox — and a LinkedIn member profile (`/in/`) is never exported in any format.
+  The generic CSV keeps only role mailboxes on the company's own domain. Channel labels are never
+  exported.
+- `sourceId` is `kbtm:<canonical domain>`, so re-importing a later run updates the same TradeWith
+  row. `tradewith-csv` drops provenance (`originalSource`, `sourceUrl`) and the matching fields;
+  prefer `tradewith-json` when an API client is available.
+
+Read `references/data-contract.md` §9.6 before handing a file to anyone.
+
+## The scripts as callable tools (optional)
+
+`scripts/mcp_server.py` serves the eleven deterministic scripts above as callable tools to a runtime that
+prefers a tool server over a shell: a subset of each script's flags, the same bytes as the CLI for
+the flags it exposes, no new behaviour. The flags left out, and client setup, are in
+`references/runtime-adapters.md` §5.6.
+*Korean gloss: 같은 스크립트를 도구 서버로도 호출할 수 있다 — 동작과 출력은 CLI와 같다.*
+
+- Every tool call carries `as_of`; the server never supplies a date.
+- It reads and writes only inside the one `--root` directory it was started with, never overwrites a
+  file, and returns a large result only through a new `output_path` file (`.json` or `.csv`, not
+  hidden, outside the package).
+- It runs nothing but this package's scripts, and no tool sends, fetches or contacts anyone.
+
 ## Load this file when…
 
 | File | Load it when |
@@ -191,14 +271,18 @@ refuses a sheet carrying an address or a number. Read `references/calibration-no
 | `references/qualification-rubric.md` | Asked *why* a score is what it is, or which evidence earns which dimension |
 | `references/calibration-notes.md` | Asked whether a score is *validated*: what the two live trials measured, what changed in response, what is deferred to calibration — and §7 before running either calibration script |
 | `scripts/make_review_sheet.py`, `scripts/acceptance_report.py` | Building or reading a labelled set: cutting a blind operator review sheet, or measuring Human Acceptance Rate against the scores (`schemas/acceptance-report.schema.json`) |
+| `scripts/diff_runs.py` | Asked what changed between two runs of the same search or RFQ: new / gone records, exclusions, score, rank, qualified and Missing changes (`schemas/run-diff.schema.json`) |
+| `scripts/export_leads.py`, `schemas/tradewith-bulk-buyers.schema.json` | Handing scored leads to a spreadsheet, a CRM or a TradeWith admin import (`references/data-contract.md` §9.6) |
 | `references/evidence-policy.md` | Deciding fact vs. inference vs. unknown, source tier, staleness, conflicting sources |
+| `scripts/stale_evidence.py` | Records are being re-used after time has passed, or a user asks what needs re-verifying (`schemas/recheck-queue.schema.json`; reason codes in `references/evidence-policy.md` §5.6) |
 | `references/outreach-guidelines.md` | Running Mode 4, or asked what a draft may and may not claim |
 | `references/compliance-notes.md` | Filling the compliance block, or asked about robots/ToS, data minimization, marketing rules |
 | `references/data-contract.md` | Writing a record by hand: field names, unknown semantics, query surface, envelopes, states |
 | `references/output-format.md` | Rendering any result block: 12.1 discovery, 12.2 match, 10.4 outreach envelope, shared line rules, Korean label map |
-| `references/runtime-adapters.md` | Binding a capability to this runtime's actual tool, or a capability is missing |
+| `references/runtime-adapters.md` | Binding a capability to this runtime's actual tool, or a capability is missing, or installing the package as a plugin |
+| `scripts/mcp_server.py` | The runtime calls the package scripts as tools rather than through a shell; client configuration is in `references/runtime-adapters.md` |
 | `schemas/*.json` | Binding shapes for `buyer`, `seller`, `rfq`, `evidence`, `match-result`, `discovery-result`, and every number in `scoring.config.json` |
-| `scripts/*.py` | Running the pipeline (`scripts/_common.py` is the shared library every CLI script imports; the six pipeline scripts are listed above, the two calibration scripts below them) |
+| `scripts/*.py` | Running the pipeline (`scripts/_common.py` is the shared library every CLI script imports; the six pipeline scripts are listed above, the two calibration scripts, the run-diff script, the standalone re-check script `scripts/stale_evidence.py`, the export script and the optional tool server `scripts/mcp_server.py` below them) |
 | `templates/buyer_outreach.md`, `templates/seller_outreach.md` | Rendering a draft; the seller template has RFQ-present and RFQ-absent variants |
 | `templates/legal_notices.md` | Appending the `Required legal notices` block to a draft: the per-jurisdiction x per-channel wording, copied verbatim, keyed `{{country_alpha2}}.{{channel_type}}` (R10.4.6) |
 | `adapters/tradewith_adapter.md`, `adapters/tradewith_adapter.py` | Reading an RFQ or internal sellers, or queueing leads / matches / drafts for review |

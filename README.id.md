@@ -10,19 +10,22 @@ Folder yang sama berjalan tanpa modifikasi di **Claude Code** dan **OpenAI Codex
 
 > Gambaran alur kerja: temukan, verifikasi, cocokkan, dan tetap libatkan manusia dalam peninjauan.
 
-> **Status: v0.2.0.** Pipeline ini telah diuji terhadap 252 kasus pada fixture fiktif dan telah diujicobakan satu kali terhadap web langsung. Rubrik penilaian **belum divalidasi terhadap hasil nyata**: skor dapat direproduksi dan ditelusuri, tetapi belum diketahui daya prediksinya. v0.2.0 menambahkan perangkat untuk mengukur hal tersebut ([Memvalidasi skor](#memvalidasi-skor)), tetapi sampel berlabel belum ada. RFQ Matching dan Outreach Draft belum dijalankan pada data langsung. Bacalah [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) sebelum memercayai sebuah skor.
+> **Status: v0.3.0.** Pipeline ini telah diuji terhadap 536 kasus pada fixture fiktif dan telah diujicobakan satu kali terhadap web langsung. Rubrik penilaian **belum divalidasi terhadap hasil nyata**: skor dapat direproduksi dan ditelusuri, tetapi belum diketahui daya prediksinya. v0.2.0 telah menambahkan perangkat untuk mengukur hal tersebut ([Memvalidasi skor](#memvalidasi-skor)), tetapi sampel berlabel belum ada. RFQ Matching dan Outreach Draft belum dijalankan pada data langsung. Bacalah [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) sebelum memercayai sebuah skor.
 
 ---
 
 ## Yang baru
 
-**v0.2.0 (2026-09-19).** Tidak ada skor yang sudah ada yang berubah.
+**v0.3.0 (2026-09-19).** Tidak ada skor yang sudah ada yang berubah. Semua yang baru berada di luar pipeline penilaian.
 
-- **Perangkat validasi skor.** Lembar tinjauan buta (blind) untuk seorang operator perdagangan, dan laporan yang membandingkan keputusan terima/tolak mereka dengan skor. Lihat [Memvalidasi skor](#memvalidasi-skor).
-- **Paket pasar untuk India, Indonesia, dan Türkiye.** Pencarian pembeli dalam bahasa setempat, aturan masuk pasar yang digunakan dalam pencocokan (CDSCO, BPOM, sertifikasi halal wajib di Indonesia, TİTCK), baris checklist dan blok pemberitahuan pemasaran langsung, serta penanganan nama perusahaan untuk `Pvt Ltd`, `PT`, `A.Ş.`, dan bentuk serupa. Lihat [Paket pasar](#paket-pasar).
-- Pengujian: 179 → 252 kasus.
+- **Diff proses.** `scripts/diff_runs.py` membandingkan dua proses bernilai dari pencarian atau RFQ yang sama, lalu mendaftar perusahaan yang baru dan yang hilang, pengecualian yang bergeser, serta perubahan skor, peringkat, penanda qualified, confidence, dan baris Missing. Skrip ini menolak proses yang dinilai dengan versi rubrik yang berbeda dan tidak menyalin detail kontak apa pun. Lihat [Membandingkan dua proses](#membandingkan-dua-proses).
+- **Antrean pemeriksaan ulang.** `scripts/stale_evidence.py` mendaftar record tersimpan dan halaman bukti mana yang perlu dibaca ulang, dimulai dari yang paling mendesak. Skrip ini tidak mengambil apa pun dan tidak mengubah record maupun skor. Lihat [Antrean pemeriksaan ulang](#antrean-pemeriksaan-ulang).
+- **Ekspor lead.** `scripts/export_leads.py` menulis sebuah proses bernilai sebagai CSV untuk spreadsheet/CRM atau sebagai file bulk-import admin TradeWith. Skrip ini hanya menulis file. Baris TradeWith tidak memuat field kontak dan masuk sebagai tier C untuk ditinjau oleh admin. Lihat [Ekspor ke spreadsheet, CRM, atau TradeWith](#ekspor-ke-spreadsheet-crm-atau-tradewith).
+- **Skrip sebagai tool MCP.** Server tool lokal yang opsional (MCP, stdio) memungkinkan agent memanggil sebelas skrip sebagai tool. Server ini hanya membaca dan menulis di dalam satu folder proyek, tidak pernah menimpa file, dan tidak mengirim apa pun. Lihat [Menggunakan skrip sebagai tool MCP](#menggunakan-skrip-sebagai-tool-mcp).
+- **Plugin.** Claude Code dapat menginstal skill ini sebagai plugin dari repositori ini. ChatGPT dan Codex mendapatkan ZIP plugin yang hanya berisi skill pada setiap rilis; dengan cara inilah skill menjangkau ChatGPT versi web dan mobile. Lihat [Menginstal sebagai plugin](#menginstal-sebagai-plugin).
+- Pengujian: 252 → 536 kasus.
 
-Catatan lengkap untuk setiap rilis: [CHANGELOG.md](CHANGELOG.md) (changelog hanya tersedia dalam bahasa Inggris).
+v0.2.0 telah menambahkan [perangkat validasi skor](#memvalidasi-skor) dan [paket pasar](#paket-pasar) untuk India, Indonesia, dan Türkiye. Catatan lengkap untuk setiap rilis: [CHANGELOG.md](CHANGELOG.md) (changelog hanya tersedia dalam bahasa Inggris).
 
 ---
 
@@ -160,6 +163,9 @@ kbeauty-trade-matchmaker/
 │   ├── match-result.schema.json  # One complete matching run
 │   ├── discovery-result.schema.json
 │   ├── acceptance-report.schema.json  # One calibration measurement (v0.2.0)
+│   ├── run-diff.schema.json      # One comparison of two scored runs (v0.3.0)
+│   ├── recheck-queue.schema.json # The evidence to re-read (v0.3.0)
+│   ├── tradewith-bulk-buyers.schema.json  # TradeWith bulk-import body; no contact fields (v0.3.0)
 │   └── scoring.config.json       # Every weight, threshold and penalty lives in this one file
 ├── scripts/                      # Standard library only. No network, no credentials
 │   ├── _common.py                # Config, rounding, normalisation, tri-state helpers, schema validator
@@ -170,7 +176,11 @@ kbeauty-trade-matchmaker/
 │   ├── score_match.py
 │   ├── validate_output.py        # Schema plus contract invariants
 │   ├── make_review_sheet.py      # Blind CSV review sheet for a trade operator (v0.2.0)
-│   └── acceptance_report.py      # Review sheets + scored runs -> Human Acceptance Rate report (v0.2.0)
+│   ├── acceptance_report.py      # Review sheets + scored runs -> Human Acceptance Rate report (v0.2.0)
+│   ├── diff_runs.py              # Two scored runs -> what changed between them (v0.3.0)
+│   ├── stale_evidence.py         # Stored records -> evidence to re-read, most urgent first (v0.3.0)
+│   ├── export_leads.py           # Scored run -> CSV or TradeWith import file; never sends (v0.3.0)
+│   └── mcp_server.py             # Optional stdio MCP server over the scripts above (v0.3.0)
 ├── templates/
 │   ├── buyer_outreach.md
 │   ├── seller_outreach.md        # With and without an RFQ
@@ -182,6 +192,14 @@ kbeauty-trade-matchmaker/
 ```
 
 Hanya folder `kbeauty-trade-matchmaker/` yang diinstal. Konten kontrak yang dibutuhkan runtime sudah disertakan dalam `references/data-contract.md` dan `references/output-format.md`.
+
+Tingkat repositori, di luar paket (tidak ikut dikirim):
+
+```
+.claude-plugin/marketplace.json   # Claude Code plugin marketplace: one plugin, the package folder
+packaging/openai/plugin.json      # Manifest of the ChatGPT/Codex plugin ZIP
+tools/build_release.py            # Builds both release ZIPs from the HEAD commit, deterministically
+```
 
 ---
 
@@ -268,6 +286,104 @@ v0.2.0 menambahkan India, Indonesia, dan Türkiye. Tidak ada aturan penilaian ya
 
 ---
 
+## Membandingkan dua proses
+
+Jalankan pencarian atau RFQ yang sama lagi sebulan kemudian, dan `diff_runs.py` memberi tahu Anda apa yang bergeser. Skrip ini membaca dua proses yang sudah selesai dan tidak mengubah skor apa pun.
+
+```bash
+cd kbeauty-trade-matchmaker
+python3 scripts/diff_runs.py --before out/buyers.2026-09-12.json --after out/buyers.2026-10-12.json --pretty --output out/diff.json
+```
+
+Diff ini mendaftar perusahaan yang baru dan yang hilang, perusahaan yang menjadi dikecualikan atau kembali masuk, pengecualian yang aturannya berubah, dan untuk setiap perusahaan, perubahan pada skor, peringkat (proses pencocokan), dimensi, penanda qualified, confidence, dan baris Missing. Diff ini juga menandai perubahan pada `as_of`, ambang, query, atau bobot.
+
+- Record dipasangkan berdasarkan id, lalu melalui `merged_from`. Perusahaan yang digabungkan ke perusahaan lain oleh dedupe terbaca sebagai `merged_into`, bukan sebagai lead yang hilang. Tidak ada hal lain yang ditebak, sehingga perubahan nama tanpa `merged_from` tampil sebagai hilang + baru.
+- Pada proses pencocokan, "hilang" berarti "tidak tercantum". Seorang penjual dapat keluar dari daftar karena ambang atau batas `--top`; diff menyatakan hal itu.
+- Skrip ini menolak, alih-alih memperkirakan, dua proses yang dinilai dengan `score_version` yang berbeda, proses pembeli terhadap proses penjual, proses discovery terhadap proses pencocokan, serta proses pencocokan untuk RFQ yang berbeda.
+- Skrip ini tidak menyalin kanal kontak, bukti, maupun situs web. Hanya nama perusahaan, domain, dan id aturan yang ikut terbawa.
+
+Detail: [`data-contract.md`](kbeauty-trade-matchmaker/references/data-contract.md) §9.4.
+
+## Antrean pemeriksaan ulang
+
+Bukti menua. `stale_evidence.py` membaca record tersimpan dan mendaftar apa yang perlu dibaca ulang, dimulai dari yang paling mendesak. Skrip ini tidak mengambil apa pun dan tidak mengubah record maupun skor.
+
+```bash
+cd kbeauty-trade-matchmaker
+python3 scripts/stale_evidence.py --input out/buyers.scored.json --as-of 2026-09-19 --top 20 --pretty
+```
+
+- `--as-of` wajib: usia diukur hingga tanggal pemeriksaan ulang, dan jam sistem tidak pernah dibaca. `--top N` mendaftar N record pertama; ringkasan tetap menghitung semuanya.
+- Alasan, dari yang paling mendesak: situs tidak dapat dibuka, record ditandai usang, bukti melewati ambang usang (730 hari), sumber ditandai usang, konflik yang belum terselesaikan, menua (lebih dari satu tahun), tanpa tanggal. Klaim material tanpa bukti terkini dilaporkan tersendiri.
+- Batas usia diambil dari `scoring.config.json`, sehingga antrean dan skor sepakat tentang arti "lama". Halaman lama tidak dimasukkan ke antrean jika klaim yang sama sudah memiliki sumber terkini. Halaman tanpa tanggal dianggap terkini selama pembacaan terakhirnya masih terkini.
+- Skrip ini menerima proses bernilai, golden bundle, output dedupe, input pencocokan, daftar record, atau satu record. Match-result ditolak; berikan input pencocokannya sebagai gantinya.
+
+Cara mengerjakan antrean: [`evidence-policy.md`](kbeauty-trade-matchmaker/references/evidence-policy.md) §5.6.
+
+## Ekspor ke spreadsheet, CRM, atau TradeWith
+
+`export_leads.py` menulis lead dari satu proses discovery bernilai sebagai file yang diimpor oleh seseorang. **Skrip ini hanya menulis file.** Skrip ini tidak membuka koneksi apa pun dan tidak pernah melakukan posting, upload, atau pengiriman.
+
+```bash
+cd kbeauty-trade-matchmaker
+python3 scripts/export_leads.py --input out/buyers.scored.json --output out/leads.csv                     # Spreadsheet / CRM
+python3 scripts/export_leads.py --input out/buyers.scored.json --format tradewith-json --output out/tw.json # TradeWith bulk-import body
+python3 scripts/export_leads.py --input out/buyers.scored.json --format tradewith-csv --output out/tw.csv   # TradeWith admin import page
+```
+
+| `--format` | Untuk | Isinya |
+|---|---|---|
+| `csv` (default) | pembeli, penjual | Kolom tetap: skor, dimensi, status, kanal tingkat perusahaan, baris Missing, `score_version` |
+| `tradewith-json` | pembeli | Body `{"buyers": [...]}` untuk endpoint bulk-import admin TradeWith |
+| `tradewith-csv` | pembeli | Lima kolom yang dibaca halaman impor pembeli di admin (`sourceId, companyName, country, website, industry`). Format ini membuang field asal-usul dan pencocokan; utamakan `tradewith-json` |
+
+Secara default hanya record yang qualified yang diekspor; tambahkan `--include-unqualified` atau `--min-score N` untuk mengubahnya. Perusahaan yang sudah tutup atau tidak dapat dijangkau, serta `excluded[]`, tidak pernah diekspor.
+
+**Apa yang terjadi di TradeWith.** Baris masuk **belum ditinjau, sebagai tier C**: ekspor tidak menetapkan quality tier, dan tier C secara default tidak diikutkan dalam pencocokan pembeli. Seorang admin meninjau setiap baris, menaikkannya ke tier A atau B, dan menambahkan tag-nya. Sampai saat itu, baris tersebut tidak ditawarkan kepada penjual.
+
+- `contactName`, `contactEmail`, dan `contactPhone` **tidak pernah diisi**, bahkan dengan mailbox peran perusahaan seperti `sales@`. `contactEmail` yang terisi akan menandai baris sebagai kontak terverifikasi, dan impor ulang akan menimpa alamat yang telah dikoreksi oleh admin.
+- `sourceId` adalah `kbtm:<company domain>`, sehingga mengimpor proses berikutnya akan memperbarui baris yang sama alih-alih menambahkan baris baru.
+- `originalSource` mencatat paket, `score_version`, `as_of`, id record, dan apakah record tersebut usang. `social` hanya berisi halaman perusahaan di LinkedIn, tidak pernah profil perorangan.
+
+**CSV generik** hanya menyimpan kanal tingkat perusahaan. Email hanya dipertahankan sebagai mailbox peran (`info@`, `sales@` …) pada domain milik perusahaan itu sendiri; profil anggota LinkedIn ditahan. Setiap nilai yang diekspor melewati pemindaian data pribadi, dan satu temuan saja akan menolak seluruh ekspor. Sel yang akan dijalankan spreadsheet sebagai formula diberi apostrof di depannya.
+
+Detail: [`data-contract.md`](kbeauty-trade-matchmaker/references/data-contract.md) §9.6.
+
+## Menggunakan skrip sebagai tool MCP
+
+`scripts/mcp_server.py` adalah server MCP opsional melalui stdio yang hanya menggunakan standard library. Server ini menyediakan sebelas skrip sebagai tool, untuk runtime yang memanggil tool alih-alih shell: `normalize_company`, `dedupe_companies`, `score_buyer`, `score_seller`, `score_match`, `validate_output`, `make_review_sheet`, `acceptance_report`, `diff_runs`, `stale_evidence`, dan `export_leads`. Setiap tool menjalankan skripnya dengan sebagian flag-nya, dan memberikan hasil yang sama dengan command line. Adapter data internal tidak disediakan.
+
+- **`--root DIR` wajib**: satu-satunya folder tempat tool boleh membaca dan menulis. Server menolak `/`, direktori home Anda, atau induknya. `../` dan symlink tidak dapat membawa keluar.
+- **`as_of` wajib pada setiap pemanggilan.** Server tidak pernah menyediakan tanggal.
+- **Tidak ada penimpaan.** `output_path` harus berupa file `.json` atau `.csv` baru di dalam root, di luar paket skill, dan tidak berada di folder tersembunyi. Satu proses lengkap biasanya lebih besar daripada batas inline 32,768 byte, jadi berikan `output_path` untuk proses nyata.
+- Tidak ada yang mengirim atau mengambil apa pun. Skrip dijalankan dengan `python3 -I` dan tanpa variabel `TRADEWITH_*`.
+
+**Claude Code.** Plugin menjalankan server untuk Anda (lihat [Menginstal sebagai plugin](#menginstal-sebagai-plugin)). Setelah `install.sh`, tambahkan secara manual:
+
+```bash
+claude mcp add --transport stdio kbtm -- python3 /abs/path/kbeauty-trade-matchmaker/scripts/mcp_server.py --root /abs/path/to/project
+```
+
+**Codex CLI.** Di `~/.codex/config.toml`; pastikan `tool_timeout_sec` lebih besar daripada `--tool-timeout` server (default 120 detik):
+
+```toml
+[mcp_servers.kbtm]
+command = "python3"
+args = ["/abs/path/kbeauty-trade-matchmaker/scripts/mcp_server.py", "--root", "/abs/path/to/project"]
+tool_timeout_sec = 180
+```
+
+**Cursor.** Di `.cursor/mcp.json` (proyek) atau `~/.cursor/mcp.json` (global):
+
+```json
+{"mcpServers": {"kbtm": {"type": "stdio", "command": "python3",
+  "args": ["/abs/path/kbeauty-trade-matchmaker/scripts/mcp_server.py", "--root", "${workspaceFolder}"]}}}
+```
+
+Konfigurasi klien telah diperiksa terhadap dokumentasi masing-masing vendor pada 2026-09-19. Aturan lengkap, versi protokol, dan flag yang tidak disertakan: [`runtime-adapters.md`](kbeauty-trade-matchmaker/references/runtime-adapters.md) §5.6.
+
+---
+
 ## Instalasi
 
 ### claude.ai, tanpa terminal
@@ -277,6 +393,37 @@ v0.2.0 menambahkan India, Indonesia, dan Türkiye. Tidak ada aturan penilaian ya
 3. Aktifkan web search di chat baru dan ajukan permintaan dalam bahasa sehari-hari, misalnya "Find 5 K-Beauty distributors in the UAE that carry sunscreen." Lima perusahaan membutuhkan waktu sekitar 10 hingga 15 menit.
 
 Telah diverifikasi secara menyeluruh pada paket berbayar pada 2026-09-14: skill dipanggil tanpa disebutkan namanya, menjalankan web search dan pengambilan halaman di dalam skill, serta mengeksekusi skrip penilaian di sandbox. Juga diverifikasi pada paket gratis pada 2026-09-19 dengan permintaan kecil (3 perusahaan): skill berjalan menyeluruh, termasuk skrip penilaian, tanpa terkena batas penggunaan. Permintaan yang lebih besar masih bisa terkena batas paket gratis. Panduan langkah demi langkah: [https://kbeauty.tradewith.kr/install-ko](https://kbeauty.tradewith.kr/install-ko) (catatan: panduan ini hanya tersedia dalam bahasa Korea). Mengalami kendala? [Kirim pesan kepada saya di LinkedIn](https://www.linkedin.com/in/hm-choi).
+
+### Menginstal sebagai plugin
+
+Pilih **satu** cara instalasi per runtime. Plugin ditambah salinan `install.sh` di runtime yang sama akan memuat dua skill yang sama-sama terpicu oleh permintaan yang sama.
+
+**Claude Code.** Repositori ini adalah marketplace plugin dengan satu plugin, yaitu folder paket itu sendiri:
+
+```
+/plugin marketplace add choihyeonmuk/kbeauty-trade-matchmaker
+/plugin install kbeauty-trade-matchmaker@kbeauty-trade-matchmaker
+```
+
+Skill-nya adalah `/kbeauty-trade-matchmaker:kbeauty-trade-matchmaker`, atau terpicu secara implisit. Plugin juga menjalankan server MCP yang disertakan (`kbtm`) dengan folder proyek Anda sebagai root-nya; server ini memerlukan `python3` di `PATH`. Jalankan Claude Code di dalam folder proyek: jika dijalankan dari direktori home Anda, server menolak untuk mulai dan tampil sebagai gagal. Perbarui nanti dengan `/plugin marketplace update kbeauty-trade-matchmaker`.
+
+**ChatGPT dan Codex.** Setiap rilis menyertakan aset kedua, [`kbeauty-trade-matchmaker-plugin.zip`](https://github.com/choihyeonmuk/kbeauty-trade-matchmaker/releases/latest/download/kbeauty-trade-matchmaker-plugin.zip). Aset ini **hanya berisi skill**, tanpa server MCP: OpenAI menandai plugin yang mendeklarasikan server MCP sebagai khusus desktop, dan ZIP ini ada untuk menjangkau ChatGPT **versi web dan mobile**.
+
+1. Ekstrak ke `~/.codex/plugins/kbeauty-trade-matchmaker`.
+2. Tambahkan entri ini ke array `plugins` di `~/.agents/plugins/marketplace.json` (gabungkan secara manual jika file sudah ada; path-nya relatif terhadap `~`):
+
+```json
+{"name": "kbeauty-trade-matchmaker",
+ "source": {"source": "local", "path": "./.codex/plugins/kbeauty-trade-matchmaker"},
+ "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
+ "category": "Business & Operations"}
+```
+
+3. Mulai ulang aplikasi desktop ChatGPT dan instal dari Plugins, atau jalankan `/plugins` di Codex CLI.
+4. Untuk ChatGPT versi web dan mobile, admin workspace memublikasikan plugin ke workspace. Pencantuman di direktori publik bergantung pada tinjauan OpenAI atas pengajuan.
+5. Jalankan analisis dalam mode **Work**. OpenAI tidak mendokumentasikan bahwa mode Chat biasa menjalankan skrip yang disertakan. Di tempat skrip tidak dapat dijalankan, skill menyatakannya dan mengembalikan bukti tanpa skor; skill tidak pernah memperkirakan skor secara manual.
+
+Ekstensi IDE Codex tidak mendukung plugin; gunakan `install.sh --runtime codex` di sana. Tata letak ZIP dan entri marketplace mengikuti dokumentasi OpenAI sebagaimana diperiksa pada 2026-09-19; apakah skrip berjalan dalam mode Work di web dan mobile merupakan inferensi, bukan hasil pengujian. Detail: [`runtime-adapters.md`](kbeauty-trade-matchmaker/references/runtime-adapters.md) §5.5.
 
 ### Installer untuk Claude Code dan Codex
 
@@ -325,7 +472,7 @@ sh kbeauty-trade-matchmaker/install.sh --runtime codex --project /path/to/your-r
 
 - Codex memindai `.agents/skills` di setiap direktori mulai dari direktori kerja hingga root repositori. `~/.codex/skills` sudah deprecated tetapi masih didukung; gunakan `~/.agents/skills` untuk instalasi baru.
 - Panggil secara eksplisit dengan `$kbeauty-trade-matchmaker` atau `/skills` di CLI dan ekstensi IDE, atau `@` di ChatGPT. Pemanggilan implisit ditentukan oleh `description`.
-- Folder skill mandiri hanya terlihat di **aplikasi desktop ChatGPT, Codex CLI, dan ekstensi IDE**. ChatGPT **versi web dan mobile** memerlukan skill yang dikemas sebagai plugin, yang tidak disertakan dalam v0.2.0.
+- Folder skill mandiri hanya terlihat di **aplikasi desktop ChatGPT, Codex CLI, dan ekstensi IDE**. ChatGPT **versi web dan mobile** memerlukan ZIP plugin; lihat [Menginstal sebagai plugin](#menginstal-sebagai-plugin).
 - `AGENTS.md` bukan cara untuk menginstal skill. Itu adalah fitur Codex terpisah untuk instruksi repositori yang selalu aktif.
 
 > **Diperiksa terhadap dokumentasi resmi pada 2026-09-13.** Jika ada hal di sini yang tidak sesuai dengan dokumentasi terkini, dokumentasilah yang benar.
@@ -356,6 +503,8 @@ python3 tests/run_tests.py -v    # One line per case, not just failures
 ```
 
 Runner hanya menggunakan standard library, menemukan fixture secara relatif terhadap lokasinya sendiri, meneruskan `--as-of 2026-09-12` ke setiap skrip, dan membandingkan output dengan fixture yang diharapkan **byte demi byte**. Sebelum kasus-kasus fixture, runner memeriksa skema itu sendiri: bahwa skema dapat di-parse, bahwa setiap `$ref` dapat di-resolve, bahwa tidak ada keyword yang tidak didukung, bahwa `$defs` bersama konsisten di seluruh file, dan bahwa versi yang tertanam sesuai dengan `scoring.config.json`.
+
+Fase `plugins` membaca manifest dan builder di tingkat repositori, sehingga jumlah penuh 536 berlaku untuk checkout repositori; salinan yang terinstal melaporkan dua SKIP (fase `plugins` dan satu kasus MCP). Fase ini menjalankan builder rilis di repositori git sekali pakai, sehingga pekerjaan yang belum di-commit tidak memengaruhi hasilnya.
 
 Skrip juga dapat dijalankan secara langsung. JSON dikirim ke `stdout` dan setiap diagnostik ke `stderr`, sehingga penggunaan pipe aman.
 
@@ -419,7 +568,7 @@ Enam pertanyaan masih terbuka. Masing-masing memiliki nilai default dalam implem
 
 | Versi | Nilai | Menjelaskan | Lokasi |
 |---|---|---|---|
-| `skill_version` | `0.2.0` | Paket: prompt, referensi, skrip, template, pengujian | Badan `SKILL.md`, `match-result.skill_version` |
+| `skill_version` | `0.3.0` | Paket: prompt, referensi, skrip, template, pengujian | Badan `SKILL.md`, `match-result.skill_version`, kedua manifest plugin |
 | `schema_version` | `0.1.0` | Kontrak bentuk: nama field, enum, daftar field wajib | Setiap dokumen, `schemas/*.json` |
 | `score_version` | `kbtm-score-0.1.0` | Rubrik: bobot, kriteria, sinyal, penalti, ambang, hard filter | `scoring.config.json`, setiap dokumen yang dinilai |
 

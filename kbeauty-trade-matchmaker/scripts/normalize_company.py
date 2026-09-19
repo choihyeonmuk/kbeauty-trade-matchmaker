@@ -371,6 +371,10 @@ def main(argv):
     try:
         if args.version:
             return _print_version(args)
+        if args.as_of:
+            # 7.3: an --as-of that is not a real YYYY-MM-DD date is a usage error; it
+            # would otherwise ride into the envelope unchecked.
+            _common.resolve_as_of([], args.as_of)
 
         if args.name is not None or args.url is not None:
             _emit(_inline_record(args), args)

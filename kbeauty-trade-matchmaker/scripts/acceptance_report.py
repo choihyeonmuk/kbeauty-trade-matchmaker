@@ -804,7 +804,11 @@ def _run(args, config):
 
     as_of = args.as_of
     if as_of is not None:
-        _common.resolve_as_of([], as_of)  # rejects a malformed --as-of (exit 2)
+        if not as_of.strip():
+            # An empty flag would otherwise fall through resolve_as_of to the config
+            # default and surface later as a bogus "reviewed_on is later" error.
+            raise _common.UsageError("--as-of is empty; give a YYYY-MM-DD date or omit the flag")
+        as_of = _common.resolve_as_of([], as_of)  # rejects a malformed --as-of (exit 2)
     else:
         stamps = sorted(
             set(

@@ -1,0 +1,566 @@
+{
+  "report_kind": "recheck-queue",
+  "schema_version": "0.1.0",
+  "score_version": "kbtm-score-0.1.0",
+  "skill_version": "0.3.0",
+  "as_of": "2026-09-12",
+  "policy": {
+    "due_from_bucket": "aging",
+    "stale_threshold_days": 730,
+    "recency_buckets": [
+      {
+        "label": "fresh",
+        "max_age_days": 90
+      },
+      {
+        "label": "current",
+        "max_age_days": 365
+      },
+      {
+        "label": "aging",
+        "max_age_days": 730
+      },
+      {
+        "label": "stale",
+        "max_age_days": null
+      }
+    ],
+    "reason_order": [
+      "site_unreachable",
+      "record_flagged_stale",
+      "past_stale_threshold",
+      "source_flagged_stale",
+      "unresolved_conflict",
+      "aging",
+      "undated"
+    ]
+  },
+  "summary": {
+    "records_scanned": 20,
+    "records_queued": 3,
+    "records_listed": 3,
+    "records_without_evidence": 0,
+    "evidence_items_scanned": 144,
+    "evidence_items_queued": 17,
+    "evidence_items_undated": 1,
+    "claims_without_current_evidence": 14,
+    "by_reason": {
+      "site_unreachable": 1,
+      "record_flagged_stale": 1,
+      "past_stale_threshold": 15,
+      "source_flagged_stale": 8,
+      "unresolved_conflict": 2,
+      "aging": 0,
+      "undated": 0
+    },
+    "by_bucket": {
+      "fresh": 31,
+      "current": 94,
+      "aging": 3,
+      "stale": 15,
+      "unknown": 1
+    }
+  },
+  "queue": [
+    {
+      "position": 1,
+      "entity": "buyer",
+      "record_id": "BUY-northgateimport-example",
+      "input_index": 9,
+      "company_name": "Northgate Import Co Ltd",
+      "canonical_domain": "northgateimport.example",
+      "priority_reason": "site_unreachable",
+      "record_reasons": [
+        "site_unreachable"
+      ],
+      "claims": [
+        {
+          "claim": "company_type",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-001"
+          ],
+          "newest_source_date": "2024-08-14",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 0
+          }
+        },
+        {
+          "claim": "product_categories",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-002"
+          ],
+          "newest_source_date": "2024-08-14",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 0
+          }
+        },
+        {
+          "claim": "korean_products_signal",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-003"
+          ],
+          "newest_source_date": "2024-08-14",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 0
+          }
+        },
+        {
+          "claim": "wholesale_signal",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-004"
+          ],
+          "newest_source_date": "2024-08-14",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 0
+          }
+        },
+        {
+          "claim": "sourcing_intent",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-008"
+          ],
+          "newest_source_date": "2024-08-14",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 0
+          }
+        },
+        {
+          "claim": "country",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-005"
+          ],
+          "newest_source_date": "2024-08-14",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 0
+          }
+        },
+        {
+          "claim": "contact_channels",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-007"
+          ],
+          "newest_source_date": "2024-08-14",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 0
+          }
+        }
+      ],
+      "items": [
+        {
+          "evidence_id": "EV-001",
+          "claim": "company_type",
+          "material": true,
+          "source_url": "https://ukbeautydirectory.example/northgate-import",
+          "source_tier": 4,
+          "source_date": "2024-08-14",
+          "age_days": 759,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold"
+          ]
+        },
+        {
+          "evidence_id": "EV-002",
+          "claim": "product_categories",
+          "material": true,
+          "source_url": "https://ukbeautydirectory.example/northgate-import",
+          "source_tier": 4,
+          "source_date": "2024-08-14",
+          "age_days": 759,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold"
+          ]
+        },
+        {
+          "evidence_id": "EV-003",
+          "claim": "korean_products_signal",
+          "material": true,
+          "source_url": "https://ukbeautydirectory.example/northgate-import",
+          "source_tier": 4,
+          "source_date": "2024-08-14",
+          "age_days": 759,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold"
+          ]
+        },
+        {
+          "evidence_id": "EV-004",
+          "claim": "wholesale_signal",
+          "material": true,
+          "source_url": "https://ukbeautydirectory.example/northgate-import",
+          "source_tier": 4,
+          "source_date": "2024-08-14",
+          "age_days": 759,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold"
+          ]
+        },
+        {
+          "evidence_id": "EV-005",
+          "claim": "country",
+          "material": true,
+          "source_url": "https://ukbeautydirectory.example/northgate-import",
+          "source_tier": 4,
+          "source_date": "2024-08-14",
+          "age_days": 759,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold"
+          ]
+        },
+        {
+          "evidence_id": "EV-007",
+          "claim": "contact_channels",
+          "material": true,
+          "source_url": "https://ukbeautydirectory.example/northgate-import",
+          "source_tier": 4,
+          "source_date": "2024-08-14",
+          "age_days": 759,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold"
+          ]
+        },
+        {
+          "evidence_id": "EV-008",
+          "claim": "sourcing_intent",
+          "material": true,
+          "source_url": "https://ukbeautydirectory.example/northgate-import",
+          "source_tier": 4,
+          "source_date": "2024-08-14",
+          "age_days": 759,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold"
+          ]
+        },
+        {
+          "evidence_id": "EV-006",
+          "claim": "operational_status",
+          "material": false,
+          "source_url": "https://ukbeautydirectory.example/northgate-import",
+          "source_tier": 4,
+          "source_date": "2024-08-14",
+          "age_days": 759,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold",
+            "source_flagged_stale"
+          ]
+        }
+      ]
+    },
+    {
+      "position": 2,
+      "entity": "buyer",
+      "record_id": "BUY-palefade-example",
+      "input_index": 8,
+      "company_name": "Pale Fade Trading Ltd",
+      "canonical_domain": "palefade.example",
+      "priority_reason": "record_flagged_stale",
+      "record_reasons": [
+        "record_flagged_stale"
+      ],
+      "claims": [
+        {
+          "claim": "company_type",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-001"
+          ],
+          "newest_source_date": "2023-01-05",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 1
+          }
+        },
+        {
+          "claim": "product_categories",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-002"
+          ],
+          "newest_source_date": "2023-01-05",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 1
+          }
+        },
+        {
+          "claim": "korean_products_signal",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-003"
+          ],
+          "newest_source_date": "2023-01-05",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 1
+          }
+        },
+        {
+          "claim": "wholesale_signal",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-004"
+          ],
+          "newest_source_date": "2023-01-05",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 1
+          }
+        },
+        {
+          "claim": "sourcing_intent",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-005"
+          ],
+          "newest_source_date": "2023-01-05",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 1
+          }
+        },
+        {
+          "claim": "country",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-006"
+          ],
+          "newest_source_date": "2023-01-05",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 1
+          }
+        },
+        {
+          "claim": "contact_channels",
+          "reason": "no_current_evidence",
+          "evidence_ids": [
+            "EV-007"
+          ],
+          "newest_source_date": "2023-01-05",
+          "counts": {
+            "old": 1,
+            "undated": 0,
+            "flagged": 1
+          }
+        }
+      ],
+      "items": [
+        {
+          "evidence_id": "EV-001",
+          "claim": "company_type",
+          "material": true,
+          "source_url": "https://palefade.example/about",
+          "source_tier": 1,
+          "source_date": "2023-01-05",
+          "age_days": 1346,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold",
+            "source_flagged_stale"
+          ]
+        },
+        {
+          "evidence_id": "EV-002",
+          "claim": "product_categories",
+          "material": true,
+          "source_url": "https://palefade.example/brands",
+          "source_tier": 1,
+          "source_date": "2023-01-05",
+          "age_days": 1346,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold",
+            "source_flagged_stale"
+          ]
+        },
+        {
+          "evidence_id": "EV-003",
+          "claim": "korean_products_signal",
+          "material": true,
+          "source_url": "https://palefade.example/brands",
+          "source_tier": 1,
+          "source_date": "2023-01-05",
+          "age_days": 1346,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold",
+            "source_flagged_stale"
+          ]
+        },
+        {
+          "evidence_id": "EV-004",
+          "claim": "wholesale_signal",
+          "material": true,
+          "source_url": "https://palefade.example/wholesale",
+          "source_tier": 1,
+          "source_date": "2023-01-05",
+          "age_days": 1346,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold",
+            "source_flagged_stale"
+          ]
+        },
+        {
+          "evidence_id": "EV-005",
+          "claim": "sourcing_intent",
+          "material": true,
+          "source_url": "https://palefade.example/partners",
+          "source_tier": 1,
+          "source_date": "2023-01-05",
+          "age_days": 1346,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold",
+            "source_flagged_stale"
+          ]
+        },
+        {
+          "evidence_id": "EV-006",
+          "claim": "country",
+          "material": true,
+          "source_url": "https://palefade.example/contact",
+          "source_tier": 1,
+          "source_date": "2023-01-05",
+          "age_days": 1346,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold",
+            "source_flagged_stale"
+          ]
+        },
+        {
+          "evidence_id": "EV-007",
+          "claim": "contact_channels",
+          "material": true,
+          "source_url": "https://palefade.example/contact",
+          "source_tier": 1,
+          "source_date": "2023-01-05",
+          "age_days": 1346,
+          "recency_bucket": "stale",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "past_stale_threshold",
+            "source_flagged_stale"
+          ]
+        }
+      ]
+    },
+    {
+      "position": 3,
+      "entity": "buyer",
+      "record_id": "BUY-kantoimport-example",
+      "input_index": 14,
+      "company_name": "Kanto Import Partners KK",
+      "canonical_domain": "kantoimport.example",
+      "priority_reason": "unresolved_conflict",
+      "record_reasons": [],
+      "claims": [],
+      "items": [
+        {
+          "evidence_id": "EV-003",
+          "claim": "country",
+          "material": true,
+          "source_url": "https://asiatradelist.example/kanto-import",
+          "source_tier": 4,
+          "source_date": "2025-06-01",
+          "age_days": 468,
+          "recency_bucket": "aging",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "unresolved_conflict"
+          ],
+          "conflicts_with": [
+            "EV-002"
+          ]
+        },
+        {
+          "evidence_id": "EV-002",
+          "claim": "country",
+          "material": true,
+          "source_url": "https://kantoimport.example/about",
+          "source_tier": 1,
+          "source_date": "2026-02-14",
+          "age_days": 210,
+          "recency_bucket": "current",
+          "last_read": "2026-09-10",
+          "days_since_read": 2,
+          "reasons": [
+            "unresolved_conflict"
+          ],
+          "conflicts_with": [
+            "EV-003"
+          ]
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "1 undated evidence item(s) were not queued: an undated page is current while its last reading (observed_at) is, because an undated page is not a stale page (evidence.unknown_source_date_note). They are queued as 'undated' once that reading reaches the aging bucket.",
+    "This queue lists what to re-read; it changed no record and no score. Re-reading is done by the agent under references/evidence-policy.md section 5, then the pipeline is re-run."
+  ]
+}

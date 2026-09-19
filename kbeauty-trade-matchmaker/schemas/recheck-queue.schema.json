@@ -1,0 +1,467 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tradewith.example/kbeauty-trade-matchmaker/v0.1.0/recheck-queue.schema.json",
+  "title": "Re-check Queue",
+  "description": "One re-check queue, as emitted by scripts/stale_evidence.py: the records, material claims and evidence items that should be re-read, most urgent first, as of the re-check date. It is an AUDIT document: it fetches nothing, changes no record and no score, and no scorer reads it, so producing one can never move score_version. See references/evidence-policy.md section 5.6 for the reason codes and references/data-contract.md section 9.5 for the field notes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "report_kind",
+    "schema_version",
+    "score_version",
+    "skill_version",
+    "as_of",
+    "policy",
+    "summary",
+    "queue",
+    "notes"
+  ],
+  "properties": {
+    "report_kind": {
+      "type": "string",
+      "description": "Document discriminator, so validate_output.py --schema auto can route this document without guessing.",
+      "const": "recheck-queue"
+    },
+    "schema_version": {
+      "type": "string",
+      "description": "Version of this schema contract, e.g. \"0.1.0\".",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "score_version": {
+      "$comment": "Inlined rather than referenced from the shared BUILD-CONTRACT 3.7 definition: this is the rubric whose recency buckets and stale threshold the queue applied, never \"unscored\". The input's own score_version may differ; the queue then says so in notes[] instead of refusing, because it aggregates no score.",
+      "type": "string",
+      "description": "The scoring config whose evidence block (recency buckets, stale threshold, material claims) this queue applied.",
+      "maxLength": 64,
+      "pattern": "^kbtm-score-[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "skill_version": {
+      "type": "string",
+      "description": "Version of the skill package that produced this document.",
+      "maxLength": 64
+    },
+    "as_of": {
+      "type": "string",
+      "description": "The re-check date (--as-of, required). Every age in this document is measured to it; scripts never read the wall clock (INV-14).",
+      "format": "date",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "policy": {
+      "$ref": "#/$defs/policy"
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    },
+    "queue": {
+      "type": "array",
+      "description": "Queued records, most urgent first. Under --top only the first N are listed; summary still counts all of them.",
+      "items": {
+        "$ref": "#/$defs/queue_entry"
+      }
+    },
+    "notes": {
+      "type": "array",
+      "description": "Plain-language notes. The last one always says the queue changed no record and no score.",
+      "items": {
+        "type": "string",
+        "maxLength": 1000
+      },
+      "maxItems": 200
+    }
+  },
+  "$defs": {
+    "reason_code": {
+      "type": "string",
+      "description": "A record-level or item-level re-check reason; see references/evidence-policy.md section 5.6.",
+      "enum": [
+        "site_unreachable",
+        "record_flagged_stale",
+        "past_stale_threshold",
+        "source_flagged_stale",
+        "unresolved_conflict",
+        "aging",
+        "undated"
+      ]
+    },
+    "policy": {
+      "type": "object",
+      "description": "The rules this queue applied, echoed so the queue can be read without the config.",
+      "additionalProperties": false,
+      "required": [
+        "due_from_bucket",
+        "stale_threshold_days",
+        "recency_buckets",
+        "reason_order"
+      ],
+      "properties": {
+        "due_from_bucket": {
+          "type": "string",
+          "description": "An item is due once its recency bucket is this one or a later one.",
+          "maxLength": 64
+        },
+        "stale_threshold_days": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "evidence.stale_threshold_days of the scoring config."
+        },
+        "recency_buckets": {
+          "type": "array",
+          "description": "evidence.recency_buckets of the scoring config, label and upper age only.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "label",
+              "max_age_days"
+            ],
+            "properties": {
+              "label": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "max_age_days": {
+                "oneOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "reason_order": {
+          "type": "array",
+          "description": "Priority of the reason codes, most urgent first.",
+          "items": {
+            "$ref": "#/$defs/reason_code"
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "records_scanned",
+        "records_queued",
+        "records_listed",
+        "records_without_evidence",
+        "evidence_items_scanned",
+        "evidence_items_queued",
+        "evidence_items_undated",
+        "claims_without_current_evidence",
+        "by_reason",
+        "by_bucket"
+      ],
+      "properties": {
+        "records_scanned": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "records_queued": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "records_listed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "records_without_evidence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_items_scanned": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_items_queued": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_items_undated": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "claims_without_current_evidence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "by_reason": {
+          "type": "object",
+          "description": "Records (record-level codes) or evidence items (item-level codes) carrying each reason, over the whole queue.",
+          "additionalProperties": false,
+          "required": [
+            "site_unreachable",
+            "record_flagged_stale",
+            "past_stale_threshold",
+            "source_flagged_stale",
+            "unresolved_conflict",
+            "aging",
+            "undated"
+          ],
+          "properties": {
+            "site_unreachable": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "record_flagged_stale": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "past_stale_threshold": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "source_flagged_stale": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unresolved_conflict": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "aging": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "undated": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "by_bucket": {
+          "type": "object",
+          "description": "Every scanned evidence item by the recency bucket of its source_date, plus \"unknown\" for an undated one. Keys follow the config's bucket labels.",
+          "required": [
+            "unknown"
+          ],
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "queue_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "position",
+        "entity",
+        "record_id",
+        "input_index",
+        "priority_reason",
+        "record_reasons",
+        "claims",
+        "items"
+      ],
+      "properties": {
+        "position": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "entity": {
+          "type": "string",
+          "enum": [
+            "buyer",
+            "seller",
+            "rfq"
+          ]
+        },
+        "record_id": {
+          "type": "string",
+          "description": "buyer_id, seller_id or rfq_id. A record without one is refused.",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "input_index": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Position of the record in the input (the RFQ of a match input follows its records)."
+        },
+        "company_name": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "canonical_domain": {
+          "type": "string",
+          "maxLength": 253
+        },
+        "priority_reason": {
+          "$ref": "#/$defs/reason_code"
+        },
+        "record_reasons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reason_code"
+          }
+        },
+        "claims": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/claim_finding"
+          }
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/item_finding"
+          }
+        }
+      }
+    },
+    "claim_finding": {
+      "type": "object",
+      "description": "A material claim that is covered but has no current evidence item.",
+      "additionalProperties": false,
+      "required": [
+        "claim",
+        "reason",
+        "evidence_ids",
+        "newest_source_date",
+        "counts"
+      ],
+      "properties": {
+        "claim": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "reason": {
+          "type": "string",
+          "const": "no_current_evidence"
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 128
+          }
+        },
+        "newest_source_date": {
+          "type": "string",
+          "maxLength": 10,
+          "pattern": "^([0-9]{4}-[0-9]{2}-[0-9]{2}|unknown)$"
+        },
+        "counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "old",
+            "undated",
+            "flagged"
+          ],
+          "properties": {
+            "old": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "undated": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "flagged": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "item_finding": {
+      "type": "object",
+      "description": "One evidence item to re-open. Only locators and dates are copied: never the value, quote_or_summary or a contact channel.",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "claim",
+        "material",
+        "source_url",
+        "source_date",
+        "age_days",
+        "recency_bucket",
+        "last_read",
+        "days_since_read",
+        "reasons"
+      ],
+      "properties": {
+        "evidence_id": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "claim": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "material": {
+          "type": "boolean"
+        },
+        "source_url": {
+          "type": "string",
+          "description": "The page to re-open, as stored on the record, or \"unknown\".",
+          "maxLength": 2048
+        },
+        "source_tier": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "source_date": {
+          "type": "string",
+          "maxLength": 10,
+          "pattern": "^([0-9]{4}-[0-9]{2}-[0-9]{2}|unknown)$"
+        },
+        "age_days": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "string",
+              "const": "unknown"
+            }
+          ]
+        },
+        "recency_bucket": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "last_read": {
+          "type": "string",
+          "maxLength": 10,
+          "pattern": "^([0-9]{4}-[0-9]{2}-[0-9]{2}|unknown)$"
+        },
+        "days_since_read": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "string",
+              "const": "unknown"
+            }
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/reason_code"
+          }
+        },
+        "conflicts_with": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 128
+          }
+        }
+      }
+    }
+  }
+}

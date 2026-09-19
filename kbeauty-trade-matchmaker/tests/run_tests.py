@@ -42,6 +42,7 @@ Options:
 from __future__ import annotations
 
 import argparse
+import copy
 import csv
 import glob
 import hashlib
@@ -49,6 +50,7 @@ import io
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -1725,6 +1727,37 @@ pprint random re shutil signal socket ssl string subprocess sys tempfile textwra
 typing unicodedata urllib uuid warnings zipfile abc contextlib operator statistics""".split())
 
 
+#: Modules that open a network connection (or send mail) on their own.
+NETWORK_MODULES = ("socket", "ssl", "http", "ftplib", "smtplib", "poplib", "imaplib",
+                   "telnetlib", "xmlrpc")
+#: The one package script that starts child processes (the MCP server runs the other
+#: scripts); a subprocess anywhere else could shell out to curl past every other scan.
+SUBPROCESS_OK_SCRIPTS = ("mcp_server.py",)
+
+
+def _network_problem(line, allow_subprocess):
+    """A reason string when one source line could open a network path, else None.
+
+    Catches the spellings a plain "import socket" scan misses: "from urllib import
+    request", "__import__(...)", importlib, and subprocess (a shell-out to curl) outside
+    the files allowed to start children. Comment lines are ignored.
+    """
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#"):
+        return None
+    match = re.match(r"(?:from|import)\s+([A-Za-z_][A-Za-z0-9_]*)", stripped)
+    module = match.group(1) if match else None
+    if module in NETWORK_MODULES or "urllib.request" in stripped:
+        return "network client"
+    if re.match(r"from\s+urllib\s+import\s+.*\brequest\b", stripped):
+        return "network client"
+    if "__import__(" in stripped or re.search(r"\bimportlib\b", stripped):
+        return "dynamic import"
+    if module == "subprocess" and not allow_subprocess:
+        return "subprocess outside its allow-list"
+    return None
+
+
 def package_files(exts=(".py", ".md", ".json", ".sh")):
     for root, dirs, files in os.walk(PKG_ROOT):
         dirs[:] = [d for d in dirs if d not in (".git", "__pycache__", "node_modules")]
@@ -2556,7 +2589,7 @@ def _rewrite_review(text, record_id, changes):
     return out.getvalue()
 
 
-def _refusal(report, name, args, expect, label):
+def _refusal(report, name, args, expect, label, prefix="calibration", empty_stdout=False):
     """One refusal path: exit 1, exactly one ERROR: line, and it says why."""
     code, out, err = run_script(name, args)
     error_lines = [ln for ln in err.splitlines() if ln.startswith("ERROR:")]
@@ -2569,7 +2602,9 @@ def _refusal(report, name, args, expect, label):
         problems.append("raw traceback escaped main()")
     if not any(expect in ln for ln in error_lines):
         problems.append("no ERROR line carries %r; got %s" % (expect, error_lines[:1]))
-    report.check("calibration: refuses %s" % label, not problems, "\n".join(problems))
+    if empty_stdout and out.strip():
+        problems.append("stdout is not empty")
+    report.check("%s: refuses %s" % (prefix, label), not problems, "\n".join(problems))
 
 
 def _sheet_shape(value):
@@ -3151,6 +3186,2889 @@ def phase_calibration(report, allow_missing):
                 pass
 
 
+# ---------------------------------------------------------------------------
+# 5b. run diff - scripts/diff_runs.py compares two scored runs
+#
+# The inputs are scored in-phase, as phase_calibration does. The three goldens are
+# byte-compared; everything else is a property of fresh output, so a mutation case
+# never depends on the exact numbers of a golden.
+# ---------------------------------------------------------------------------
+DIFF_SCRIPTS = ["diff_runs.py"]
+DIFF_FORBIDDEN_KEYS = ("contact_channels", "evidence", "website", "observed_value",
+                       "required_value", "failed_rules")
+
+
+def _diff_keys(node, out):
+    if isinstance(node, dict):
+        for key, value in node.items():
+            out.add(key)
+            _diff_keys(value, out)
+    elif isinstance(node, list):
+        for value in node:
+            _diff_keys(value, out)
+    return out
+
+
+def _diff_run(args, stdin_data=None):
+    """(exit, parsed JSON or None, stderr) for one diff_runs.py call."""
+    code, out, err = run_script("diff_runs.py", args, stdin_data)
+    try:
+        parsed = json.loads(out) if code == 0 else None
+    except ValueError:
+        parsed = None
+    return code, parsed, err
+
+
+def _diff_usage(report, args, label, stdin_data=None):
+    """A usage error: exit 2, exactly one ERROR: line, no traceback, empty stdout."""
+    code, out, err = run_script("diff_runs.py", args, stdin_data)
+    error_lines = [ln for ln in err.splitlines() if ln.startswith("ERROR:")]
+    problems = []
+    if code != 2:
+        problems.append("exit %d, expected 2" % code)
+    if len(error_lines) != 1:
+        problems.append("%d 'ERROR:' lines, R7.3.3 requires exactly 1" % len(error_lines))
+    if "Traceback (most recent call last)" in err:
+        problems.append("raw traceback escaped main()")
+    if out.strip():
+        problems.append("stdout is not empty")
+    report.check("run diff: usage error %s" % label, not problems, "\n".join(problems))
+
+
+def _diff_refusal(report, args, expect, label):
+    _refusal(report, "diff_runs.py", args, expect, label, prefix="run diff",
+             empty_stdout=True)
+
+
+def _diff_goldens(report, paths):
+    """The three byte goldens, INV-13 re-runs and the --strict validator on each."""
+    cases = (
+        # The as_of pair takes no --as-of: the diff defaults to the later input date,
+        # and an explicit AS_OF would be earlier than the 2028 run (refused by design).
+        ("the UAE buyer run re-scored two years later",
+         ["--before", paths["B1"], "--after", paths["B2"], "--pretty"],
+         "diff.buyers.uae.asof.expected.json"),
+        ("match-134 without and with the bounded rerank",
+         ["--before", paths["M1"], "--after", paths["M2"], "--as-of", AS_OF, "--pretty"],
+         "diff.match-134.rerank.expected.json"),
+        ("the UAE buyer run against the UK sunscreen query",
+         ["--before", paths["B1"], "--after", paths["B3"], "--as-of", AS_OF, "--pretty"],
+         "diff.buyers.uae-uk.expected.json"),
+    )
+    parsed = {}
+    for label, args, expected_name in cases:
+        code, out, err = run_script("diff_runs.py", args)
+        report.check("run diff: %s exits 0" % label, code == 0,
+                     "exit %d\n%s" % (code, err.strip()[:400]))
+        golden = _read_text(os.path.join(EXPECTED, expected_name))
+        report.check("run diff: %s matches %s byte for byte" % (label, expected_name),
+                     out == golden, "generated diff differs from the expected fixture")
+        code2, out2, _err = run_script("diff_runs.py", args)
+        report.check("run diff: INV-13 %s is byte-identical on a re-run" % label,
+                     code2 == 0 and out2 == out, "second run differed")
+        path = _write_temp_text(out, "kbtm-diff-out-", ".json")
+        try:
+            vcode, _vout, verr = run_script("validate_output.py", [
+                "--input", path, "--schema", "run-diff", "--invariants", "--strict"])
+        finally:
+            os.unlink(path)
+        report.check("run diff: %s passes validate_output --schema run-diff --strict" % label,
+                     vcode == 0, verr.strip()[:400])
+        parsed[expected_name] = json.loads(out) if code == 0 else {}
+    return parsed
+
+
+def _diff_properties(report, paths, goldens):
+    asof = goldens["diff.buyers.uae.asof.expected.json"]
+    rerank = goldens["diff.match-134.rerank.expected.json"]
+    uk = goldens["diff.buyers.uae-uk.expected.json"]
+
+    # Identity: a run against itself changes nothing.
+    code, same, err = _diff_run(["--before", paths["B1"], "--after", paths["B1"]])
+    lists = ("new", "gone", "newly_excluded", "newly_returned", "exclusion_changes", "changed")
+    counts = dict((k, v) for k, v in (same or {}).get("summary", {}).items()
+                  if k not in ("paired", "unchanged", "rank_changed"))
+    report.check("run diff: a run diffed against itself reports no change",
+                 code == 0 and all(same[k] == [] for k in lists)
+                 and all(v == 0 for v in counts.values())
+                 and same["summary"]["paired"] == same["summary"]["unchanged"] == 20
+                 and same["score_version"] == read_json(paths["B1"])["score_version"]
+                 and same["notes"] == [],
+                 "exit %d\n%s" % (code, err.strip()[:300]))
+
+    # Antisymmetry: swapping the runs negates every delta and swaps gained / lost.
+    code, swapped, err = _diff_run(["--before", paths["B2"], "--after", paths["B1"]])
+    forward = dict((i["record_id"], i["score"]["delta"]) for i in asof["changed"] if "score" in i)
+    backward = dict((i["record_id"], i["score"]["delta"])
+                    for i in (swapped or {}).get("changed", []) if "score" in i)
+    report.check("run diff: swapping --before and --after negates every score delta and "
+                 "swaps qualified gained / lost",
+                 code == 0 and forward and backward == dict((k, -v) for k, v in forward.items())
+                 and swapped["summary"]["qualified_gained"] == asof["summary"]["qualified_lost"]
+                 and swapped["summary"]["qualified_lost"] == asof["summary"]["qualified_gained"]
+                 and any("dated later than --after" in n for n in swapped["notes"]),
+                 "exit %d\n%s" % (code, err.strip()[:300]))
+
+    # Ordering: changed[] by |score delta| descending, then record_id.
+    order = [((-abs(i["score"]["delta"]) if "score" in i else 0), i["record_id"])
+             for i in asof["changed"]]
+    report.check("run diff: changed[] is ordered by |score delta| desc, then record_id",
+                 order == sorted(order) and len(order) > 1, str(order[:4]))
+
+    lost = sorted(i["record_id"] for i in asof["changed"]
+                  if i.get("qualified", {}).get("flip") == "lost")
+    report.check("run diff: re-scoring at 2028-03-01 loses qualified on exactly "
+                 "luminaglow and lioncitybeauty",
+                 asof["summary"]["qualified_lost"] == 2
+                 and lost == ["BUY-lioncitybeauty-example", "BUY-luminaglow-example"],
+                 "lost=%s" % lost)
+    report.check("run diff: a confidence delta is computed in Decimal (kantoimport "
+                 "0.41 -> 0.15 = -0.26)",
+                 any(i["record_id"] == "BUY-kantoimport-example"
+                     and i.get("confidence") == {"before": 0.41, "after": 0.15, "delta": -0.26}
+                     for i in asof["changed"]),
+                 "kantoimport confidence change missing or wrong")
+    report.check("run diff: the diff is dated at the later input run and notes the as_of "
+                 "change",
+                 asof["as_of"] == "2028-03-01" and asof["context"]["as_of_changed"] is True
+                 and any("different as_of dates" in n for n in asof["notes"]),
+                 "as_of=%s" % asof.get("as_of"))
+
+    by_id = dict((i["record_id"], i) for i in rerank["changed"])
+    hanbit = by_id.get("SEL-hanbitcos-example", {})
+    report.check("run diff: the rerank moves two ranks, and base_score is absent where "
+                 "the base did not change",
+                 rerank["summary"]["rank_changed"] == 2
+                 and hanbit.get("rank") == {"before": 2, "after": 1}
+                 and "score" in hanbit and "base_score" not in hanbit
+                 and by_id.get("SEL-hansolodm-example", {}).get("rank") == {"before": 1,
+                                                                            "after": 2},
+                 "changed=%s" % sorted(by_id))
+    report.check("run diff: the listed / not-listed note is on a match diff only",
+                 any("listed / not listed" in n for n in rerank["notes"])
+                 and not any("listed / not listed" in n for n in asof["notes"] + uk["notes"]),
+                 "notes differ")
+    report.check("run diff: a discovery diff has rank_changed null and weights_changed null; "
+                 "a match diff has query_changed null",
+                 asof["summary"]["rank_changed"] is None
+                 and asof["context"]["weights_changed"] is None
+                 and rerank["context"]["query_changed"] is None
+                 and rerank["context"]["weights_changed"] is False,
+                 "context=%s / %s" % (asof["context"], rerank["context"]))
+    report.check("run diff: a changed query is flagged and Missing-line changes are reported",
+                 uk["context"]["query_changed"] is True
+                 and uk["summary"]["missing_changed"] == 9
+                 and uk["summary"]["qualified_gained"] > 0
+                 and uk["summary"]["qualified_lost"] > 0,
+                 "context=%s summary=%s" % (uk["context"], uk["summary"]))
+
+    leaked = set()
+    for document in (asof, rerank, uk):
+        leaked |= _diff_keys(document, set()) & set(DIFF_FORBIDDEN_KEYS)
+    report.check("run diff: no contact channel, evidence, website or observed value is "
+                 "copied into a diff", not leaked, "leaked keys: %s" % sorted(leaked))
+
+    # stdin is accepted for one side and gives the same bytes as the file.
+    code, via_file, _err = run_script("diff_runs.py", [
+        "--before", paths["M1"], "--after", paths["M2"], "--as-of", AS_OF])
+    code2, via_stdin, _err = run_script("diff_runs.py", [
+        "--before", "-", "--after", paths["M2"], "--as-of", AS_OF],
+        _read_text(paths["M1"]))
+    report.check("run diff: --before - reads stdin and yields the same diff",
+                 code == 0 and code2 == 0 and via_file == via_stdin,
+                 "exit %d / %d" % (code, code2))
+
+
+def _diff_mutations(report, paths, temp):
+    b1 = read_json(paths["B1"])
+    m1 = read_json(paths["M1"])
+    first = b1["records"][0]
+    xid = first["buyer_id"]
+
+    def write(document, prefix):
+        path = _write_temp_json(document, prefix)
+        temp.append(path)
+        return path
+
+    def run(before, after):
+        return _diff_run(["--before", before, "--after", after, "--as-of", AS_OF])
+
+    # (a) a record deleted from one side is gone / new, with its returned state.
+    dropped = copy.deepcopy(b1)
+    dropped["records"] = dropped["records"][1:]
+    dropped_path = write(dropped, "kbtm-diff-drop-")
+    code, gone, err = run(paths["B1"], dropped_path)
+    report.check("run diff: a record missing from --after is gone, state returned, with "
+                 "its score and qualified flag",
+                 code == 0 and [(i["record_id"], i["state"], i.get("score"), i.get("qualified"))
+                                for i in gone["gone"]]
+                 == [(xid, "returned", first["qualification_score"], first["qualified"])]
+                 and gone["new"] == [] and "merged_into" not in gone["gone"][0],
+                 "exit %d\n%s" % (code, err.strip()[:300]))
+    code, new, err = run(dropped_path, paths["B1"])
+    report.check("run diff: a record missing from --before is new",
+                 code == 0 and [i["record_id"] for i in new["new"]] == [xid]
+                 and new["gone"] == [], "exit %d\n%s" % (code, err.strip()[:300]))
+
+    # (b) returned -> excluded and back.
+    excluded = copy.deepcopy(b1)
+    excluded["records"] = excluded["records"][1:]
+    excluded["excluded"].append({
+        "id": xid, "company_name": first["company_name"],
+        "canonical_domain": first["canonical_domain"],
+        "reason_summary": "HF-01 Product category not covered",
+        "failed_rules": [{"rule_id": "HF-01", "rule_name": "Product category",
+                          "reason": "Product category not covered",
+                          "observed_value": "skincare", "required_value": "sunscreen"}]})
+    excluded_path = write(excluded, "kbtm-diff-excl-")
+    code, moved, err = run(paths["B1"], excluded_path)
+    item = (moved or {}).get("newly_excluded", [{}])[0] if moved else {}
+    report.check("run diff: returned -> excluded is newly_excluded with the failed rule ids "
+                 "only",
+                 code == 0 and len(moved["newly_excluded"]) == 1
+                 and item.get("record_id") == xid and item.get("failed_rule_ids") == ["HF-01"]
+                 and item.get("before_score") == first["qualification_score"]
+                 and moved["gone"] == [] and moved["new"] == [],
+                 "exit %d\n%s" % (code, err.strip()[:300]))
+    code, back, err = run(excluded_path, paths["B1"])
+    item = back["newly_returned"][0] if code == 0 and back["newly_returned"] else {}
+    report.check("run diff: excluded -> returned is newly_returned with the old rule ids",
+                 code == 0 and item.get("record_id") == xid
+                 and item.get("before_failed_rule_ids") == ["HF-01"]
+                 and item.get("after_score") == first["qualification_score"],
+                 "exit %d\n%s" % (code, err.strip()[:300]))
+
+    # (c) excluded in both runs with a different rule set.
+    rules = copy.deepcopy(m1)
+    target = None
+    for entry in rules["excluded"]:
+        if [r["rule_id"] for r in entry["failed_rules"]] == ["HF-02"]:
+            entry["failed_rules"][0]["rule_id"] = "HF-03"
+            target = entry["seller_id"]
+            break
+    code, changed, err = run(paths["M1"], write(rules, "kbtm-diff-rules-"))
+    report.check("run diff: an exclusion whose rule changes is an exclusion_change with "
+                 "rules_added / rules_removed",
+                 code == 0 and target is not None
+                 and [(i["record_id"], i["rules_added"], i["rules_removed"])
+                      for i in changed["exclusion_changes"]]
+                 == [(target, ["HF-03"], ["HF-02"])]
+                 and changed["summary"]["exclusion_changed"] == 1,
+                 "exit %d\n%s" % (code, err.strip()[:300]))
+
+    # (d) a dedupe merge changes the surviving id: pair through merged_from, and a
+    # record absorbed into another reads as merged_into, not as a lost lead.
+    yid = "BUY-kantoimport-example"
+    merged = copy.deepcopy(b1)
+    merged["records"][0]["buyer_id"] = "BUY-gulfglow2-example"
+    merged["records"][0]["merged_from"] = [xid, yid]
+    merged["records"] = [r for r in merged["records"] if r["buyer_id"] != yid]
+    code, doc, err = run(paths["B1"], write(merged, "kbtm-diff-merge-"))
+    pair = [i for i in (doc or {}).get("changed", []) if i.get("before_id") == xid]
+    report.check("run diff: a re-keyed record pairs through merged_from and an absorbed "
+                 "one is gone with merged_into",
+                 code == 0 and doc["new"] == [] and doc["summary"]["paired"] == 19
+                 and [(i["record_id"], i.get("merged_into")) for i in doc["gone"]]
+                 == [(yid, "BUY-gulfglow2-example")]
+                 and doc["summary"]["unchanged"] == 18 and len(pair) == 1
+                 and pair[0]["matched_by"] == "merged_from"
+                 and pair[0]["record_id"] == "BUY-gulfglow2-example",
+                 "exit %d\n%s" % (code, err.strip()[:300]))
+
+    # (e) a renamed id without merged_from is never guessed: gone plus new.
+    renamed = copy.deepcopy(b1)
+    renamed["records"][0]["buyer_id"] = "BUY-gulfglow2-example"
+    code, doc, err = run(paths["B1"], write(renamed, "kbtm-diff-rename-"))
+    report.check("run diff: an id renamed without merged_from is gone + new, not paired",
+                 code == 0 and [i["record_id"] for i in doc["gone"]] == [xid]
+                 and [i["record_id"] for i in doc["new"]] == ["BUY-gulfglow2-example"],
+                 "exit %d\n%s" % (code, err.strip()[:300]))
+
+    # (f) the literal id "unknown" is never paired and says so.
+    anonymous = copy.deepcopy(b1)
+    anonymous["records"][0]["buyer_id"] = "unknown"
+    code, doc, err = run(paths["B1"], write(anonymous, "kbtm-diff-unknown-"))
+    report.check("run diff: a record with id \"unknown\" is listed as new, never paired, "
+                 "with a note",
+                 code == 0 and [i["record_id"] for i in doc["new"]] == ["unknown"]
+                 and [i["record_id"] for i in doc["gone"]] == [xid]
+                 and any("id \"unknown\"" in n for n in doc["notes"]),
+                 "exit %d\n%s" % (code, err.strip()[:300]))
+
+    # (g) a Missing-line change keeps list order.
+    missing = copy.deepcopy(b1)
+    labels = list(missing["records"][0].get("missing") or [])
+    missing["records"][0]["missing"] = labels[1:] + ["Registered importer licence"]
+    code, doc, err = run(paths["B1"], write(missing, "kbtm-diff-missing-"))
+    item = [i for i in (doc or {}).get("changed", []) if i["record_id"] == xid]
+    report.check("run diff: a Missing-line change lists added / removed labels in order",
+                 code == 0 and len(item) == 1
+                 and item[0].get("missing") == {"added": ["Registered importer licence"],
+                                                "removed": labels[:1]}
+                 and doc["summary"]["missing_changed"] == 1,
+                 "exit %d labels=%s\n%s" % (code, labels, err.strip()[:300]))
+
+    # (h) a partial run is noted.
+    partial = copy.deepcopy(b1)
+    partial["partial"] = True
+    code, doc, err = run(paths["B1"], write(partial, "kbtm-diff-partial-"))
+    report.check("run diff: a partial run is echoed and noted",
+                 code == 0 and doc["after"]["partial"] is True
+                 and any("Run --after is partial" in n for n in doc["notes"]),
+                 "exit %d\n%s" % (code, err.strip()[:300]))
+
+    # (f2) "unknown" on the before side is listed as gone, and the note names --before.
+    code, doc, err = run(write(anonymous, "kbtm-diff-unknown-b-"), paths["B1"])
+    report.check("run diff: a --before record with id \"unknown\" is listed as gone, never "
+                 "paired, with a note naming --before",
+                 code == 0 and [i["record_id"] for i in doc["gone"]] == ["unknown"]
+                 and [i["record_id"] for i in doc["new"]] == [xid]
+                 and any(n.startswith("--before carries") and "id \"unknown\"" in n
+                         and "gone" in n for n in doc["notes"]),
+                 "exit %d notes=%s\n%s" % (code, (doc or {}).get("notes"), err.strip()[:300]))
+
+    # (i) the reverse merged_from pass: a before record that lists the after id.
+    split_before = copy.deepcopy(b1)
+    split_before["records"][0]["merged_from"] = ["BUY-gulfglow2-example"]
+    split_after = copy.deepcopy(b1)
+    split_after["records"][0]["buyer_id"] = "BUY-gulfglow2-example"
+    split_after["records"][0]["merged_from"] = []
+    code, doc, err = run(write(split_before, "kbtm-diff-split-b-"),
+                         write(split_after, "kbtm-diff-split-a-"))
+    pair = [i for i in (doc or {}).get("changed", []) if i.get("before_id") == xid]
+    report.check("run diff: a before record whose merged_from names the after id pairs "
+                 "through merged_from",
+                 code == 0 and doc["new"] == [] and doc["gone"] == [] and len(pair) == 1
+                 and pair[0]["matched_by"] == "merged_from"
+                 and pair[0]["record_id"] == "BUY-gulfglow2-example",
+                 "exit %d\n%s" % (code, err.strip()[:300]))
+
+    # (j) a base_score change is reported on its own, with no final-score key.
+    base = copy.deepcopy(m1)
+    base["results"][0]["base_score"] -= 1
+    top = base["results"][0]
+    code, doc, err = run(paths["M1"], write(base, "kbtm-diff-base-"))
+    item = [i for i in (doc or {}).get("changed", []) if i["record_id"] == top["seller_id"]]
+    report.check("run diff: a base_score change is reported with its delta",
+                 code == 0 and len(item) == 1
+                 and item[0].get("base_score") == {"before": top["base_score"] + 1,
+                                                   "after": top["base_score"], "delta": -1}
+                 and "score" not in item[0],
+                 "exit %d\n%s" % (code, err.strip()[:300]))
+
+    # (k) a changed weights_used and a changed skill_version are flagged.
+    weights = copy.deepcopy(m1)
+    weights["weights_used"]["product_fit"] = 0.25
+    weights["weights_used"]["market_fit"] = 0.15
+    code, doc, err = run(paths["M1"], write(weights, "kbtm-diff-weights-"))
+    report.check("run diff: a changed weights_used sets context.weights_changed",
+                 code == 0 and doc["context"]["weights_changed"] is True,
+                 "exit %d\n%s" % (code, err.strip()[:300]))
+    skill = copy.deepcopy(b1)
+    skill["skill_version"] = "0.1.0"
+    code, doc, err = run(write(skill, "kbtm-diff-skill-"), paths["B1"])
+    report.check("run diff: a different skill_version is echoed and noted",
+                 code == 0 and doc["before"]["skill_version"] == "0.1.0"
+                 and any("different skill versions (0.1.0, " in n for n in doc["notes"]),
+                 "exit %d\n%s" % (code, err.strip()[:300]))
+    blank = copy.deepcopy(b1)
+    blank["skill_version"] = ""
+    code, doc, err = run(paths["B1"], write(blank, "kbtm-diff-skill-blank-"))
+    report.check("run diff: an empty skill_version on an input reads as unknown, not a "
+                 "failed diff",
+                 code == 0 and doc["after"]["skill_version"] == "unknown",
+                 "exit %d\n%s" % (code, err.strip()[:300]))
+
+    # (l) a match run cut by --threshold 90 --top 3 flags the threshold and lists the
+    # cut sellers as gone with their before rank.
+    code, doc, err = run(paths["M1"], paths["MT"])
+    report.check("run diff: a changed threshold is flagged and cut sellers are gone with "
+                 "their rank",
+                 code == 0 and doc["context"]["threshold_changed"] is True
+                 and doc["gone"] != []
+                 and all(i["state"] != "returned" or isinstance(i.get("rank"), int)
+                         for i in doc["gone"]),
+                 "exit %d\n%s" % (code, err.strip()[:300]))
+
+    # A real dedupe: the raw run against a deduped-then-scored run.
+    code, deduped_out, err = run_script("dedupe_companies.py", [
+        "--input", os.path.join(FIXTURES, "buyers.golden.json"), "--as-of", AS_OF])
+    deduped_path = _write_temp_text(deduped_out, "kbtm-diff-dedupe-", ".json")
+    temp.append(deduped_path)
+    code, scored_out, err = run_script("score_buyer.py", [
+        "--input", deduped_path,
+        "--query", os.path.join(FIXTURES, "query-buyer-uae-kbeauty.json"), "--as-of", AS_OF])
+    scored_path = _write_temp_text(scored_out, "kbtm-diff-dedupe-scored-", ".json")
+    temp.append(scored_path)
+    code, doc, err = run(paths["B1"], scored_path)
+    report.check("run diff: a real dedupe merge reads as merged_into, not as a lost lead",
+                 code == 0 and [(i["record_id"], i.get("merged_into")) for i in doc["gone"]]
+                 == [("BUY-www-luminaglow-example", "BUY-luminaglow-example")]
+                 and doc["new"] == [],
+                 "exit %d\n%s" % (code, err.strip()[:300]))
+    return b1, m1
+
+
+def _diff_refusals(report, paths, b1, temp):
+    def write(document, prefix):
+        path = _write_temp_json(document, prefix)
+        temp.append(path)
+        return path
+
+    version = copy.deepcopy(b1)
+    version["score_version"] = "kbtm-score-0.2.0"
+    for record in version["records"]:
+        record["score_version"] = "kbtm-score-0.2.0"
+    _diff_refusal(report, ["--before", paths["B1"], "--after", write(version, "kbtm-diff-v2-")],
+                  "refusing to compare score_version",
+                  "two runs scored with different score_versions")
+    mixed = copy.deepcopy(b1)
+    mixed["records"][0]["score_version"] = "kbtm-score-0.2.0"
+    _diff_refusal(report, ["--before", paths["B1"], "--after", write(mixed, "kbtm-diff-mix-")],
+                  "mixes score_version", "a run whose records disagree with its envelope")
+    unscored = copy.deepcopy(b1)
+    unscored["score_version"] = "unscored"
+    _diff_refusal(report, ["--before", write(unscored, "kbtm-diff-unscored-"),
+                           "--after", paths["B1"]],
+                  "score_version", "an unscored run")
+    typed = copy.deepcopy(b1)
+    typed["records"][0]["qualification_score"] = "96"
+    _diff_refusal(report, ["--before", paths["B1"], "--after", write(typed, "kbtm-diff-type-")],
+                  "is not a valid discovery-result document",
+                  "an input that fails its own schema")
+    _diff_refusal(report, ["--before", paths["B1"], "--after", paths["M1"]],
+                  "discovery-result against a match-result",
+                  "a discovery run against a match run")
+    _diff_refusal(report, ["--before", paths["B1"], "--after", paths["S1"]],
+                  "buyer and seller", "a buyer run against a seller run")
+    _diff_refusal(report, ["--before", paths["M1"], "--after", paths["MN"]],
+                  "different RFQs", "match runs for two different RFQs")
+    _diff_refusal(report, ["--before", paths["B1"], "--after", paths["BR"]],
+                  "--records-only", "a bare --records-only array")
+    duplicate = copy.deepcopy(b1)
+    duplicate["excluded"].append(dict(duplicate["excluded"][0]))
+    _diff_refusal(report, ["--before", paths["B1"], "--after", write(duplicate, "kbtm-diff-dup-")],
+                  "appears twice", "a record id that appears twice in one run")
+    _diff_refusal(report, ["--before", paths["B1"], "--after", write({}, "kbtm-diff-empty-")],
+                  "neither a discovery-result nor a match-result", "an empty object")
+    _diff_refusal(report, ["--before", paths["B1"], "--after", paths["B2"], "--as-of", AS_OF],
+                  "earlier than input run date", "an --as-of earlier than an input run")
+
+    ranked = copy.deepcopy(read_json(paths["M1"]))
+    ranked["results"][0]["rank"] = 5
+    _diff_refusal(report, ["--before", paths["M1"], "--after", write(ranked, "kbtm-diff-rank-")],
+                  "rank must equal index + 1", "a match record whose rank is not its position")
+
+    _diff_usage(report, ["--before", paths["B1"]], "(missing --after)")
+    _diff_usage(report, ["--before", paths["B1"], "--after", paths["B1"], "--as-of", ""],
+                "(empty --as-of)")
+    _diff_usage(report, ["--before", paths["B1"], "--after", paths["B1"],
+                         "--as-of", "2026-13-40"], "(malformed --as-of)")
+    handle, bad = tempfile.mkstemp(suffix=".json", prefix="kbtm-diff-bytes-")
+    with os.fdopen(handle, "wb") as fh:
+        fh.write(b"\xff\xfe")
+    temp.append(bad)
+    _diff_usage(report, ["--before", bad, "--after", paths["B1"]], "(non-UTF-8 input)")
+    _diff_usage(report, ["--before", "-", "--after", "-"], "(both sides on stdin)", "{}")
+
+    # A diff that fails its own schema is written nowhere. --schema-dir also serves
+    # the input schemas, so the bundled ones are copied beside the broken run-diff.
+    bad_dir = tempfile.mkdtemp(prefix="kbtm-diff-badschema-")
+    try:
+        for name in os.listdir(SCHEMA_DIR):
+            if name.endswith(".schema.json"):
+                with open(os.path.join(bad_dir, name), "w", encoding="utf-8") as fh:
+                    fh.write(_read_text(os.path.join(SCHEMA_DIR, name)))
+        with open(os.path.join(bad_dir, "run-diff.schema.json"), "w", encoding="utf-8") as fh:
+            json.dump({"$schema": "https://json-schema.org/draft/2020-12/schema",
+                       "type": "object", "required": ["a_field_no_diff_has"]}, fh)
+        out_path = os.path.join(bad_dir, "diff.json")
+        code, out, err = run_script("diff_runs.py", [
+            "--before", paths["M1"], "--after", paths["M2"], "--as-of", AS_OF,
+            "--schema-dir", bad_dir, "--output", out_path])
+        problems = []
+        if code != 1:
+            problems.append("exit %d, expected 1" % code)
+        if out.strip():
+            problems.append("stdout is not empty")
+        if os.path.exists(out_path):
+            problems.append("--output was written anyway")
+        if "nothing was written" not in err:
+            problems.append("stderr does not say nothing was written")
+        report.check("run diff: a diff that fails its schema is not written at all",
+                     not problems, "\n".join(problems))
+    finally:
+        for name in os.listdir(bad_dir):
+            os.unlink(os.path.join(bad_dir, name))
+        os.rmdir(bad_dir)
+
+    code, out, err = run_script("diff_runs.py", ["--version"])
+    report.check("run diff: --version exits 0 and names the three versions",
+                 code == 0 and out.startswith("diff_runs.py skill_version=")
+                 and "score_version=" in out, "exit %d %r" % (code, out))
+
+
+def phase_run_diff(report, allow_missing):
+    absent = [n for n in DIFF_SCRIPTS if not os.path.isfile(os.path.join(SCRIPT_DIR, n))]
+    if absent or missing_scripts():
+        note = "scripts absent: %s" % ", ".join(absent or missing_scripts())
+        if allow_missing:
+            report.skip("run diff: cases", note)
+            return
+        report.fail("run diff: cases", note)
+        return
+
+    runs = (
+        ("B1", "score_buyer.py", ["--input", "buyers.golden.json",
+                                  "--query", "query-buyer-uae-kbeauty.json", "--as-of", AS_OF]),
+        ("B2", "score_buyer.py", ["--input", "buyers.golden.json",
+                                  "--query", "query-buyer-uae-kbeauty.json",
+                                  "--as-of", "2028-03-01"]),
+        ("B3", "score_buyer.py", ["--input", "buyers.golden.json",
+                                  "--query", "query-buyer-uk-sunscreen.json", "--as-of", AS_OF]),
+        ("BR", "score_buyer.py", ["--input", "buyers.golden.json",
+                                  "--query", "query-buyer-uae-kbeauty.json", "--as-of", AS_OF,
+                                  "--records-only"]),
+        ("S1", "score_seller.py", ["--input", "sellers.golden.json",
+                                   "--query", "query-seller-sunscreen-oem.json", "--as-of", AS_OF]),
+        ("M1", "score_match.py", ["--input", "match-134.input.json", "--as-of", AS_OF]),
+        ("M2", "score_match.py", ["--input", "match-134.input.json", "--as-of", AS_OF,
+                                  "--rerank-input", "rerank-134.json"]),
+        ("MN", "score_match.py", ["--input", "match-no-match.input.json", "--as-of", AS_OF]),
+        ("MT", "score_match.py", ["--input", "match-134.input.json", "--as-of", AS_OF,
+                                  "--threshold", "90", "--top", "3"]),
+    )
+    temp = []
+    paths = {}
+    try:
+        for key, script, args in runs:
+            args = [os.path.join(FIXTURES, a) if a.endswith(".json") else a for a in args]
+            code, out, err = run_script(script, args)
+            if code != 0:
+                report.fail("run diff: input run %s is scoreable" % key, err.strip()[:400])
+                return
+            paths[key] = _write_temp_text(out, "kbtm-diff-%s-" % key.lower(), ".json")
+            temp.append(paths[key])
+
+        goldens = _diff_goldens(report, paths)
+        if not all(goldens.values()):
+            report.fail("run diff: property cases", "a golden diff did not run")
+            return
+        _diff_properties(report, paths, goldens)
+        b1, _m1 = _diff_mutations(report, paths, temp)
+        _diff_refusals(report, paths, b1, temp)
+    finally:
+        for path in temp:
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+
+
+# ---------------------------------------------------------------------------
+# 4d. re-check queue - which stored evidence to re-read
+#
+# stale_evidence.py reads records that are already on disk and lists the evidence an
+# agent should re-read, most urgent first. It fetches nothing and changes no record or
+# score, so nothing here touches score_version (INV-NEW-stale). The reason codes are
+# references/evidence-policy.md section 5.6.
+# ---------------------------------------------------------------------------
+RECHECK_SCRIPTS = ["stale_evidence.py"]
+RECHECK_KIND = "recheck-queue"
+
+
+def _recheck_refusal(report, args, expect, label, code_expected=1):
+    """One refusal path: the expected exit, exactly one ERROR: line, empty stdout."""
+    code, out, err = run_script("stale_evidence.py", args)
+    error_lines = [ln for ln in err.splitlines() if ln.startswith("ERROR:")]
+    problems = []
+    if code != code_expected:
+        problems.append("exit %d, expected %d" % (code, code_expected))
+    if len(error_lines) != 1:
+        problems.append("%d 'ERROR:' lines, R7.3.3 requires exactly 1" % len(error_lines))
+    if "Traceback (most recent call last)" in err:
+        problems.append("raw traceback escaped main()")
+    if out.strip():
+        problems.append("stdout is not empty")
+    if not any(expect in ln for ln in error_lines):
+        problems.append("no ERROR line carries %r; got %s" % (expect, error_lines[:1]))
+    report.check("recheck: %s" % label, not problems, "\n".join(problems))
+
+
+def _recheck_entry(doc, record_id):
+    for entry in doc.get("queue", []):
+        if entry.get("record_id") == record_id:
+            return entry
+    return None
+
+
+def _recheck_items(entry):
+    return dict((i["evidence_id"], i) for i in (entry or {}).get("items", []))
+
+
+def _recheck_keys(node, out):
+    if isinstance(node, dict):
+        for key, value in node.items():
+            out.add(key)
+            _recheck_keys(value, out)
+    elif isinstance(node, list):
+        for value in node:
+            _recheck_keys(value, out)
+    return out
+
+
+def _recheck_run(args):
+    code, out, err = run_script("stale_evidence.py", list(args))
+    doc = None
+    if code == 0:
+        try:
+            doc = json.loads(out)
+        except ValueError:
+            doc = None
+    return code, out, err, doc
+
+
+def _recheck_bundle(entity, records, temp, extra=None):
+    body = {"schema_version": "0.1.0", "as_of": AS_OF, "entity": entity, "records": records}
+    body.update(extra or {})
+    path = _write_temp_text(json.dumps(body, ensure_ascii=False), "kbtm-recheck-", ".json")
+    temp.append(path)
+    return path
+
+
+def _recheck_goldens(report):
+    """Golden bytes, INV-13, validation and the fixed semantics of both golden queues."""
+    docs = {}
+    for label, fixture, expected_name in (
+            ("buyer", "buyers.golden.json", "recheck.buyers.golden.expected.json"),
+            ("seller", "sellers.golden.json", "recheck.sellers.golden.expected.json")):
+        args = ["--input", os.path.join(FIXTURES, fixture), "--as-of", AS_OF, "--pretty"]
+        code, out, err = run_script("stale_evidence.py", args)
+        report.check("recheck: stale_evidence.py (%s bundle) exits 0" % label, code == 0,
+                     "exit %d\n%s" % (code, err.strip()[:400]))
+        golden = _read_text(os.path.join(EXPECTED, expected_name))
+        report.check("recheck: the %s queue matches its golden byte for byte" % label,
+                     out == golden, "generated queue differs from %s" % expected_name)
+        code2, out2, _err = run_script("stale_evidence.py", args)
+        report.check("recheck: INV-13 the %s queue is byte-identical on a re-run" % label,
+                     code2 == 0 and out2 == out, "second run differed")
+        code, vout, verr = run_script("validate_output.py", [
+            "--input", os.path.join(EXPECTED, expected_name), "--schema", RECHECK_KIND,
+            "--invariants", "--strict"])
+        report.check("recheck: the %s queue passes validate_output.py --strict" % label,
+                     code == 0, "exit %d\n%s%s" % (code, vout[:300], verr[:300]))
+        try:
+            docs[label] = json.loads(out)
+        except ValueError:
+            docs[label] = {"queue": [], "summary": {}, "notes": []}
+    code, vout, _verr = run_script("validate_output.py", [
+        "--input", os.path.join(EXPECTED, "recheck.buyers.golden.expected.json"),
+        "--schema", "auto", "--invariants", "--strict", "--json"])
+    report.check("recheck: validate_output.py --schema auto routes a queue to recheck-queue",
+                 code == 0 and '"schema":"%s"' % RECHECK_KIND in vout.replace(" ", ""),
+                 "exit %d\n%s" % (code, vout[:300]))
+
+    buyers, sellers = docs["buyer"], docs["seller"]
+    north = _recheck_entry(buyers, "BUY-northgateimport-example")
+    report.check("recheck: an unreachable buyer is queued first with site_unreachable",
+                 bool(north) and north["position"] == 1
+                 and north["record_reasons"] == ["site_unreachable"]
+                 and north["priority_reason"] == "site_unreachable",
+                 "got %s" % str(north and (north["position"], north["record_reasons"])))
+    north_items = _recheck_items(north)
+    report.check("recheck: evidence older than the stale threshold is past_stale_threshold, "
+                 "and a non-material item ranks after every material one",
+                 north_items.get("EV-001", {}).get("reasons") == ["past_stale_threshold"]
+                 and [i["material"] for i in (north or {}).get("items", [])][-1] is False
+                 and all(i["material"] for i in (north or {}).get("items", [])[:-1]),
+                 "items: %s" % [(i["evidence_id"], i["material"], i["reasons"])
+                                for i in (north or {}).get("items", [])])
+    pale = _recheck_entry(buyers, "BUY-palefade-example")
+    pale_items = _recheck_items(pale)
+    report.check("recheck: a record flagged stale is record_flagged_stale and its flagged "
+                 "items are source_flagged_stale",
+                 bool(pale) and pale["record_reasons"] == ["record_flagged_stale"]
+                 and "source_flagged_stale" in pale_items.get("EV-001", {}).get("reasons", []),
+                 "got %s" % str(pale and pale["record_reasons"]))
+    kanto = _recheck_entry(buyers, "BUY-kantoimport-example")
+    kanto_items = _recheck_items(kanto)
+    report.check("recheck: an unresolved conflict queues both sides, and a claim with a "
+                 "current item gets no age reason",
+                 bool(kanto) and kanto["priority_reason"] == "unresolved_conflict"
+                 and kanto_items.get("EV-003", {}).get("reasons") == ["unresolved_conflict"]
+                 and kanto_items.get("EV-003", {}).get("conflicts_with") == ["EV-002"]
+                 and kanto_items.get("EV-002", {}).get("reasons") == ["unresolved_conflict"]
+                 and kanto["claims"] == [],
+                 "got %s" % str(kanto and [(i["evidence_id"], i["reasons"]) for i in kanto["items"]]))
+    absent = [rid for rid in ("BUY-pacificglowdist-example", "BUY-dunesourcing-example",
+                              "BUY-marinaretail-example", "BUY-gulfglow-example")
+              if _recheck_entry(buyers, rid)]
+    report.check("recheck: a resolved conflict, a superseded old item, fresh evidence and an "
+                 "undated item read recently queue nothing", not absent,
+                 "queued anyway: %s" % absent)
+    report.check("recheck: undated items read recently are counted and named in notes[]",
+                 buyers.get("summary", {}).get("evidence_items_undated") == 1
+                 and any("undated evidence item(s) were not queued" in n
+                         for n in buyers.get("notes", [])),
+                 "summary %s" % buyers.get("summary"))
+
+    sopoong = _recheck_entry(sellers, "SEL-sopoongworks-example")
+    report.check("recheck: an unreachable seller is queued first",
+                 bool(sopoong) and sopoong["position"] == 1
+                 and sopoong["record_reasons"] == ["site_unreachable"],
+                 "got %s" % str(sopoong and (sopoong["position"], sopoong["record_reasons"])))
+    areum = _recheck_entry(sellers, "SEL-areumfactory-example")
+    report.check("recheck: a seller flagged stale is record_flagged_stale",
+                 bool(areum) and areum["record_reasons"] == ["record_flagged_stale"],
+                 "got %s" % str(areum and areum["record_reasons"]))
+    yeonhwa = _recheck_entry(sellers, "SEL-yeonhwalab-example")
+    claims = dict((c["claim"], c) for c in (yeonhwa or {}).get("claims", []))
+    cert = claims.get("certifications", {})
+    report.check("recheck: a material claim resting only on aging evidence is "
+                 "no_current_evidence",
+                 bool(yeonhwa) and yeonhwa["priority_reason"] == "aging"
+                 and cert.get("reason") == "no_current_evidence"
+                 and cert.get("newest_source_date") == "2024-11-20"
+                 and cert.get("evidence_ids") == ["EV-305"]
+                 and cert.get("counts") == {"old": 1, "undated": 0, "flagged": 0},
+                 "got %s" % claims)
+    report.check("recheck: a seller whose undated items were read recently is not queued",
+                 _recheck_entry(sellers, "SEL-hanbitcos-example") is None,
+                 "SEL-hanbitcos-example was queued")
+
+    leaked = set()
+    for doc in (buyers, sellers):
+        leaked |= _recheck_keys(doc, set()) & {"value", "quote_or_summary", "contact_channels",
+                                               "observed_at", "notes_internal"}
+    report.check("recheck: the queue copies no value, quote_or_summary or contact channel",
+                 not leaked, "leaked keys: %s" % sorted(leaked))
+    return buyers
+
+
+def _recheck_inputs(report, buyers, temp):
+    """Every accepted input shape, and the date-driven behaviour."""
+    buyers_path = os.path.join(FIXTURES, "buyers.golden.json")
+    code, _out, err, later = _recheck_run(["--input", buyers_path, "--as-of", "2027-09-12"])
+    gulf = _recheck_items(_recheck_entry(later or {}, "BUY-gulfglow-example"))
+    report.check("recheck: --as-of alone drives age (a year later EV-004 is aging and the "
+                 "undated EV-008 is due by its last reading)",
+                 code == 0 and gulf.get("EV-004", {}).get("reasons") == ["aging"]
+                 and gulf.get("EV-008", {}).get("reasons") == ["undated"]
+                 and gulf.get("EV-008", {}).get("days_since_read") == 367,
+                 "exit %d %s\n%s" % (code, err.strip()[:200],
+                                     dict((k, v.get("reasons")) for k, v in gulf.items())))
+
+    bundle = read_json(buyers_path)
+    gulf_record = [r for r in bundle["records"] if r["buyer_id"] == "BUY-gulfglow-example"][0]
+    for item in gulf_record["evidence"]:
+        if item["evidence_id"] == "EV-008":
+            item["observed_at"] = "2025-01-10T09:00:00Z"
+    path = _recheck_bundle("buyer", [gulf_record], temp)
+    code, _out, err, doc = _recheck_run(["--input", path, "--as-of", AS_OF])
+    entry = _recheck_entry(doc or {}, "BUY-gulfglow-example")
+    claims = dict((c["claim"], c) for c in (entry or {}).get("claims", []))
+    report.check("recheck: an undated item last read long ago is queued as undated",
+                 code == 0 and bool(entry) and entry["priority_reason"] == "undated"
+                 and claims.get("contact_channels", {}).get("newest_source_date") == "unknown"
+                 and claims.get("contact_channels", {}).get("counts", {}).get("undated") == 1,
+                 "exit %d %s\n%s" % (code, err.strip()[:200], entry))
+
+    code, scored, err = run_script("score_buyer.py", [
+        "--input", buyers_path,
+        "--query", os.path.join(FIXTURES, "query-buyer-uae-kbeauty.json"), "--as-of", AS_OF])
+    scored_path = _write_temp_text(scored, "kbtm-recheck-scored-", ".json")
+    temp.append(scored_path)
+    code, _out, err, doc = _recheck_run(["--input", scored_path, "--as-of", AS_OF])
+    golden_ids = set(e["record_id"] for e in buyers.get("queue", []))
+    got_ids = set(e["record_id"] for e in (doc or {}).get("queue", []))
+    report.check("recheck: a scored discovery-result is accepted and notes its excluded[]",
+                 code == 0 and bool(got_ids) and got_ids <= golden_ids
+                 and any("excluded candidate(s) carry no evidence" in n
+                         for n in (doc or {}).get("notes", [])),
+                 "exit %d %s\n%s" % (code, err.strip()[:200], sorted(got_ids)))
+
+    match_input = os.path.join(FIXTURES, "match-134.input.json")
+    code, _out, err, doc = _recheck_run(["--input", match_input, "--as-of", AS_OF])
+    report.check("recheck: a match input is accepted and its RFQ is scanned too",
+                 code == 0 and (doc or {}).get("summary", {}).get("records_scanned")
+                 == len(read_json(match_input)["records"]) + 1,
+                 "exit %d %s" % (code, err.strip()[:200]))
+
+    rfq = read_json(os.path.join(FIXTURES, "rfq.134.json"))
+    rfq["stale"] = True
+    rfq["operational_status"] = "unreachable"
+    for item in rfq.get("evidence", [])[:1]:
+        item["source_date"] = "2023-01-05"
+    path = _write_temp_text(json.dumps(rfq, ensure_ascii=False), "kbtm-recheck-rfq-", ".json")
+    temp.append(path)
+    code, _out, err, doc = _recheck_run(["--input", path, "--as-of", AS_OF])
+    queue = (doc or {}).get("queue", [])
+    report.check("recheck: an RFQ is classified as an RFQ (its rfq_id, not its buyer_id) and "
+                 "takes no record-level reason",
+                 code == 0 and len(queue) == 1 and queue[0]["entity"] == "rfq"
+                 and queue[0]["record_id"] == rfq["rfq_id"] and queue[0]["record_reasons"] == [],
+                 "exit %d %s\n%s" % (code, err.strip()[:200], queue))
+
+    code, _out, err, doc = _recheck_run([
+        "--input", os.path.join(FIXTURES, "sellers.golden.json"), "--as-of", AS_OF, "--top", "1"])
+    report.check("recheck: --top lists the first N and the summary still counts all",
+                 code == 0 and len((doc or {}).get("queue", [])) == 1
+                 and doc["summary"]["records_listed"] == 1
+                 and doc["summary"]["records_queued"] == 3
+                 and doc["queue"][0]["record_id"] == "SEL-sopoongworks-example",
+                 "exit %d %s" % (code, err.strip()[:200]))
+
+    old = read_json(buyers_path)
+    for record in old["records"]:
+        record["score_version"] = "kbtm-score-0.0.9"
+    path = _recheck_bundle("buyer", old["records"], temp)
+    code, _out, err, doc = _recheck_run(["--input", path, "--as-of", AS_OF])
+    report.check("recheck: records scored under an older rubric are queued, not refused",
+                 code == 0 and len(doc["queue"]) == len(buyers.get("queue", []))
+                 and any("kbtm-score-0.0.9" in n for n in doc["notes"]),
+                 "exit %d %s" % (code, err.strip()[:200]))
+
+    path = _recheck_bundle("buyer", [], temp)
+    code, _out, err, doc = _recheck_run(["--input", path, "--as-of", AS_OF])
+    report.check("recheck: an empty records[] is an empty queue, exit 0",
+                 code == 0 and doc["queue"] == []
+                 and not any(doc["summary"]["by_reason"].values()),
+                 "exit %d %s" % (code, err.strip()[:200]))
+
+    out_path = _write_temp_text("", "kbtm-recheck-out-", ".json")
+    temp.append(out_path)
+    code, out, err = run_script("stale_evidence.py", [
+        "--input", buyers_path, "--as-of", AS_OF, "--pretty", "--output", out_path])
+    report.check("recheck: --output writes the same bytes and leaves stdout empty",
+                 code == 0 and not out.strip() and _read_text(out_path) == _read_text(
+                     os.path.join(EXPECTED, "recheck.buyers.golden.expected.json")),
+                 "exit %d %s" % (code, err.strip()[:200]))
+
+
+def _recheck_refusals(report, temp):
+    buyers_path = os.path.join(FIXTURES, "buyers.golden.json")
+    code, match_out, _err = run_script("score_match.py", [
+        "--input", os.path.join(FIXTURES, "match-134.input.json"), "--as-of", AS_OF])
+    match_path = _write_temp_text(match_out, "kbtm-recheck-match-", ".json")
+    temp.append(match_path)
+    _recheck_refusal(report, ["--input", match_path, "--as-of", AS_OF],
+                     "match-result cannot be aged", "refuses a match-result")
+    _recheck_refusal(report, ["--input", os.path.join(
+        EXPECTED, "acceptance.buyers.uae.expected.json"), "--as-of", AS_OF],
+        "is a report, not a record document", "refuses an acceptance report")
+
+    bundle = read_json(buyers_path)
+    twice = [bundle["records"][0], bundle["records"][0]]
+    _recheck_refusal(report, ["--input", _recheck_bundle("buyer", twice, temp),
+                              "--as-of", AS_OF],
+                     "appears twice", "refuses a duplicate record id")
+    anonymous = dict(bundle["records"][0])
+    anonymous.pop("buyer_id")
+    path = _write_temp_text(json.dumps([anonymous]), "kbtm-recheck-anon-", ".json")
+    temp.append(path)
+    _recheck_refusal(report, ["--input", path, "--as-of", AS_OF],
+                     "has no buyer_id/seller_id/rfq_id", "refuses a record without an id")
+    _recheck_refusal(report, ["--input", buyers_path, "--as-of", "2026-09-01"],
+                     "INV-24", "refuses an --as-of earlier than an observed_at (INV-24)")
+
+    _recheck_refusal(report, ["--input", buyers_path], "needs --as-of",
+                     "a missing --as-of is a usage error (exit 2)", 2)
+    _recheck_refusal(report, ["--input", buyers_path, "--as-of", "2026-13-40"],
+                     "2026-13-40", "a malformed --as-of is a usage error (exit 2)", 2)
+    _recheck_refusal(report, ["--input", buyers_path, "--as-of", AS_OF, "--top", "0"],
+                     "--top", "--top 0 is a usage error (exit 2)", 2)
+    config = read_json(os.path.join(SCHEMA_DIR, "scoring.config.json"))
+    for bucket in config["evidence"]["recency_buckets"]:
+        if bucket["label"] == "aging":
+            bucket["label"] = "older"
+    config_path = _write_temp_text(json.dumps(config), "kbtm-recheck-config-", ".json")
+    temp.append(config_path)
+    _recheck_refusal(report, ["--input", buyers_path, "--as-of", AS_OF,
+                              "--config", config_path],
+                     "no 'aging' bucket", "a config without the due bucket is a config "
+                     "error (exit 2)", 2)
+
+    handle, bad_path = tempfile.mkstemp(suffix=".json", prefix="kbtm-recheck-bad-")
+    with os.fdopen(handle, "wb") as fh:
+        fh.write(b'{"records": [{"company_name": "A\xff\xfeB"}]}')
+    temp.append(bad_path)
+    _recheck_refusal(report, ["--input", bad_path], "not valid UTF-8",
+                     "a non-UTF-8 input is reported as such even without --as-of", 2)
+
+
+def _recheck_ev(evidence_id, claim, age=None, **extra):
+    """A minimal evidence item `age` days before AS_OF (None: undated), read 2 days ago."""
+    import datetime  # local: only this phase does date arithmetic, and only from AS_OF
+    as_of = datetime.date(*[int(p) for p in AS_OF.split("-")])
+    item = {"evidence_id": evidence_id, "claim": claim,
+            "source_url": "https://edge.example/%s" % evidence_id.lower(),
+            "source_date": "unknown" if age is None
+            else (as_of - datetime.timedelta(days=age)).isoformat(),
+            "observed_at": "2026-09-10T09:00:00Z"}
+    item.update(extra)
+    return dict((k, v) for k, v in item.items() if v is not None)
+
+
+def _recheck_edges(report, temp):
+    """Bucket and threshold edges, tie-breaks, bounded notes and odd input shapes."""
+    def run(records, *extra_args):
+        path = _recheck_bundle("buyer", records, temp)
+        return _recheck_run(["--input", path, "--as-of", AS_OF] + list(extra_args))
+
+    edge = {"buyer_id": "BUY-edge-example", "evidence": [
+        _recheck_ev("EV-730", "company_type", 730),
+        _recheck_ev("EV-731", "product_categories", 731),
+        _recheck_ev("EV-365", "korean_products_signal", 365),
+        _recheck_ev("EV-366", "wholesale_signal", 366),
+        _recheck_ev("EV-UNREAD", "partnership_signal", None, observed_at=None),
+        _recheck_ev("EV-UFLAG", "sourcing_intent", None, stale=True),
+        _recheck_ev("EV-CFLAG", "country", 10, stale=True),
+        _recheck_ev("EV-COLD", "country", 800),
+    ]}
+    code, _out, err, doc = run([edge])
+    entry = _recheck_entry(doc or {}, "BUY-edge-example")
+    items = dict((k, v["reasons"]) for k, v in _recheck_items(entry).items())
+    claims = dict((c["claim"], c) for c in (entry or {}).get("claims", []))
+    report.check("recheck: age 730 (= stale_threshold_days) is aging, 731 is "
+                 "past_stale_threshold; 365 is current and 366 is aging",
+                 code == 0 and items.get("EV-730") == ["aging"]
+                 and items.get("EV-731") == ["past_stale_threshold"]
+                 and "EV-365" not in items and "korean_products_signal" not in claims
+                 and items.get("EV-366") == ["aging"],
+                 "exit %d %s\n%s" % (code, err.strip()[:200], items))
+    report.check("recheck: an undated item with no observed_at is queued as undated, and a "
+                 "flagged undated item is source_flagged_stale only",
+                 items.get("EV-UNREAD") == ["undated"]
+                 and items.get("EV-UFLAG") == ["source_flagged_stale"],
+                 "items %s" % items)
+    report.check("recheck: claim counts.old counts only items in a due bucket",
+                 claims.get("country", {}).get("counts") == {"old": 1, "undated": 0,
+                                                              "flagged": 1},
+                 "country %s" % claims.get("country"))
+
+    def rec(record_id, *ages):
+        keys = ["company_type", "product_categories", "country"]
+        return {"buyer_id": record_id, "evidence": [
+            _recheck_ev("EV-%d" % n, keys[n], age) for n, age in enumerate(ages)]}
+    code, _out, err, doc = run([rec("BUY-tie-a", 400), rec("BUY-tie-b", 400, 400),
+                                rec("BUY-tie-c", 500), rec("BUY-tie-d", 600)])
+    order = [e["record_id"] for e in (doc or {}).get("queue", [])]
+    report.check("recheck: records tied on priority rank by more claims without current "
+                 "evidence, then by the oldest queued item",
+                 order == ["BUY-tie-b", "BUY-tie-d", "BUY-tie-c", "BUY-tie-a"],
+                 "exit %d %s\norder %s" % (code, err.strip()[:200], order))
+
+    long_claim = "c" * 200
+    code, _out, err, doc = run([{"buyer_id": "BUY-long-example", "company_name": "N" * 301,
+                                 "evidence": [_recheck_ev("EV-1", long_claim, 800)]}])
+    entry = _recheck_entry(doc or {}, "BUY-long-example") or {}
+    report.check("recheck: a 200-character claim (the evidence schema's limit) is queued, and "
+                 "an over-long company_name is left out instead of failing the run",
+                 code == 0 and [i["claim"] for i in entry.get("items", [])] == [long_claim]
+                 and "company_name" not in entry,
+                 "exit %d %s" % (code, err.strip()[:300]))
+    path = _recheck_bundle("buyer", [{"buyer_id": "BUY-long-example", "evidence": [
+        _recheck_ev("EV-1", "c" * 201, 800)]}], temp)
+    _recheck_refusal(report, ["--input", path, "--as-of", AS_OF], "longer than the 200",
+                     "refuses a claim longer than the input schema allows")
+
+    # Worst case for note length: 128-character ids (the input schemas' limit), more than
+    # ten offenders of each kind, and many distinct over-long score_versions.
+    many = [{"buyer_id": "BUY-" + "r" * 121 + "%03d" % r,
+             "score_version": "kbtm-score-%03d" % r + "9" * 1200,
+             "evidence": [_recheck_ev("E" * 125 + "%03d" % n, "company_type", None,
+                                      source_date="March 2024" if n else "x" * 1200)
+                          for n in range(8)]} for r in range(40)]
+    many.extend({"buyer_id": "BUY-" + "s" * 121 + "%03d" % r, "evidence": "not-a-list"}
+                for r in range(12))
+    code, _out, err, doc = run(many)
+    notes = (doc or {}).get("notes", [])
+    report.check("recheck: 320 unreadable source_dates, 12 non-list evidence values and "
+                 "over-long echoed values make one note of at most 1000 characters per kind",
+                 code == 0 and len(notes) <= 10 and all(len(n) <= 1000 for n in notes)
+                 and sum("320 evidence item(s) carry a source_date that is not a date" in n
+                         for n in notes) == 1
+                 and sum("12 record(s) carry an evidence value that is not a list" in n
+                         for n in notes) == 1,
+                 "exit %d %s\nnote lengths %s" % (code, err.strip()[:300],
+                                                  [len(n) for n in notes]))
+
+    base = {"evidence": [_recheck_ev("EV-1", "company_type", 800)]}
+    for label, value in (("missing", None), ("integer", 7), ("blank", " ")):
+        record = dict(base, buyer_id=value) if value is not None else dict(base)
+        path = _recheck_bundle("buyer", [record, dict(record)], temp)
+        _recheck_refusal(report, ["--input", path, "--as-of", AS_OF], "no usable buyer_id",
+                         "refuses a %s buyer_id even when the bundle names the entity" % label)
+
+    odd = {"buyer_id": "BUY-odd-example", "conflicts": [{"field": ["company_type"]}],
+           "evidence": [_recheck_ev("EV-1", "company_type", 10, conflicts_with="EV-9")]}
+    code, _out, err, doc = run([odd])
+    odd_items = _recheck_items(_recheck_entry(doc or {}, "BUY-odd-example"))
+    report.check("recheck: a non-string conflicts[].field is ignored, and a string "
+                 "conflicts_with is named on the item it flags",
+                 code == 0 and odd_items.get("EV-1", {}).get("reasons") == ["unresolved_conflict"]
+                 and odd_items.get("EV-1", {}).get("conflicts_with") == ["EV-9"],
+                 "exit %d %s\n%s" % (code, err.strip()[:200], odd_items))
+    _recheck_refusal(report, ["--input", os.path.join(FIXTURES, "buyers.golden.json"),
+                              "--as-of", AS_OF, "--top", "²"],
+                     "--top", "--top with a non-ASCII digit is a usage error (exit 2)", 2)
+
+
+def _recheck_isolation(report):
+    """INV-NEW-stale: no scoring path reads the re-check tool or its document."""
+    names = ["score_buyer.py", "score_seller.py", "score_match.py", "normalize_company.py",
+             "dedupe_companies.py", "_common.py"]
+    hits = []
+    for name in names:
+        text = _read_text(os.path.join(SCRIPT_DIR, name))
+        for token in ("stale_evidence", "DUE_FROM_BUCKET", "REASON_ORDER"):
+            if token in text:
+                hits.append("%s mentions %s" % (name, token))
+        if name != "_common.py" and RECHECK_KIND in text:
+            hits.append("%s mentions %s" % (name, RECHECK_KIND))
+    report.check("recheck: INV-NEW-stale no scoring path reads the re-check tool", not hits,
+                 "\n".join(hits))
+
+
+def phase_recheck(report, allow_missing):
+    absent = [n for n in RECHECK_SCRIPTS if not os.path.isfile(os.path.join(SCRIPT_DIR, n))]
+    if absent or missing_scripts():
+        note = "scripts absent: %s" % ", ".join(absent or missing_scripts())
+        if allow_missing:
+            report.skip("recheck: re-check queue cases", note)
+            return
+        report.fail("recheck: re-check queue cases", note)
+        return
+    temp = []
+    try:
+        buyers = _recheck_goldens(report)
+        _recheck_inputs(report, buyers, temp)
+        _recheck_refusals(report, temp)
+        _recheck_edges(report, temp)
+        _recheck_isolation(report)
+    finally:
+        for path in temp:
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+
+
+EXPORT_SCRIPTS = ["export_leads.py"]
+#: The 25 keys of tradewith-api BulkBuyerRowDto; an export row may use a subset only.
+TRADEWITH_DTO_KEYS = frozenset([
+    "companyName", "country", "city", "website", "logoUrl", "imageUrl", "altWebsites",
+    "contactEmail", "contactName", "contactPhone", "industry", "category", "productsSummary",
+    "originalSource", "sourceUrl", "postedDate", "notes", "extraNotes", "social",
+    "scaleRevenue", "displayFlag", "qualityTierLabel", "hsCodes", "annualVolumeUsd",
+    "sourceId"])
+#: Keys the exporter must never fill (INV-31, the tier-C decision, the notes decision,
+#: and the no-contact-field decision: even a role mailbox never fills contactEmail).
+TRADEWITH_NEVER_KEYS = ("contactName", "contactEmail", "contactPhone", "notes", "extraNotes",
+                        "qualityTierLabel", "hsCodes")
+
+
+def _expected_source_id(record):
+    """The design's sourceId rule, restated independently of export_leads.py."""
+    domain = record.get("canonical_domain")
+    if isinstance(domain, str) and domain.strip() and domain != "unknown":
+        host = domain.strip().lower()
+        while host.startswith("www."):
+            host = host[4:]
+        return "kbtm:" + host
+    return "kbtm:id:" + record["buyer_id"]
+
+
+def _admin_ui_parse(text):
+    """tradewith-admin buyers/import/page.tsx parseCSV + mapRowToPayload, transcribed.
+
+    The page splits on newlines, strips quotes from the header, toggles on every double
+    quote inside a line, trims every cell and keeps only non-empty known keys.
+    """
+    lines = [ln for ln in re.split(r"\r?\n", text) if ln.strip()]
+    if not lines:
+        return []
+    headers = [re.sub(r'^"|"$', "", h.strip()) for h in lines[0].split(",")]
+    known = ("companyName", "country", "city", "website", "contactEmail", "contactName",
+             "contactPhone", "industry", "sourceId")
+    rows = []
+    for line in lines[1:]:
+        cells, current, in_quote = [], "", False
+        for ch in line:
+            if ch == '"':
+                in_quote = not in_quote
+            elif ch == "," and not in_quote:
+                cells.append(current.strip())
+                current = ""
+            else:
+                current += ch
+        cells.append(current.strip())
+        obj = dict((h, (cells[i] if i < len(cells) else "").strip())
+                   for i, h in enumerate(headers))
+        rows.append(dict((k, obj[k]) for k in known if obj.get(k)))
+    return rows
+
+
+def _export_refusal(report, args, code_expected, expect, label, out_path=None):
+    """One export refusal: the exit code, one ERROR: line, empty stdout, no file."""
+    full = list(args) + (["--output", out_path] if out_path else [])
+    code, out, err = run_script("export_leads.py", full)
+    error_lines = [ln for ln in err.splitlines() if ln.startswith("ERROR:")]
+    problems = []
+    if code != code_expected:
+        problems.append("exit %d, expected %d" % (code, code_expected))
+    if len(error_lines) != 1:
+        problems.append("%d 'ERROR:' lines, R7.3.3 requires exactly 1" % len(error_lines))
+    if "Traceback (most recent call last)" in err:
+        problems.append("raw traceback escaped main()")
+    if out.strip():
+        problems.append("stdout is not empty")
+    if out_path and os.path.exists(out_path):
+        problems.append("--output file was created")
+    if not any(expect in ln for ln in error_lines):
+        problems.append("no ERROR line carries %r; got %s" % (expect, error_lines[:1]))
+    report.check("export: refuses %s (exit %d)" % (label, code_expected), not problems,
+                 "\n".join(problems))
+
+
+def _export_variant(base, temp, mutate, prefix="kbtm-export-"):
+    document = json.loads(base)
+    mutate(document)
+    path = _write_temp_json(document, prefix)
+    temp.append(path)
+    return path
+
+
+def _record(document, record_id):
+    for record in document["records"]:
+        if record.get("buyer_id") == record_id or record.get("seller_id") == record_id:
+            return record
+    raise KeyError(record_id)
+
+
+def phase_export(report, allow_missing):
+    absent = [n for n in EXPORT_SCRIPTS if not os.path.isfile(os.path.join(SCRIPT_DIR, n))]
+    if absent or missing_scripts():
+        note = "scripts absent: %s" % ", ".join(absent or missing_scripts())
+        if allow_missing:
+            report.skip("export: lead export cases", note)
+            return
+        report.fail("export: lead export cases", note)
+        return
+
+    temp = []
+    try:
+        code, buyers_out, err = run_script("score_buyer.py", [
+            "--input", os.path.join(FIXTURES, "buyers.golden.json"),
+            "--query", os.path.join(FIXTURES, "query-buyer-uae-kbeauty.json"),
+            "--as-of", AS_OF, "--pretty"])
+        if code != 0:
+            report.fail("export: the UAE buyer run is scoreable", err.strip()[:400])
+            return
+        code, sellers_out, err = run_script("score_seller.py", [
+            "--input", os.path.join(FIXTURES, "sellers.golden.json"),
+            "--query", os.path.join(FIXTURES, "query-seller-sunscreen-oem.json"),
+            "--as-of", AS_OF, "--pretty"])
+        if code != 0:
+            report.fail("export: the sunscreen seller run is scoreable", err.strip()[:400])
+            return
+        buyers_path = _write_temp_text(buyers_out, "kbtm-export-buyers-", ".json")
+        sellers_path = _write_temp_text(sellers_out, "kbtm-export-sellers-", ".json")
+        temp.extend([buyers_path, sellers_path])
+        buyers_doc = json.loads(buyers_out)
+        by_id = dict((r["buyer_id"], r) for r in buyers_doc["records"])
+        by_source = dict((_expected_source_id(r), r) for r in buyers_doc["records"]
+                         if r.get("qualified") is True)
+
+        # --- X1-X3, X4: goldens, byte for byte, and a rerun is identical (INV-13) --------
+        goldens = [
+            ("X1 buyer csv", [buyers_path], "export.buyers.uae.csv"),
+            ("X2 buyer tradewith-json", [buyers_path, "--format", "tradewith-json",
+                                         "--pretty"], "export.buyers.uae.tradewith.json"),
+            ("X3 seller csv", [sellers_path], "export.sellers.csv"),
+            ("X4 buyer tradewith-csv", [buyers_path, "--format", "tradewith-csv"],
+             "export.buyers.uae.tradewith.csv"),
+        ]
+        outputs = {}
+        for label, args, golden in goldens:
+            code, out, err = run_script("export_leads.py",
+                                        ["--input"] + args + ["--as-of", AS_OF])
+            report.check("export: %s exits 0" % label, code == 0,
+                         "exit %d\n%s" % (code, err.strip()[:400]))
+            report.check("export: %s matches %s byte for byte" % (label, golden),
+                         out == _read_text(os.path.join(EXPECTED, golden)),
+                         "generated export differs from the expected fixture")
+            code2, out2, _err2 = run_script("export_leads.py",
+                                            ["--input"] + args + ["--as-of", AS_OF])
+            report.check("export: %s is byte-stable across reruns (INV-13)" % label,
+                         code2 == 0 and out2 == out, "the second run differs")
+            outputs[label] = (out, err)
+
+        buyer_csv, buyer_err = outputs["X1 buyer csv"]
+        csv_rows = _csv_rows(buyer_csv)
+        qualified = [r["buyer_id"] for r in buyers_doc["records"] if r.get("qualified") is True]
+        report.check("export: X1 the default buyer csv holds exactly the qualified records, "
+                     "in document order",
+                     [r["record_id"] for r in csv_rows] == qualified and len(csv_rows) == 7,
+                     "rows: %s" % [r["record_id"] for r in csv_rows])
+        report.check("export: X1 csv is LF-only with a header row first",
+                     "\r" not in buyer_csv and buyer_csv.startswith("record_id,entity_type,"),
+                     "CR found or header missing")
+        seller_csv, seller_err = outputs["X3 seller csv"]
+        seller_rows = _csv_rows(seller_csv)
+        seller_ids = [r["record_id"] for r in seller_rows]
+        hwadam = [r for r in seller_rows if r["record_id"] == "SEL-hwadamglobal-example"]
+        report.check("export: X3 seller csv skips the unreachable maker and keeps the "
+                     "country-unknown one as the literal unknown",
+                     len(seller_rows) == 12 and "SEL-sopoongworks-example" not in seller_ids
+                     and hwadam and hwadam[0]["country"] == "unknown"
+                     and "operational_status=1" in seller_err,
+                     "rows=%d stderr=%s" % (len(seller_rows), seller_err.strip()[:200]))
+
+        # --- X5: the TradeWith body is the DTO, minus the never-filled fields ---------
+        body_text = outputs["X2 buyer tradewith-json"][0]
+        try:
+            body = json.loads(body_text)
+        except ValueError:
+            body = {}  # X2 already failed; report the rest instead of crashing
+        sys.path.insert(0, SCRIPT_DIR)
+        import _common  # noqa: E402 - the harness already imported it for validation
+        schema = load_schema("tradewith-bulk-buyers")
+        errors = _common.validate(body, schema)
+        report.check("export: X5 the tradewith-json body passes its own schema", not errors,
+                     "; ".join(str(e) for e in errors[:3]))
+        rows = body.get("buyers", [])
+        problems = []
+        if set(body) != {"buyers"}:
+            problems.append("top-level keys %s" % sorted(body))
+        for row in rows:
+            extra = set(row) - TRADEWITH_DTO_KEYS
+            if extra:
+                problems.append("%s: non-DTO keys %s" % (row.get("sourceId"), sorted(extra)))
+            for key in TRADEWITH_NEVER_KEYS:
+                if key in row:
+                    problems.append("%s: carries %s" % (row.get("sourceId"), key))
+            for key, value in row.items():
+                if value is None or value == "" or value == "unknown" or value == []:
+                    problems.append("%s: %s is an empty/unknown value" % (row.get("sourceId"), key))
+                if isinstance(value, str) and _common.personal_data_hits(value):
+                    problems.append("%s: %s trips the personal-data scan"
+                                    % (row.get("sourceId"), key))
+        report.check("export: X5 every TradeWith row is a DTO subset with no contact name, "
+                     "email or phone, notes, tier label or HS codes, and no empty value",
+                     rows and not problems, "\n".join(problems[:8]))
+        report.check("export: X5 no '@' appears anywhere in the body (not even a role mailbox)",
+                     "@" not in body_text, "an address reached the TradeWith body")
+        report.check("export: X5 provenance and staleness ride in originalSource and sourceUrl",
+                     all(row.get("originalSource", "").startswith("kbeauty-trade-matchmaker | ")
+                         and ("record_id=%s | stale=false"
+                              % by_source.get(row["sourceId"], {}).get("buyer_id"))
+                         in row["originalSource"]
+                         and row.get("sourceUrl", "").startswith("https://") for row in rows),
+                     "originalSource/sourceUrl missing")
+
+        # --- X6: sourceId is kbtm:<domain>, unique, and stable under a wider filter ----
+        ids = [row["sourceId"] for row in rows]
+        report.check("export: X6 sourceId is kbtm:<www-stripped canonical_domain> and unique",
+                     ids == [_expected_source_id(by_id[i]) for i in qualified]
+                     and len(set(ids)) == len(ids), "sourceIds: %s" % ids)
+        # luminaglow.example and www.luminaglow.example are one sourceId: refused.
+        _export_refusal(report, ["--input", buyers_path, "--format", "tradewith-json",
+                                 "--include-unqualified"], 1, "share the TradeWith sourceId",
+                        "two records on one www-stripped domain (duplicate sourceId)")
+        deduped = _export_variant(buyers_out, temp, lambda d: d["records"].remove(
+            _record(d, "BUY-www-luminaglow-example")))
+        wide_code, wide_body, wide_err = run_script("export_leads.py", [
+            "--input", deduped, "--format", "tradewith-json", "--include-unqualified"])
+        wide_rows = json.loads(wide_body)["buyers"] if wide_code == 0 else []
+        wide_same = dict((r["sourceId"], r) for r in wide_rows)
+        report.check("export: X6 a wider export carries the same row for the same record",
+                     wide_code == 0 and all(wide_same.get(row["sourceId"]) == row
+                                            for row in rows),
+                     "a row changed under --include-unqualified")
+
+        # --- X4 continued: the admin import page reads the CSV as the JSON says ---------
+        ui_rows = _admin_ui_parse(outputs["X4 buyer tradewith-csv"][0])
+        projected = [dict((k, row[k]) for k in ("sourceId", "companyName", "country",
+                                                "website", "industry")
+                          if k in row) for row in rows]
+        report.check("export: X4 the admin import page's parser reads the tradewith-csv "
+                     "into exactly the tradewith-json rows", ui_rows == projected,
+                     "parsed %s" % ui_rows[:1])
+        tw_csv_err = outputs["X4 buyer tradewith-csv"][1]
+        report.check("export: X4 tradewith-csv says on stderr that it drops provenance and "
+                     "points at tradewith-json",
+                     "note: tradewith-csv carries only" in tw_csv_err
+                     and "7 row(s) lost" in tw_csv_err and "--format tradewith-json" in tw_csv_err,
+                     tw_csv_err.strip()[:300])
+        report.check("export: X4 tradewith-json prints no such note",
+                     "note: tradewith-csv" not in outputs["X2 buyer tradewith-json"][1],
+                     "note printed for tradewith-json")
+        seller_tw = _export_variant(sellers_out, temp, lambda d: None)
+        comma_path = _export_variant(buyers_out, temp, lambda d: _record(
+            d, "BUY-gulfglow-example").update({"company_name": "Gulf Glow Trading, FZ-LLC"}))
+        code, out, err = run_script("export_leads.py", ["--input", comma_path,
+                                                        "--format", "tradewith-csv"])
+        report.check("export: X4 a comma in a company name survives the admin page parser",
+                     code == 0 and _admin_ui_parse(out)[0].get("companyName")
+                     == "Gulf Glow Trading, FZ-LLC", "exit %d: %s" % (code, err.strip()[:200]))
+
+        # --- X7: filters -----------------------------------------------------------
+        code, wide_csv, wide_csv_err = run_script("export_leads.py", [
+            "--input", buyers_path, "--include-unqualified"])
+        wide_csv_rows = dict((r["record_id"], r) for r in _csv_rows(wide_csv))
+        report.check("export: X7 --include-unqualified keeps every scored record except the "
+                     "unreachable one", len(wide_csv_rows) == 18
+                     and "BUY-northgateimport-example" not in wide_csv_rows,
+                     "rows=%d" % len(wide_csv_rows))
+        code, floor_csv, _e = run_script("export_leads.py", [
+            "--input", buyers_path, "--min-score", "80"])
+        report.check("export: X7 --min-score 80 keeps the five records at or above 80",
+                     code == 0 and len(_csv_rows(floor_csv)) == 5,
+                     "rows=%d" % len(_csv_rows(floor_csv)))
+        report.check("export: X7 an absent list is 'unknown' and a verified-empty one 'none'",
+                     wide_csv_rows.get("BUY-kantoimport-example", {}).get("product_categories")
+                     == "unknown"
+                     and wide_csv_rows.get("BUY-straitswholesale-example", {})
+                     .get("contact_channels") == "none",
+                     "kantoimport/straitswholesale literals wrong")
+        excluded_ids = [e.get("id") for e in buyers_doc.get("excluded", [])]
+        report.check("export: X7 excluded[] never appears in an export",
+                     excluded_ids and not any(i in wide_csv for i in excluded_ids)
+                     and not any(i in wide_body for i in excluded_ids),
+                     "excluded ids: %s" % excluded_ids)
+
+        # --- X8: a dropped dimension is not_applicable, not unknown -----------------
+        dropped = _export_variant(buyers_out, temp, lambda d: _record(
+            d, "BUY-gulfglow-example")["dimension_scores"].pop("market_relevance"))
+        code, out, err = run_script("export_leads.py", ["--input", dropped, "--no-validate"])
+        cell = [r for r in _csv_rows(out) if r["record_id"] == "BUY-gulfglow-example"]
+        report.check("export: X8 a dropped market_relevance is the literal not_applicable",
+                     code == 0 and cell and cell[0]["dim_market_relevance"] == "not_applicable",
+                     "exit %d %s" % (code, err.strip()[:200]))
+
+        # --- X9: the spreadsheet formula guard --------------------------------------
+        formula = _export_variant(buyers_out, temp, lambda d: _record(
+            d, "BUY-gulfglow-example").update(
+                {"company_name": '=HYPERLINK("http://x.example")'}))
+        code, out, err = run_script("export_leads.py", ["--input", formula])
+        cell = [r for r in _csv_rows(out) if r["record_id"] == "BUY-gulfglow-example"]
+        report.check("export: X9 a formula-lead company name is apostrophe-guarded in csv",
+                     code == 0 and cell and cell[0]["company_name"].startswith("'="),
+                     "exit %d" % code)
+        code, out, err = run_script("export_leads.py", ["--input", formula,
+                                                        "--format", "tradewith-json"])
+        report.check("export: X9 the JSON body keeps the raw name (it is not a spreadsheet)",
+                     code == 0 and json.loads(out)["buyers"][0]["companyName"]
+                     == '=HYPERLINK("http://x.example")', "exit %d" % code)
+        _export_refusal(report, ["--input", formula, "--format", "tradewith-csv"], 1,
+                        "formula character", "a formula-lead name in tradewith-csv")
+
+        # --- X10: only a company ROLE mailbox ever fills contactEmail ----------------
+        def personal(d):
+            _record(d, "BUY-gulfglow-example")["contact_channels"][1]["value"] = \
+                "jane.doe@gulfglow.example"
+            _record(d, "BUY-dunesourcing-example")["contact_channels"][1]["value"] = \
+                "info@other-company.example"
+            _record(d, "BUY-britsun-example")["contact_channels"][1]["value"] = \
+                "sales@gmail.com"
+        role_path = _export_variant(buyers_out, temp, personal)
+        code, out, err = run_script("export_leads.py", ["--input", role_path,
+                                                        "--format", "tradewith-json"])
+        role_rows = dict((r["sourceId"], r) for r in json.loads(out)["buyers"]) \
+            if code == 0 else {}
+        report.check("export: X10 no address of any kind, role mailbox included, reaches a "
+                     "TradeWith row",
+                     code == 0 and len(role_rows) == 7 and "@" not in out
+                     and all("contactEmail" not in row for row in role_rows.values()),
+                     "exit %d %s" % (code, err.strip()[:200]))
+        code, out, err = run_script("export_leads.py", ["--input", role_path])
+        report.check("export: X10 the csv withholds those addresses and says so on stderr",
+                     code == 0 and "jane.doe" not in out and "gmail.com" not in out
+                     and "other-company" not in out and "withheld 3 corporate_email" in err,
+                     "exit %d %s" % (code, err.strip()[:300]))
+        report.check("export: X10 the csv keeps a real role mailbox on the company's domain",
+                     code == 0 and "corporate_email=partners@luminaglow.example" in out,
+                     "luminaglow's partners@ was lost")
+        freemail = _export_variant(buyers_out, temp, lambda d: _record(
+            d, "BUY-gulfglow-example").update({
+                "canonical_domain": "gmail.com",
+                "contact_channels": [{"type": "corporate_email", "value": "sales@gmail.com"}]}))
+        code, out, err = run_script("export_leads.py", ["--input", freemail, "--no-validate"])
+        report.check("export: X10 a role local part on a free-mail domain is withheld even "
+                     "when that domain is the record's own canonical_domain",
+                     code == 0 and "sales@gmail.com" not in out
+                     and "withheld 1 corporate_email" in err,
+                     "exit %d %s" % (code, err.strip()[:300]))
+
+        # --- X11: usage refusals, exit 2 ----------------------------------------------
+        match_code, match_out, _e = run_script("score_match.py", [
+            "--input", os.path.join(FIXTURES, "match-134.input.json"), "--as-of", AS_OF])
+        match_path = _write_temp_text(match_out, "kbtm-export-match-", ".json")
+        temp.append(match_path)
+        for args, expect, label in [
+            (["--input", seller_tw, "--format", "tradewith-json"], "seller bulk-import",
+             "a seller run as tradewith-json"),
+            (["--input", seller_tw, "--format", "tradewith-csv"], "seller bulk-import",
+             "a seller run as tradewith-csv"),
+            (["--input", buyers_path, "--pretty"], "--pretty", "--pretty with csv"),
+            (["--input", buyers_path, "--min-score", "101"], "--min-score", "--min-score 101"),
+            (["--input", buyers_path, "--min-score", "abc"], "--min-score", "--min-score abc"),
+            (["--input", buyers_path, "--as-of", "2026-13-01"], "", "a malformed --as-of"),
+        ]:
+            _export_refusal(report, args, 2, expect, label)
+
+        # --- X12: data refusals, exit 1, nothing written ---------------------------------
+        out_dir = tempfile.mkdtemp(prefix="kbtm-export-out-")
+        try:
+            target = os.path.join(out_dir, "leads.out")
+            unscored = _export_variant(buyers_out, temp,
+                                       lambda d: d.update({"score_version": "unscored"}))
+            mixed = _export_variant(buyers_out, temp, lambda d: d["records"][1].update(
+                {"score_version": "kbtm-score-0.0.9"}))
+            dup = _export_variant(buyers_out, temp,
+                                  lambda d: d["records"].append(dict(d["records"][0])))
+            pii = _export_variant(buyers_out, temp, lambda d: _record(
+                d, "BUY-gulfglow-example").update(
+                    {"company_name": "Gulf Glow (jane.doe@x.example)"}))
+            phone_url = _export_variant(buyers_out, temp, lambda d: _record(
+                d, "BUY-gulfglow-example").update(
+                    {"website": "https://gulfglow.example/tel=010-1234-5678"}))
+            poisoned_domain = _export_variant(buyers_out, temp, lambda d: _record(
+                d, "BUY-gulfglow-example").update({"canonical_domain": 42}))
+            poisoned_list = _export_variant(buyers_out, temp, lambda d: _record(
+                d, "BUY-gulfglow-example").update({"product_categories": {"a": 1}}))
+            poisoned_channels = _export_variant(buyers_out, temp, lambda d: _record(
+                d, "BUY-gulfglow-example").update({"contact_channels": [7]}))
+            poisoned_record = _export_variant(buyers_out, temp,
+                                              lambda d: d["records"].insert(0, 5))
+            for args, expect, label in [
+                (["--input", unscored, "--no-validate"], "not scored", "an unscored run"),
+                (["--input", mixed, "--no-validate"], "rubrics", "a mixed score_version"),
+                (["--input", dup], "appears twice", "a duplicated record id"),
+                (["--input", pii, "--format", "tradewith-json"], "email",
+                 "an address in a company name (tradewith-json)"),
+                (["--input", pii], "email", "an address in a company name (csv)"),
+                (["--input", phone_url, "--format", "tradewith-json"], "phone",
+                 "a phone number inside a URL"),
+                (["--input", poisoned_domain, "--no-validate", "--format", "tradewith-json"],
+                 "canonical_domain", "a non-string canonical_domain under --no-validate"),
+                (["--input", poisoned_list, "--no-validate"], "product_categories",
+                 "a non-list product_categories under --no-validate"),
+                (["--input", poisoned_channels, "--no-validate", "--format", "tradewith-json"],
+                 "contact channel", "a non-object contact channel under --no-validate"),
+                (["--input", poisoned_record, "--no-validate"], "JSON object",
+                 "a non-object record under --no-validate"),
+                (["--input", poisoned_domain], "fails its schema",
+                 "a schema-invalid input"),
+                # BUILD-CONTRACT 7.3: a document that parses but is the wrong kind is a
+                # contract failure (exit 1), as in diff_runs.py and stale_evidence.py.
+                (["--input", match_path], "match-result", "a match-result input"),
+                (["--input", os.path.join(FIXTURES, "rfq.134.json")],
+                 "not a discovery-result", "an RFQ document, which is not a scored run"),
+            ]:
+                _export_refusal(report, args, 1, expect, label, out_path=target)
+
+            # --- X13: an empty export still exits 0 -------------------------------------
+            code, out, err = run_script("export_leads.py", ["--input", buyers_path,
+                                                            "--min-score", "100"])
+            report.check("export: X13 an empty csv export is header-only with a WARNING",
+                         code == 0 and out.count("\n") == 1
+                         and "WARNING: no record passed the filters" in err, "exit %d" % code)
+            code, out, err = run_script("export_leads.py", ["--input", buyers_path,
+                                                            "--min-score", "100",
+                                                            "--format", "tradewith-json"])
+            report.check("export: X13 an empty tradewith-json export is {\"buyers\":[]}",
+                         code == 0 and out == '{"buyers":[]}\n', "got %r" % out[:80])
+
+            # --- X16: --output writes the file and leaves stdout empty ------------------
+            code, out, err = run_script("export_leads.py", ["--input", buyers_path,
+                                                            "--output", target])
+            written = _read_text(target) if os.path.exists(target) else None
+            report.check("export: X16 --output writes the file and stdout stays empty",
+                         code == 0 and not out and written == buyer_csv, "exit %d" % code)
+        finally:
+            for name in os.listdir(out_dir):
+                os.unlink(os.path.join(out_dir, name))
+            os.rmdir(out_dir)
+
+        # --- X14: the body-size warning -------------------------------------------------
+        def bulk(d):
+            template = _record(d, "BUY-gulfglow-example")
+            d["records"] = []
+            for n in range(260):
+                copy = json.loads(json.dumps(template))
+                copy["buyer_id"] = "BUY-bulk%03d-example" % n
+                copy["company_name"] = "Bulk Account %03d Trading" % n
+                copy["canonical_domain"] = "bulk%03d.example" % n
+                d["records"].append(copy)
+        bulk_path = _export_variant(buyers_out, temp, bulk)
+        code, out, err = run_script("export_leads.py", ["--input", bulk_path, "--no-validate",
+                                                        "--format", "tradewith-json"])
+        report.check("export: X14 a body over TradeWith's JSON limit exits 0 with a WARNING",
+                     code == 0 and "WARNING: the import body is" in err,
+                     "exit %d %s" % (code, err.strip()[:200]))
+
+        # --- X15: likely duplicates are named, not silently exported twice -----------
+        report.check("export: X15 an undeduplicated pair is named in a WARNING",
+                     "possible duplicate" in wide_csv_err
+                     and "BUY-luminaglow-example" in wide_csv_err
+                     and "BUY-www-luminaglow-example" in wide_csv_err,
+                     wide_csv_err.strip()[:300])
+        report.check("export: X15 the default (qualified-only) export warns of no duplicate",
+                     "possible duplicate" not in buyer_err, buyer_err.strip()[:300])
+
+        # --- X18: review follow-ups - each case fails if its guard is removed -------------
+        def gulf(d):
+            return _record(d, "BUY-gulfglow-example")
+
+        def tw_rows(path, extra=()):
+            code, out, err = run_script("export_leads.py", ["--input", path, "--format",
+                                                            "tradewith-json"] + list(extra))
+            rows = dict((r["originalSource"].split("record_id=")[1].split(" |")[0], r)
+                        for r in json.loads(out)["buyers"]) if code == 0 else {}
+            return code, rows, err
+
+        no_country = _export_variant(buyers_out, temp, lambda d: gulf(d).update(
+            {"country": "unknown"}))
+        code, found, err = tw_rows(no_country)
+        report.check("export: X18 a qualified buyer with country unknown is skipped and "
+                     "counted in a TradeWith format",
+                     code == 0 and len(found) == 6 and "BUY-gulfglow-example" not in found
+                     and "country_unknown=1" in err, "exit %d %s" % (code, err.strip()[:200]))
+        code, out, err = run_script("export_leads.py", ["--input", no_country])
+        report.check("export: X18 the generic csv keeps that row with country=unknown",
+                     code == 0 and any(r["record_id"] == "BUY-gulfglow-example"
+                                       and r["country"] == "unknown" for r in _csv_rows(out)),
+                     "exit %d" % code)
+
+        quoted = _export_variant(buyers_out, temp, lambda d: gulf(d).update(
+            {"company_name": 'Gulf "Glow" Trading'}))
+        _export_refusal(report, ["--input", quoted, "--format", "tradewith-csv"], 1,
+                        "double quote", "a double quote in a name (tradewith-csv)")
+
+        partial = _export_variant(buyers_out, temp, lambda d: d.update({"partial": True}))
+        code, out, err = run_script("export_leads.py", ["--input", partial])
+        report.check("export: X18 a partial input run exports with a WARNING",
+                     code == 0 and "WARNING: the input run is partial" in err,
+                     "exit %d %s" % (code, err.strip()[:200]))
+
+        member = _export_variant(buyers_out, temp, lambda d: gulf(d)["contact_channels"].append(
+            {"type": "linkedin", "value": "https://www.linkedin.com/in/jane-kim-5b1a2"}))
+        code, found, err = tw_rows(member)
+        report.check("export: X18 a LinkedIn member profile never becomes social and is "
+                     "counted on stderr",
+                     code == 0 and "social" not in found.get("BUY-gulfglow-example", {"social": 1})
+                     and "withheld 1 linkedin" in err,
+                     "exit %d %s" % (code, err.strip()[:200]))
+        code, out, err = run_script("export_leads.py", ["--input", member])
+        report.check("export: X18 the generic csv withholds the member profile too",
+                     code == 0 and "/in/jane-kim" not in out and "withheld 1 linkedin" in err,
+                     "exit %d %s" % (code, err.strip()[:200]))
+
+        messenger = _export_variant(buyers_out, temp, lambda d: gulf(d)["contact_channels"]
+                                    .append({"type": "messenger", "value": "+971 4 555 0111"}))
+        code, out, err = run_script("export_leads.py", ["--input", messenger])
+        report.check("export: X18 an official messenger number is company-level like a "
+                     "switchboard and exports",
+                     code == 0 and "messenger=+971 4 555 0111" in out,
+                     "exit %d %s" % (code, err.strip()[:200]))
+        messenger_mail = _export_variant(buyers_out, temp, lambda d: gulf(d)[
+            "contact_channels"].append({"type": "messenger", "value": "jane.kim@mail.example"}))
+        _export_refusal(report, ["--input", messenger_mail], 1, "email",
+                        "an address in a messenger channel (csv)")
+        phone_mail = _export_variant(buyers_out, temp, lambda d: _record(
+            d, "BUY-britsun-example")["contact_channels"][2].update(
+                {"value": "jane.kim@mail.example"}))
+        _export_refusal(report, ["--input", phone_mail], 1, "email",
+                        "an address in a phone channel (csv)")
+
+        nan_score = _export_variant(buyers_out, temp, lambda d: gulf(d).update(
+            {"qualification_score": float("nan")}))
+        _export_refusal(report, ["--input", nan_score, "--no-validate", "--min-score", "50"], 1,
+                        "finite", "a NaN qualification_score with --min-score")
+        _export_refusal(report, ["--input", nan_score, "--no-validate"], 1, "finite",
+                        "a NaN qualification_score in the csv")
+
+        bad_category = _export_variant(buyers_out, temp, lambda d: gulf(d).update(
+            {"company_type": "reseller"}))
+        _export_refusal(report, ["--input", bad_category, "--no-validate", "--format",
+                                 "tradewith-json"], 1, "tradewith-bulk-buyers",
+                        "a row outside the TradeWith schema, even under --no-validate")
+
+        no_domain = _export_variant(buyers_out, temp, lambda d: gulf(d).update(
+            {"canonical_domain": "unknown", "stale": True}))
+        code, found, err = tw_rows(no_domain)
+        row = found.get("BUY-gulfglow-example", {})
+        report.check("export: X18 an unknown domain falls back to kbtm:id:<record id>, and a "
+                     "stale record says stale=true in originalSource",
+                     code == 0 and row.get("sourceId") == "kbtm:id:BUY-gulfglow-example"
+                     and row.get("originalSource", "").endswith("| stale=true"),
+                     "exit %d %s %s" % (code, row.get("sourceId"), err.strip()[:200]))
+
+        # --- X17: --version --------------------------------------------------------------
+        code, out, _e = run_script("export_leads.py", ["--version"])
+        report.check("export: X17 --version prints the standard version line",
+                     code == 0 and re.match(
+                         r"^export_leads\.py skill_version=\S+ schema_version=0\.1\.0 "
+                         r"score_version=kbtm-score-0\.1\.0\n$", out), "got %r" % out)
+    finally:
+        for path in temp:
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+
+
+# ---------------------------------------------------------------------------
+# 5e. MCP tool server (scripts/mcp_server.py) - tests/cases.md section 16
+#
+# The server is driven offline with scripted stdin JSON-RPC transcripts. Fixture paths
+# are absolute and machine-specific, so the transcripts are built here in code, inside
+# a throwaway --root that holds copies of the fixtures; every comparison is structural,
+# against the direct CLI run of the same script, or against an existing golden.
+# ---------------------------------------------------------------------------
+MCP_SCRIPT = "mcp_server.py"
+MCP_TOOL_NAMES = ["normalize_company", "dedupe_companies", "score_buyer", "score_seller",
+                  "score_match", "validate_output", "make_review_sheet", "acceptance_report",
+                  "diff_runs", "stale_evidence", "export_leads"]
+MCP_LEGACY_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"]
+MCP_MODERN_VERSION = "2026-07-28"
+MCP_META_VERSION = "io.modelcontextprotocol/protocolVersion"
+MCP_META_CAPS = "io.modelcontextprotocol/clientCapabilities"
+MCP_BANNED_NAME_TOKENS = ("send", "mail", "fetch", "http", "post", "dispatch", "upload")
+MCP_TOOLS_GOLDEN = "mcp.tools-list.expected.json"
+MCP_BIG_INLINE = "16777216"
+MCP_HINTS = ("readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint")
+
+
+def _mcp_run(lines, command, env=None):
+    """Feed raw lines to a server command; returns (exit, stdout text, stderr text)."""
+    run_env = dict(os.environ) if env is None else env
+    run_env["PYTHONDONTWRITEBYTECODE"] = "1"
+    data = "".join(line + "\n" for line in lines).encode("utf-8")
+    proc = subprocess.run(command, input=data, stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE, cwd=PKG_ROOT, env=run_env, timeout=900)
+    return (proc.returncode, proc.stdout.decode("utf-8", "replace"),
+            proc.stderr.decode("utf-8", "replace"))
+
+
+def _mcp_command(root, extra=()):
+    command = [sys.executable, os.path.join(SCRIPT_DIR, MCP_SCRIPT)]
+    if root is not None:
+        command += ["--root", root]
+    return command + list(extra)
+
+
+def _mcp_session(messages, root, extra=("--quiet",), env=None):
+    """Run one transcript; returns (exit, stdout, stderr, responses by id, frames)."""
+    lines = [m if isinstance(m, str) else json.dumps(m, ensure_ascii=False) for m in messages]
+    code, out, err = _mcp_run(lines, _mcp_command(root, extra), env)
+    by_id, frames = {}, []
+    for line in out.splitlines():
+        try:
+            frame = json.loads(line)
+        except ValueError:
+            frame = None
+        frames.append(frame)
+        if isinstance(frame, dict) and frame.get("id") is not None:
+            by_id.setdefault(frame["id"], frame)
+    return code, out, err, by_id, frames
+
+
+def _mcp_req(request_id, method, params=None):
+    message = {"jsonrpc": "2.0", "id": request_id, "method": method}
+    if params is not None:
+        message["params"] = params
+    return message
+
+
+def _mcp_call(request_id, name, arguments, meta=None):
+    params = {"name": name, "arguments": arguments}
+    if meta is not None:
+        params["_meta"] = meta
+    return _mcp_req(request_id, "tools/call", params)
+
+
+def _mcp_meta(version=MCP_MODERN_VERSION, caps=True):
+    meta = {MCP_META_VERSION: version}
+    if caps:
+        meta[MCP_META_CAPS] = {}
+    return meta
+
+
+def _mcp_sc(response):
+    result = (response or {}).get("result") or {}
+    return result.get("structuredContent") or {}
+
+
+def _mcp_is_error(response):
+    return ((response or {}).get("result") or {}).get("isError")
+
+
+def _mcp_err_code(response):
+    return ((response or {}).get("error") or {}).get("code")
+
+
+def _mcp_fixture_root(root):
+    for name in sorted(os.listdir(FIXTURES)):
+        source = os.path.join(FIXTURES, name)
+        if os.path.isfile(source):
+            shutil.copyfile(source, os.path.join(root, name))
+    os.mkdir(os.path.join(root, "out"))
+    scored = (
+        ("buyers.uae.scored.json", "score_buyer.py",
+         ["--input", os.path.join(root, "buyers.golden.json"),
+          "--query", os.path.join(root, "query-buyer-uae-kbeauty.json")]),
+        ("buyers.uk.scored.json", "score_buyer.py",
+         ["--input", os.path.join(root, "buyers.golden.json"),
+          "--query", os.path.join(root, "query-buyer-uk-sunscreen.json")]),
+        ("match.scored.json", "score_match.py",
+         ["--input", os.path.join(root, "match-134.input.json"),
+          "--rerank-input", os.path.join(root, "rerank-134.json")]),
+    )
+    for name, script, args in scored:
+        code, out, err = run_script(script, args + ["--as-of", AS_OF])
+        if code != 0:
+            raise RuntimeError("%s for %s: exit %d %s" % (script, name, code, err.strip()[:300]))
+        with open(os.path.join(root, name), "w", encoding="utf-8") as fh:
+            fh.write(out)
+    poison = {"records": [
+        {"company_id": "X-a", "company_name": "A Co", "canonical_domain": "a.example",
+         "website": "https://a.example", "country": "AE", "company_type": "distributor",
+         "evidence": []},
+        {"company_id": "X-b", "company_name": "B Co", "canonical_domain": ["b.example"],
+         "website": "https://b.example", "country": "AE", "company_type": "distributor",
+         "evidence": []}]}
+    with open(os.path.join(root, "poison.json"), "w", encoding="utf-8") as fh:
+        json.dump(poison, fh)
+    return poison
+
+
+def _mcp_parity_rows(root):
+    """(label, tool, arguments, script, cli args, kind, golden) for every exposed tool."""
+    def p(name):
+        return os.path.join(root, name)
+    return [
+        ("normalize_company", "normalize_company",
+         {"input_path": "buyers.golden.json", "entity": "buyer", "envelope": True},
+         "normalize_company.py",
+         ["--input", p("buyers.golden.json"), "--entity", "buyer", "--envelope"], "json", None),
+        ("dedupe_companies", "dedupe_companies",
+         {"input_path": "buyers.golden.json", "entity": "buyer", "strict_country": False},
+         "dedupe_companies.py",
+         ["--input", p("buyers.golden.json"), "--entity", "buyer", "--no-strict-country"],
+         "json", None),
+        ("score_buyer", "score_buyer",
+         {"input_path": "buyers.golden.json", "query_path": "query-buyer-uae-kbeauty.json",
+          "top": 5},
+         "score_buyer.py",
+         ["--input", p("buyers.golden.json"), "--query", p("query-buyer-uae-kbeauty.json"),
+          "--top", "5"], "json", None),
+        ("score_seller", "score_seller",
+         {"input_path": "sellers.golden.json", "query_path": "query-seller-sunscreen-oem.json",
+          "threshold": 60, "threshold_mode": "fixed"},
+         "score_seller.py",
+         ["--input", p("sellers.golden.json"), "--query", p("query-seller-sunscreen-oem.json"),
+          "--threshold", "60", "--threshold-mode", "fixed"], "json", None),
+        ("score_match", "score_match",
+         {"input_path": "match-134.input.json", "rerank_input_path": "rerank-134.json",
+          "include_excluded": False},
+         "score_match.py",
+         ["--input", p("match-134.input.json"), "--rerank-input", p("rerank-134.json"),
+          "--no-include-excluded"], "json", None),
+        ("validate_output", "validate_output",
+         {"input_path": "match.scored.json", "schema": "match-result", "strict": True},
+         "validate_output.py",
+         ["--input", p("match.scored.json"), "--schema", "match-result", "--strict", "--json"],
+         "json", None),
+        ("make_review_sheet", "make_review_sheet",
+         {"input_path": "buyers.uae.scored.json", "include_excluded": True},
+         "make_review_sheet.py",
+         ["--input", p("buyers.uae.scored.json"), "--include-excluded"], "csv",
+         "review-sheet.buyers.uae.blind.csv"),
+        ("acceptance_report", "acceptance_report",
+         {"scored_paths": ["buyers.uae.scored.json"],
+          "reviews_paths": ["reviews.buyers.uae.csv"]},
+         "acceptance_report.py",
+         ["--scored", p("buyers.uae.scored.json"), "--reviews", p("reviews.buyers.uae.csv")],
+         "json", "acceptance.buyers.uae.expected.json"),
+        ("diff_runs", "diff_runs",
+         {"before_path": "buyers.uae.scored.json", "after_path": "buyers.uk.scored.json"},
+         "diff_runs.py",
+         ["--before", p("buyers.uae.scored.json"), "--after", p("buyers.uk.scored.json")],
+         "json", "diff.buyers.uae-uk.expected.json"),
+        ("stale_evidence", "stale_evidence", {"input_path": "buyers.golden.json"},
+         "stale_evidence.py", ["--input", p("buyers.golden.json")], "json",
+         "recheck.buyers.golden.expected.json"),
+        ("export_leads csv", "export_leads", {"input_path": "buyers.uae.scored.json"},
+         "export_leads.py", ["--input", p("buyers.uae.scored.json")], "csv",
+         "export.buyers.uae.csv"),
+        ("export_leads tradewith-json", "export_leads",
+         {"input_path": "buyers.uae.scored.json", "format": "tradewith-json"},
+         "export_leads.py",
+         ["--input", p("buyers.uae.scored.json"), "--format", "tradewith-json"], "json",
+         "export.buyers.uae.tradewith.json"),
+    ]
+
+
+def _mcp_readonly_transcript(root, poison):
+    """Messages that write nothing, so two runs must print identical bytes (INV-13)."""
+    with open(os.path.join(root, "buyers.golden.json"), encoding="utf-8") as fh:
+        buyers = json.load(fh)
+    with open(os.path.join(root, "query-buyer-uae-kbeauty.json"), encoding="utf-8") as fh:
+        query = json.load(fh)
+    with open(os.path.join(root, "buyers.uae.scored.json"), encoding="utf-8") as fh:
+        uae = json.load(fh)
+    outside = os.path.join(FIXTURES, "buyers.golden.json")
+    messages = [
+        _mcp_req(1, "initialize", {"protocolVersion": "2025-11-25", "capabilities": {},
+                                   "clientInfo": {"name": "kbtm-tests", "version": "0"}}),
+        {"jsonrpc": "2.0", "method": "notifications/initialized"},
+        {"jsonrpc": "2.0", "method": "notifications/unknown-thing", "params": {}},
+        {"jsonrpc": "2.0", "method": "foo/bar"},
+        _mcp_req(2, "ping"),
+        _mcp_req(3, "tools/list"),
+    ]
+    for offset, version in enumerate(MCP_LEGACY_VERSIONS + ["1999-01-01", MCP_MODERN_VERSION]):
+        messages.append(_mcp_req(10 + offset, "initialize", {
+            "protocolVersion": version, "capabilities": {},
+            "clientInfo": {"name": "kbtm-tests", "version": "0"}}))
+    for offset, row in enumerate(_mcp_parity_rows(root)):
+        arguments = dict(row[2])
+        arguments["as_of"] = AS_OF
+        messages.append(_mcp_call(100 + offset, row[1], arguments))
+    messages += [
+        _mcp_call(200, "score_buyer", {"as_of": AS_OF, "input": buyers, "query": query,
+                                       "top": 5}),
+        _mcp_call(201, "diff_runs", {"as_of": AS_OF, "before": uae,
+                                     "after_path": "buyers.uk.scored.json"}),
+        _mcp_call(300, "score_buyer", {"input_path": "buyers.golden.json"}),
+        _mcp_call(301, "score_buyer", {"as_of": "2026-02-30", "input_path": "buyers.golden.json"}),
+        _mcp_call(302, "score_buyer", {"as_of": AS_OF + "\n", "input_path": "buyers.golden.json"}),
+        _mcp_call(303, "score_buyer", {"as_of": "20260912", "input_path": "buyers.golden.json"}),
+        _mcp_call(304, "score_buyer", {"as_of": AS_OF, "input": buyers,
+                                       "input_path": "buyers.golden.json"}),
+        _mcp_call(305, "score_buyer", {"as_of": AS_OF}),
+        _mcp_call(306, "diff_runs", {"as_of": AS_OF, "before": uae, "after": uae}),
+        _mcp_call(307, "score_buyer", {"as_of": AS_OF, "input_path": "buyers.golden.json",
+                                       "pretty": True}),
+        _mcp_call(308, "score_buyer", {"as_of": AS_OF, "input_path": "buyers.golden.json",
+                                       "top": "5"}),
+        _mcp_call(309, "score_buyer", {"as_of": AS_OF, "input_path": outside}),
+        _mcp_call(310, "score_buyer", {"as_of": AS_OF,
+                                       "input_path": os.path.relpath(outside, root)}),
+        _mcp_call(311, "score_buyer", {"as_of": AS_OF, "input_path": "escape-link.json"}),
+        _mcp_call(312, "score_buyer", {"as_of": AS_OF, "input_path": "out"}),
+        _mcp_call(313, "score_buyer", {"as_of": AS_OF, "input_path": "a\u0000b.json"}),
+        _mcp_call(314, "acceptance_report", {"as_of": AS_OF, "scored_paths": [],
+                                             "reviews_paths": ["reviews.buyers.uae.csv"]}),
+        _mcp_call(315, "validate_output", {"as_of": AS_OF, "input_path": "match.scored.json",
+                                           "output_path": "out/v.json"}),
+        _mcp_call(500, "score_buyer", {"as_of": AS_OF, "input_path": "poison.json"}),
+        _mcp_call(501, "validate_output", {"as_of": AS_OF, "input": poison,
+                                           "schema": "discovery-result"}),
+        _mcp_call(502, "score_match", {"as_of": AS_OF}),
+        # Padding larger than any stdin read-ahead buffer: a child that inherited the
+        # server's stdin would swallow it, and request 503 would go unanswered.
+        _mcp_req(503, "ping", {"pad": "x" * 262144}),
+        _mcp_call(505, "score_match", {"as_of": AS_OF, "rfq_path": "rfq.134.json"}),
+        "garbage{",
+        json.dumps([_mcp_req(600, "ping")]),
+        json.dumps({"jsonrpc": "1.0", "id": 601, "method": "ping"}),
+        '{"jsonrpc":"2.0","id":true,"method":"ping"}',
+        '{"jsonrpc":"2.0","id":1.5,"method":"ping"}',
+        _mcp_req(602, "foo/bar"),
+        _mcp_call(603, "send_everything", {}),
+        _mcp_req(604, "tools/call", ["score_buyer"]),
+        _mcp_req(605, "tools/call", {"name": "score_buyer", "arguments": "x"}),
+        '{"jsonrpc":"2.0","id":606,"method":"tools/call","params":{"name":"score_buyer",'
+        '"arguments":{"as_of":"2026-09-12","top":NaN}}}',
+        {"jsonrpc": "2.0", "id": 607, "result": {}},
+        _mcp_req(700, "server/discover", {"_meta": _mcp_meta()}),
+        _mcp_req(701, "tools/list", {"_meta": _mcp_meta()}),
+        _mcp_req(702, "tools/list", {"_meta": _mcp_meta("2099-01-01")}),
+        _mcp_req(703, "tools/list", {"_meta": _mcp_meta(caps=False)}),
+        _mcp_call(704, "validate_output", {"as_of": AS_OF, "input_path": "match.scored.json"},
+                  meta=_mcp_meta()),
+        _mcp_req(999, "ping"),
+    ]
+    return messages
+
+
+def _mcp_protocol_cases(report, by_id, frames, out, err, code):
+    init = by_id.get(1, {}).get("result") or {}
+    report.check("mcp: M-01 initialize echoes 2025-11-25 with the tools capability and the "
+                 "package skill_version",
+                 init.get("protocolVersion") == "2025-11-25"
+                 and init.get("capabilities") == {"tools": {}}
+                 and (init.get("serverInfo") or {}).get("version") == _skill_version_from_common()
+                 and (init.get("serverInfo") or {}).get("name") == "kbeauty-trade-matchmaker"
+                 and "resultType" not in init and init.get("instructions"),
+                 "got %s" % json.dumps(init)[:300])
+    got = [((by_id.get(10 + i) or {}).get("result") or {}).get("protocolVersion")
+           for i in range(len(MCP_LEGACY_VERSIONS) + 2)]
+    want = MCP_LEGACY_VERSIONS + ["2025-11-25", "2025-11-25"]
+    report.check("mcp: M-02 version negotiation echoes every supported legacy revision and "
+                 "answers anything else with the newest legacy one", got == want,
+                 "expected %s\n     got %s" % (want, got))
+    report.check("mcp: M-03 ping answers {} and notifications get no response",
+                 (by_id.get(2) or {}).get("result") == {}
+                 and all(isinstance(f, dict) and "id" in f for f in frames),
+                 "ping %s" % by_id.get(2))
+
+    nulls = [f for f in frames if isinstance(f, dict) and f.get("id") is None]
+    null_codes = sorted(_mcp_err_code(f) for f in nulls)
+    report.check("mcp: M-04 a malformed line is -32700 and a batch or a bad id is -32600, "
+                 "each with id null",
+                 null_codes == [-32700, -32700, -32600, -32600, -32600],
+                 "null-id error codes %s" % null_codes)
+    report.check("mcp: M-05 a bad jsonrpc keeps the request id; an unknown method is -32601",
+                 _mcp_err_code(by_id.get(601)) == -32600 and _mcp_err_code(by_id.get(602))
+                 == -32601, "601 %s / 602 %s" % (by_id.get(601), by_id.get(602)))
+    report.check("mcp: M-06 an unknown tool, non-object params and non-object arguments are "
+                 "-32602", all(_mcp_err_code(by_id.get(i)) == -32602 for i in (603, 604, 605)),
+                 "; ".join("%d %s" % (i, by_id.get(i)) for i in (603, 604, 605)))
+    report.check("mcp: M-07 a stray response is ignored and requests after errors are still "
+                 "answered", 607 not in by_id and (by_id.get(999) or {}).get("result") == {},
+                 "607 %s / 999 %s" % (by_id.get(607), by_id.get(999)))
+
+    discover = (by_id.get(700) or {}).get("result") or {}
+    modern_list = (by_id.get(701) or {}).get("result") or {}
+    legacy_list = (by_id.get(3) or {}).get("result") or {}
+    bad_version = (by_id.get(702) or {}).get("error") or {}
+    modern_call = (by_id.get(704) or {}).get("result") or {}
+    problems = []
+    if discover.get("resultType") != "complete" \
+            or discover.get("supportedVersions") != [MCP_MODERN_VERSION] \
+            or discover.get("capabilities") != {"tools": {}} \
+            or "io.modelcontextprotocol/serverInfo" not in (discover.get("_meta") or {}):
+        problems.append("server/discover %s" % json.dumps(discover)[:200])
+    if modern_list.get("resultType") != "complete" or modern_list.get("ttlMs") != 300000 \
+            or modern_list.get("cacheScope") != "public" \
+            or modern_list.get("tools") != legacy_list.get("tools"):
+        problems.append("modern tools/list lacks resultType/ttlMs/cacheScope or differs")
+    if set(legacy_list) != {"tools"}:
+        problems.append("legacy tools/list carries %s" % sorted(legacy_list))
+    if bad_version.get("code") != -32022 or (bad_version.get("data") or {}).get(
+            "supported") != [MCP_MODERN_VERSION]:
+        problems.append("unsupported _meta version %s" % bad_version)
+    if _mcp_err_code(by_id.get(703)) != -32602:
+        problems.append("_meta without clientCapabilities %s" % by_id.get(703))
+    if modern_call.get("resultType") != "complete" or modern_call.get("isError") is not False:
+        problems.append("modern tools/call %s" % json.dumps(modern_call)[:200])
+    report.check("mcp: M-08 the 2026-07-28 path: server/discover, _meta requests, -32022 for "
+                 "an unsupported version, -32602 for a malformed _meta", not problems,
+                 "\n".join(problems))
+
+    bad_lines = [ln[:80] for ln, f in zip(out.splitlines(), frames)
+                 if not (isinstance(f, dict) and f.get("jsonrpc") == "2.0")]
+    report.check("mcp: M-09 stdout carries only JSON-RPC frames, stderr is silent under "
+                 "--quiet, and end of input exits 0",
+                 code == 0 and not bad_lines and err == "" and out.endswith("\n"),
+                 "exit %d, bad lines %s, stderr %r" % (code, bad_lines[:3], err[:300]))
+
+
+def _mcp_tool_list_cases(report, by_id, out):
+    tools = ((by_id.get(3) or {}).get("result") or {}).get("tools") or []
+    names = [t.get("name") for t in tools]
+    bad = [n for n in names if not re.match(r"^[A-Za-z0-9_.-]{1,128}$", str(n))
+           or any(tok in str(n).lower() for tok in MCP_BANNED_NAME_TOKENS)]
+    report.check("mcp: M-10 tools/list names the package scripts in pipeline order and no "
+                 "name suggests sending or fetching", names == MCP_TOOL_NAMES and not bad,
+                 "got %s; bad %s" % (names, bad))
+
+    problems = []
+    for tool in tools:
+        schema = tool.get("inputSchema") or {}
+        props = schema.get("properties") or {}
+        if schema.get("type") != "object" or schema.get("additionalProperties") is not False \
+                or "as_of" not in (schema.get("required") or []):
+            problems.append("%s: not a closed object requiring as_of" % tool.get("name"))
+        if set(schema) & {"oneOf", "anyOf", "allOf"}:
+            problems.append("%s: top-level combinator" % tool.get("name"))
+
+        def visit(key, path, name=tool.get("name")):
+            if key not in SUPPORTED_KEYWORDS and key not in ANNOTATION_KEYWORDS:
+                problems.append("%s: keyword %s at %s" % (name, key, path))
+        walk_schema(schema, visit)
+        for key, prop in props.items():
+            if (key.endswith("_path") and prop.get("type") != "string") or \
+                    (key.endswith("_paths") and (prop.get("items") or {}).get("type") != "string"):
+                problems.append("%s: %s is not a path string" % (tool.get("name"), key))
+        hints = tool.get("annotations") or {}
+        writes = "output_path" in props
+        if any(h not in hints for h in MCP_HINTS) or hints.get("openWorldHint") is not False \
+                or hints.get("destructiveHint") is not False \
+                or hints.get("readOnlyHint") is writes or hints.get("idempotentHint") is writes:
+            problems.append("%s: annotations %s dishonest for writes=%s"
+                            % (tool.get("name"), hints, writes))
+    report.check("mcp: M-11 every inputSchema is a closed object in the _common.validate "
+                 "subset and every tool carries honest annotations", bool(tools) and not problems,
+                 "\n".join(problems[:10]))
+
+    kinds = None
+    try:
+        sys.path.insert(0, SCRIPT_DIR)
+        sys.dont_write_bytecode = True
+        import validate_output as validator_module
+        kinds = list(validator_module.KINDS) + ["auto"]
+    except Exception as exc:  # pragma: no cover - defensive
+        kinds = ["import failed: %s" % exc]
+    enum = None
+    for tool in tools:
+        if tool.get("name") == "validate_output":
+            enum = ((tool.get("inputSchema") or {}).get("properties") or {}).get(
+                "schema", {}).get("enum")
+    report.check("mcp: M-12 the validate_output schema enum equals validate_output.KINDS + auto",
+                 enum == kinds, "enum %s\n     kinds %s" % (enum, kinds))
+
+    line = [ln for ln in out.splitlines() if ln.startswith('{"jsonrpc":"2.0","id":3,"result":')]
+    golden_path = os.path.join(EXPECTED, MCP_TOOLS_GOLDEN)
+    golden = _read_text(golden_path) if os.path.isfile(golden_path) else None
+    body = line[0][len('{"jsonrpc":"2.0","id":3,"result":'):-1] + "\n" if line else None
+    report.check("mcp: M-13 tools/list is byte-identical to %s" % MCP_TOOLS_GOLDEN,
+                 golden is not None and body == golden,
+                 "golden missing" if golden is None else "tools/list bytes differ from golden")
+
+
+def _mcp_parity_cases(report, root, by_id):
+    problems, golden_checked, exercised = [], [], set()
+    for offset, row in enumerate(_mcp_parity_rows(root)):
+        label, tool, _args, script, cli_args, kind, golden = row
+        response = by_id.get(100 + offset)
+        sc = _mcp_sc(response)
+        exercised.add(tool)
+        code, cli_out, cli_err = run_script(script, cli_args + ["--as-of", AS_OF])
+        if code != 0:
+            problems.append("%s: the CLI itself exited %d %s" % (label, code, cli_err[:200]))
+            continue
+        if _mcp_is_error(response) is not False or sc.get("exit_code") != 0:
+            problems.append("%s: isError %s exit %s error %s" % (
+                label, _mcp_is_error(response), sc.get("exit_code"), sc.get("error")))
+            continue
+        if kind == "csv":
+            got, want = sc.get("csv"), cli_out
+        else:
+            got, want = sc.get("document"), json.loads(cli_out)
+        if got != want:
+            problems.append("%s: the tool result differs from the CLI output" % label)
+        text = ((response.get("result") or {}).get("content") or [{}])[0].get("text")
+        if text != json.dumps(sc, ensure_ascii=False, separators=(",", ":")):
+            problems.append("%s: the text block is not the serialized structuredContent" % label)
+        if golden:
+            expected = _read_text(os.path.join(EXPECTED, golden))
+            if (kind == "csv" and got != expected) or \
+                    (kind == "json" and got != json.loads(expected)):
+                problems.append("%s: differs from golden %s" % (label, golden))
+            golden_checked.append(golden)
+    report.check("mcp: M-14 every tool returns exactly what its CLI prints (%d calls)"
+                 % len(_mcp_parity_rows(root)),
+                 not problems and exercised == set(MCP_TOOL_NAMES), "\n".join(problems[:12])
+                 + ("\nnot exercised: %s" % sorted(set(MCP_TOOL_NAMES) - exercised)))
+    report.check("mcp: M-15 tool results match the existing goldens (review sheet, acceptance, "
+                 "diff, re-check queue, exports)", not problems and len(golden_checked) == 6,
+                 "checked %s" % golden_checked)
+
+    path_doc = _mcp_sc(by_id.get(102)).get("document")
+    inline_doc = _mcp_sc(by_id.get(200)).get("document")
+    diff_path = _mcp_sc(by_id.get(108)).get("document")
+    diff_inline = _mcp_sc(by_id.get(201)).get("document")
+    report.check("mcp: M-16 an inline document and a path give the same result (score_buyer "
+                 "input+query, diff_runs before)",
+                 path_doc is not None and path_doc == inline_doc and diff_path is not None
+                 and diff_path == diff_inline,
+                 "score_buyer equal %s, diff_runs equal %s" % (path_doc == inline_doc,
+                                                            diff_path == diff_inline))
+
+
+def _mcp_refusal_cases(report, by_id):
+    def refused(request_id, needle=None):
+        sc = _mcp_sc(by_id.get(request_id))
+        return (_mcp_is_error(by_id.get(request_id)) is True and sc.get("exit_code") is None
+                and bool(sc.get("error"))
+                and (needle is None or needle in str(sc.get("error"))))
+
+    def show(ids):
+        return "\n".join("%d: %s" % (i, _mcp_sc(by_id.get(i)).get("error") or by_id.get(i))
+                         for i in ids if not refused(i))
+
+    ids = (300, 301, 302, 303)
+    report.check("mcp: M-17 as_of is required and must be a real YYYY-MM-DD date; no script "
+                 "runs without one", all(refused(i) for i in ids), show(ids))
+    ids = (304, 305, 306, 307, 308, 314)
+    report.check("mcp: M-18 argument errors are tool errors: both or neither of input / "
+                 "input_path, two inline documents, an unknown key, a wrong type, an empty list",
+                 all(refused(i) for i in ids), show(ids))
+    ids = (309, 310, 311)
+    report.check("mcp: M-19 an input path outside --root is refused: absolute, ../ and a "
+                 "symlink that leads out", all(refused(i, "--root") for i in ids), show(ids))
+    ids = (312, 313, 315)
+    report.check("mcp: M-20 a directory, a NUL byte and output_path on the read-only "
+                 "validate_output are refused", all(refused(i) for i in ids), show(ids))
+
+    poisoned = _mcp_sc(by_id.get(500))
+    report.check("mcp: M-21 a script data error (exit 1) is isError with its ERROR line and "
+                 "the document it still wrote (R7.3.2)",
+                 _mcp_is_error(by_id.get(500)) is True and poisoned.get("exit_code") == 1
+                 and poisoned.get("error") and isinstance(poisoned.get("document"), dict)
+                 and any(ln.startswith("ERROR:") for ln in poisoned.get("diagnostics", [])),
+                 json.dumps(poisoned)[:400])
+    verdict = _mcp_sc(by_id.get(501))
+    report.check("mcp: M-22 validate_output exit 1 is a successful call whose report says "
+                 "valid false", _mcp_is_error(by_id.get(501)) is False
+                 and verdict.get("exit_code") == 1
+                 and (verdict.get("document") or {}).get("valid") is False,
+                 json.dumps(verdict)[:400])
+    empty = _mcp_sc(by_id.get(502))
+    half = _mcp_sc(by_id.get(505))
+    report.check("mcp: M-23 score_match without input / input_path, or with only one of "
+                 "rfq_path / sellers_path, is refused before any script runs (no empty-stdin "
+                 "error blaming <stdin>) and the stream continues",
+                 all(_mcp_is_error(by_id.get(i)) is True for i in (502, 505))
+                 and empty.get("exit_code") is None and half.get("exit_code") is None
+                 and "rfq_path together with sellers_path" in str(empty.get("error"))
+                 and "rfq_path together with sellers_path" in str(half.get("error"))
+                 and "stdin" not in str(empty.get("error"))
+                 and (by_id.get(503) or {}).get("result") == {}
+                 and (by_id.get(999) or {}).get("result") == {},
+                 json.dumps(empty)[:300] + " / " + json.dumps(half)[:300])
+
+
+def _mcp_write_cases(report, root, poison_doc):
+    outside = os.path.realpath(tempfile.mkdtemp(prefix="kbtm-mcp-outside-"))
+    try:
+        os.symlink(outside, os.path.join(root, "outlink"))
+        os.symlink(os.path.join(root, "out", "nowhere.json"),
+                   os.path.join(root, "out", "dangle.json"))
+        existing = os.path.join(root, "buyers.golden.json")
+        before = _read_text(existing)
+        os.mkdir(os.path.join(root, "existing-dir.json"))
+        messages = [
+            _mcp_call(400, "score_match", {"as_of": AS_OF, "input_path": "match-134.input.json",
+                                           "rerank_input_path": "rerank-134.json",
+                                           "output_path": "out/match.json"}),
+            _mcp_call(401, "score_match", {"as_of": AS_OF, "input_path": "match-134.input.json",
+                                           "output_path": "out/match.json"}),
+            _mcp_call(402, "score_buyer", {"as_of": AS_OF, "input_path": "poison.json",
+                                           "output_path": "out/poison.scored.json"}),
+            _mcp_call(403, "score_buyer", {"as_of": AS_OF, "input_path": "buyers.golden.json",
+                                           "output_path": "buyers.golden.json"}),
+            _mcp_call(404, "score_buyer", {"as_of": AS_OF, "input_path": "buyers.golden.json",
+                                           "output_path": "out/dangle.json"}),
+            _mcp_call(405, "score_buyer", {"as_of": AS_OF, "input_path": "buyers.golden.json",
+                                           "output_path": "nodir/x.json"}),
+            _mcp_call(406, "score_buyer", {"as_of": AS_OF, "input_path": "buyers.golden.json",
+                                           "output_path": "outlink/x.json"}),
+            _mcp_call(407, "score_buyer", {"as_of": AS_OF, "input_path": "buyers.golden.json",
+                                           "output_path": "existing-dir.json"}),
+            _mcp_call(408, "score_buyer", {"as_of": AS_OF, "input_path": "buyers.golden.json"}),
+            '{"jsonrpc":"2.0","id":409,"method":"ping","params":{"pad":"'
+            + "x" * (16 * 1024 * 1024) + '"}}',
+            _mcp_req(410, "ping"),
+        ]
+        code, out, err, by_id, frames = _mcp_session(messages, root, extra=())
+
+        sc = _mcp_sc(by_id.get(400))
+        written = os.path.join(root, "out", "match.json")
+        problems = []
+        if _mcp_is_error(by_id.get(400)) is not False or "document" in sc:
+            problems.append("isError %s keys %s" % (_mcp_is_error(by_id.get(400)), sorted(sc)))
+        if os.path.isfile(written):
+            with open(written, "rb") as fh:
+                raw = fh.read()
+            want = {"path": written, "bytes": len(raw),
+                    "sha256": hashlib.sha256(raw).hexdigest()}
+            if sc.get("output") != want:
+                problems.append("output %s, expected %s" % (sc.get("output"), want))
+            cli_code, cli_out, _e = run_script("score_match.py", [
+                "--input", os.path.join(root, "match-134.input.json"),
+                "--rerank-input", os.path.join(root, "rerank-134.json"), "--as-of", AS_OF])
+            if cli_code != 0 or json.loads(raw.decode("utf-8")) != json.loads(cli_out):
+                problems.append("the written file differs from the CLI output")
+        else:
+            problems.append("no file at out/match.json")
+        report.check("mcp: M-25 output_path writes a new file inside the root and returns its "
+                     "path, bytes and sha256 instead of the document", not problems,
+                     "\n".join(problems))
+
+        again = _mcp_sc(by_id.get(401))
+        report.check("mcp: M-26 an existing output_path is refused and the file is unchanged",
+                     _mcp_is_error(by_id.get(401)) is True and again.get("exit_code") is None
+                     and "already exists" in str(again.get("error"))
+                     and _mcp_is_error(by_id.get(403)) is True
+                     and _read_text(existing) == before
+                     and os.path.isfile(written) and sc.get("output", {}).get("sha256")
+                     == hashlib.sha256(open(written, "rb").read()).hexdigest(),
+                     "401 %s / 403 %s" % (again.get("error"), _mcp_sc(by_id.get(403)).get("error")))
+
+        failed = _mcp_sc(by_id.get(402))
+        report.check("mcp: M-27 a script that exits 1 after writing reports the file and says "
+                     "a retry needs a new output_path",
+                     _mcp_is_error(by_id.get(402)) is True and failed.get("exit_code") == 1
+                     and (failed.get("output") or {}).get("path")
+                     == os.path.join(root, "out", "poison.scored.json")
+                     and "new output_path" in str(failed.get("error")),
+                     json.dumps(failed)[:400])
+
+        refusals = [(404, "already exists"), (405, "does not exist"), (406, "--root"),
+                    (407, "already exists")]
+        bad = ["%d: %s" % (i, _mcp_sc(by_id.get(i)).get("error")) for i, needle in refusals
+               if not (_mcp_is_error(by_id.get(i)) is True
+                       and needle in str(_mcp_sc(by_id.get(i)).get("error")))]
+        leaked = sorted(os.listdir(outside))
+        if os.path.lexists(os.path.join(root, "out", "nowhere.json")):
+            leaked.append("out/nowhere.json (through the dangling link)")
+        if os.path.lexists(os.path.join(root, "nodir")):
+            leaked.append("nodir/ was created")
+        report.check("mcp: M-28 output_path refusals: a dangling symlink, a missing directory, "
+                     "a symlinked directory leading out of the root, an existing directory",
+                     not bad and not leaked, "\n".join(bad + leaked))
+        report.check("mcp: M-29 nothing but the two requested files was written under the root",
+                     sorted(os.listdir(os.path.join(root, "out")))
+                     == ["dangle.json", "match.json", "poison.scored.json"],
+                     "out/ holds %s" % sorted(os.listdir(os.path.join(root, "out"))))
+
+        capped = _mcp_sc(by_id.get(408))
+        report.check("mcp: M-30 a result above the default inline cap is refused with a pointer "
+                     "to output_path and no document",
+                     _mcp_is_error(by_id.get(408)) is True and capped.get("exit_code") == 0
+                     and "output_path" in str(capped.get("error"))
+                     and "document" not in capped, json.dumps(capped)[:400])
+        report.check("mcp: M-31 a message above 16 MiB is -32600 and the next request is "
+                     "answered", any(isinstance(f, dict) and f.get("id") is None
+                                     and _mcp_err_code(f) == -32600 for f in frames)
+                     and (by_id.get(410) or {}).get("result") == {} and 409 not in by_id,
+                     "frames %d, 410 %s" % (len(frames), by_id.get(410)))
+        logged = [ln for ln in err.splitlines() if ln]
+        report.check("mcp: M-32 without --quiet each call logs one stderr line and never a "
+                     "traceback", code == 0 and "Traceback" not in err
+                     and "kbtm-mcp: score_match exit=0" in logged
+                     and all(ln.startswith("kbtm-mcp: ") for ln in logged),
+                     "exit %d stderr %r" % (code, err[:400]))
+    finally:
+        shutil.rmtree(outside, ignore_errors=True)
+
+
+def _mcp_package_rule(report):
+    target = os.path.join(PKG_ROOT, "scripts", "kbtm-mcp-should-not-exist.json")
+    code, _out, err, by_id, _f = _mcp_session([
+        _mcp_call(1, "score_buyer", {"as_of": AS_OF,
+                                     "input_path": "tests/fixtures/buyers.golden.json",
+                                     "output_path": "scripts/kbtm-mcp-should-not-exist.json"})],
+        PKG_ROOT)
+    sc = _mcp_sc(by_id.get(1))
+    report.check("mcp: M-33 output_path inside the skill package is refused even when the "
+                 "root contains it", code == 0 and _mcp_is_error(by_id.get(1)) is True
+                 and "skill package" in str(sc.get("error")) and not os.path.lexists(target),
+                 "exit %d %s %s" % (code, sc.get("error"), err[:200]))
+
+
+MCP_SMALL_INPUT = {"records": [{"company_name": "A Co", "website": "https://a.example",
+                                 "country": "AE", "company_type": "distributor"}]}
+
+
+def _mcp_frames_ok(out):
+    """Every stdout line is one JSON value (a crash or stray print breaks this)."""
+    for line in out.splitlines():
+        try:
+            json.loads(line)
+        except ValueError:
+            return False
+    return True
+
+
+def _mcp_import_server():
+    sys.path.insert(0, SCRIPT_DIR)
+    sys.dont_write_bytecode = True
+    import mcp_server
+    return mcp_server
+
+
+def _mcp_robustness_cases(report, root):
+    """Review findings: frames that used to end the process, and path/child hardening."""
+    ascii_line = json.dumps  # ensure_ascii=True writes a lone surrogate as a \u escape
+    code, out, err, by_id, _f = _mcp_session([
+        ascii_line(_mcp_req("\ud800", "ping")),
+        ascii_line(_mcp_req(501, "\ud800x")),
+        ascii_line(_mcp_call(502, "\ud800", {})),
+        ascii_line(_mcp_call(503, "validate_output", {
+            "as_of": AS_OF, "input_path": "buyers.golden.json", "schema": "\udc80"})),
+        ascii_line(_mcp_call(504, "normalize_company", {"as_of": "\ud800",
+                                                        "input": MCP_SMALL_INPUT})),
+        _mcp_req(505, "ping")], root)
+    report.check("mcp: M-37 a lone surrogate echoed in an id, method, tool name or error is "
+                 "answered and the server keeps serving",
+                 code == 0 and _mcp_frames_ok(out) and "Traceback" not in err
+                 and (by_id.get("\ud800") or {}).get("result") == {}
+                 and _mcp_err_code(by_id.get(501)) == -32601
+                 and _mcp_err_code(by_id.get(502)) == -32602
+                 and _mcp_is_error(by_id.get(503)) is True
+                 and _mcp_is_error(by_id.get(504)) is True
+                 and (by_id.get(505) or {}).get("result") == {},
+                 "exit %d ids %s stderr %r" % (code, sorted(map(repr, by_id)), err[-300:]))
+
+    deep_args = ('{"jsonrpc":"2.0","id":603,"method":"tools/call","params":{"name":'
+                 '"normalize_company","arguments":{"as_of":"%s","input":%s1%s}}}'
+                 % (AS_OF, '{"x":' * 200000, "}" * 200000))
+    code, out, err, by_id, frames = _mcp_session([
+        "[" * 200000,
+        '{"x":' * 200000 + "1" + "}" * 200000,
+        deep_args,
+        _mcp_req(604, "ping")], root)
+    parse_errors = [f for f in frames if isinstance(f, dict) and f.get("id") is None
+                    and _mcp_err_code(f) == -32700]
+    report.check("mcp: M-38 JSON nested deeper than the interpreter allows is a parse error "
+                 "and the next request is answered",
+                 code == 0 and _mcp_frames_ok(out) and "Traceback" not in err
+                 and len(parse_errors) >= 2 and (by_id.get(604) or {}).get("result") == {},
+                 "exit %d frames %d stderr %r" % (code, len(frames), err[-300:]))
+
+    closer = ("import os, sys; os.close(2); "
+              "os.execv(sys.executable, [sys.executable] + sys.argv[1:])")
+    code, out, _err = _mcp_run([
+        json.dumps(_mcp_call(1, "normalize_company", {"as_of": AS_OF,
+                                                      "input": MCP_SMALL_INPUT})),
+        json.dumps(_mcp_req(2, "ping"))],
+        [sys.executable, "-c", closer] + _mcp_command(root)[1:])
+    frames = [json.loads(ln) for ln in out.splitlines()] if _mcp_frames_ok(out) else []
+    answered = dict((f.get("id"), f) for f in frames if isinstance(f, dict))
+    report.check("mcp: M-39 a closed stderr never stops the server (the per-call log line "
+                 "is best effort)",
+                 code == 0 and _mcp_is_error(answered.get(1)) is False
+                 and (answered.get(2) or {}).get("result") == {},
+                 "exit %d stdout %r" % (code, out[:300]))
+
+    big = {"pad": "x" * (2 * 1024 * 1024)}
+    over = {"pad": "x" * 70000}
+    code, out, err, by_id, _f = _mcp_session([
+        _mcp_call(801, "score_buyer", {"as_of": AS_OF, "input_path": "buyers.golden.json",
+                                       "query": big}),
+        _mcp_call(802, "score_seller", {"as_of": AS_OF, "input_path": "buyers.golden.json",
+                                        "query": over}),
+        _mcp_req(803, "ping")], root)
+    problems = []
+    for rid in (801, 802):
+        sc = _mcp_sc(by_id.get(rid))
+        if not (_mcp_is_error(by_id.get(rid)) is True and sc.get("exit_code") is None
+                and "query_path" in str(sc.get("error"))):
+            problems.append("%d: %s" % (rid, json.dumps(by_id.get(rid))[:300]))
+    try:
+        server = _mcp_import_server()
+        tool = [t for t in server.TOOLS if t["name"] == "normalize_company"][0]
+        config = {"root": root, "timeout": 30, "max_inline": 32768, "quiet": True,
+                  "python": os.path.join(root, "no-such-python")}
+        result = server.call_tool(tool, {"as_of": AS_OF, "input": MCP_SMALL_INPUT}, config)
+        if not (result.get("isError") is True
+                and "could not be started" in str(result["structuredContent"].get("error"))):
+            problems.append("unstartable child: %s" % json.dumps(result)[:300])
+    except Exception as exc:
+        problems.append("unstartable child raised %s: %s" % (type(exc).__name__, exc))
+    report.check("mcp: M-40 an inline query too large for the command line, or a child that "
+                 "cannot start, is a tool error pointing to query_path, not -32603",
+                 code == 0 and (by_id.get(803) or {}).get("result") == {} and not problems,
+                 "\n".join(problems))
+
+    code, out, err, by_id, _f = _mcp_session([
+        ascii_line(_mcp_call(901, "normalize_company", {
+            "as_of": AS_OF, "input": {"records": [{"company_name": "\ud800 Co"}]}})),
+        ascii_line(_mcp_call(902, "score_buyer", {"as_of": AS_OF,
+                                                  "input_path": "buyers.golden.json",
+                                                  "query": {"market": "\udc00"}})),
+        ascii_line(_mcp_call(903, "normalize_company", {"as_of": AS_OF,
+                                                        "input_path": "\ud800.json"})),
+        _mcp_req(904, "ping")], root)
+    bad = ["%d: %s" % (rid, _mcp_sc(by_id.get(rid)).get("error")) for rid in (901, 902, 903)
+           if not (_mcp_is_error(by_id.get(rid)) is True
+                   and "UTF-8" in str(_mcp_sc(by_id.get(rid)).get("error")))]
+    report.check("mcp: M-41 an inline document or path holding a lone surrogate is a tool "
+                 "error, not -32603", code == 0 and not bad
+                 and (by_id.get(904) or {}).get("result") == {}, "\n".join(bad))
+
+    code, out, err, by_id, frames = _mcp_session([
+        '{"jsonrpc":"2.0","id":null,"error":{"code":-32700,"message":"client parse error"}}',
+        '{"jsonrpc":"2.0","id":1.5,"result":{}}',
+        '{"jsonrpc":"2.0","id":77,"result":{}}',
+        _mcp_req(701, "ping")], root)
+    report.check("mcp: M-42 a stray response is never answered, even with id null",
+                 code == 0 and frames == [{"jsonrpc": "2.0", "id": 701, "result": {}}],
+                 "frames %s" % frames)
+
+    parent_dir = os.path.dirname(PKG_ROOT)
+    variant_pkg = os.path.join(parent_dir, os.path.basename(PKG_ROOT).swapcase())
+    probe_name = "kbtm-mcp-case-probe.json"
+    real_probe = os.path.join(PKG_ROOT, "tests", probe_name)
+    code, out, err, by_id, _f = _mcp_session([
+        _mcp_call(1, "score_buyer", {
+            "as_of": AS_OF,
+            "input_path": os.path.join(PKG_ROOT, "tests", "fixtures", "buyers.golden.json"),
+            "output_path": os.path.join(variant_pkg, "tests", probe_name)})], parent_dir)
+    created = os.path.lexists(real_probe)
+    if created:
+        os.remove(real_probe)
+    sc = _mcp_sc(by_id.get(1))
+    folds = os.path.isdir(os.path.join(variant_pkg, "tests"))
+    problems = []
+    if code != 0 or _mcp_is_error(by_id.get(1)) is not True or created:
+        problems.append("exit %d isError %s created %s error %s" % (
+            code, _mcp_is_error(by_id.get(1)), created, sc.get("error")))
+    elif folds and "skill package" not in str(sc.get("error")):
+        problems.append("case-folded spelling not recognised: %s" % sc.get("error"))
+    link_dir = tempfile.mkdtemp(prefix="kbtm-mcp-link-")
+    try:
+        server = _mcp_import_server()
+        link = os.path.join(link_dir, "pkg")
+        os.symlink(PKG_ROOT, link)
+        # _within_package takes an already-resolved directory; an unresolved alias of the
+        # package can only be recognised by (st_dev, st_ino), as a case-folded name is.
+        if not server._within_package(os.path.join(link, "tests")):
+            problems.append("an alias of the package folder is not recognised by identity")
+        if server._within_package(link_dir):
+            problems.append("an unrelated folder is reported inside the package")
+    except (OSError, NotImplementedError, AttributeError) as exc:
+        problems.append("identity check unavailable: %s" % exc)
+    finally:
+        shutil.rmtree(link_dir, ignore_errors=True)
+    report.check("mcp: M-43 the package is recognised by file identity, so a case-changed "
+                 "spelling of its path cannot write into it", not problems,
+                 "\n".join(problems))
+
+    base = os.path.join(root, "m44")
+    os.makedirs(os.path.join(base, ".cfg"))
+    code, out, err, by_id, _f = _mcp_session([
+        _mcp_call(1, "score_buyer", {"as_of": AS_OF, "input_path": "buyers.golden.json",
+                                     "output_path": "m44/probe.py"}),
+        _mcp_call(2, "score_buyer", {"as_of": AS_OF, "input_path": "buyers.golden.json",
+                                     "output_path": "m44/.probe.json"}),
+        _mcp_call(3, "score_buyer", {"as_of": AS_OF, "input_path": "buyers.golden.json",
+                                     "output_path": "m44/.cfg/probe.json"}),
+        _mcp_call(4, "score_buyer", {"as_of": AS_OF, "input_path": "buyers.golden.json",
+                                     "output_path": "m44/probe.JSON"})], root)
+    bad = ["%d: %s" % (rid, _mcp_sc(by_id.get(rid)).get("error"))
+           for rid, needle in ((1, ".json or .csv"), (2, "hidden"), (3, "hidden"))
+           if not (_mcp_is_error(by_id.get(rid)) is True
+                   and needle in str(_mcp_sc(by_id.get(rid)).get("error")))]
+    left = sorted(os.listdir(base)) + sorted(os.listdir(os.path.join(base, ".cfg")))
+    report.check("mcp: M-44 output_path must end in .json or .csv and may not name a hidden "
+                 "file or folder", code == 0 and not bad and _mcp_is_error(by_id.get(4)) is False
+                 and left == [".cfg", "probe.JSON"], "\n".join(bad) + " left %s" % left)
+
+    site = tempfile.mkdtemp(prefix="kbtm-mcp-site-")
+    saved = os.environ.get("TRADEWITH_BASE_URL")
+    try:
+        with open(os.path.join(site, "sitecustomize.py"), "w", encoding="utf-8") as fh:
+            fh.write("import sys\nsys.stderr.write('KBTM-SITECUSTOMIZE-RAN\\n')\n")
+        env = dict(os.environ)
+        env["PYTHONPATH"] = site
+        env["TRADEWITH_BASE_URL"] = "https://tradewith.example"
+        code, out, err, by_id, _f = _mcp_session([
+            _mcp_call(1, "normalize_company", {"as_of": AS_OF, "input": MCP_SMALL_INPUT})],
+            root, env=env)
+        diagnostics = _mcp_sc(by_id.get(1)).get("diagnostics") or []
+        problems = []
+        if code != 0 or _mcp_is_error(by_id.get(1)) is not False:
+            problems.append("exit %d result %s" % (code, json.dumps(by_id.get(1))[:300]))
+        if any("KBTM-SITECUSTOMIZE-RAN" in line for line in diagnostics):
+            problems.append("the child honoured PYTHONPATH (it did not run isolated)")
+        server = _mcp_import_server()
+        os.environ["TRADEWITH_BASE_URL"] = "https://tradewith.example"
+        if any(key.startswith("TRADEWITH_") for key in server._child_env()):
+            problems.append("TRADEWITH_* reaches the child environment")
+    finally:
+        if saved is None:
+            os.environ.pop("TRADEWITH_BASE_URL", None)
+        else:
+            os.environ["TRADEWITH_BASE_URL"] = saved
+        shutil.rmtree(site, ignore_errors=True)
+    report.check("mcp: M-45 a child runs isolated (-I ignores PYTHONPATH) and never sees "
+                 "TRADEWITH_* variables", not problems, "\n".join(problems))
+
+
+def _mcp_cli_cases(report, root):
+    code, out, err = _mcp_run([], _mcp_command(None, ["--version"]))
+    report.check("mcp: M-34 --version prints the standard version line",
+                 code == 0 and re.match(r"^mcp_server\.py skill_version=\S+ schema_version="
+                                        r"0\.1\.0 score_version=kbtm-score-0\.1\.0\n$", out),
+                 "exit %d %r" % (code, out))
+    home = os.path.join(root, "home")
+    os.mkdir(home)
+    home_env = dict(os.environ)
+    home_env["HOME"] = home
+    problems = []
+    for label, command, env, needs_error_line in (
+            ("no --root", _mcp_command(None), None, True),
+            ("missing dir", _mcp_command(os.path.join(root, "no-such-dir")), None, True),
+            ("filesystem root", _mcp_command(os.path.abspath(os.sep)), None, True),
+            ("home ancestor", _mcp_command(root), home_env, True),
+            ("home itself", _mcp_command(home), home_env, True),
+            ("tool timeout 0", _mcp_command(root, ["--tool-timeout", "0"]), None, True),
+            ("inline cap 10", _mcp_command(root, ["--max-inline-bytes", "10"]), None, True),
+            ("unknown flag", _mcp_command(root, ["--bogus"]), None, False)):
+        code, out, err = _mcp_run([json.dumps(_mcp_req(1, "ping"))], command, env)
+        errors = [ln for ln in err.splitlines() if ln.startswith("ERROR:")]
+        if code != 2 or out or "Traceback" in err or (needs_error_line and len(errors) != 1):
+            problems.append("%s: exit %d stdout %r stderr %r" % (label, code, out[:80],
+                                                                 err[:200]))
+    report.check("mcp: M-35 the server refuses to start without a safe --root or with a bad "
+                 "flag (exit 2, one ERROR line, empty stdout)", not problems,
+                 "\n".join(problems))
+
+
+def _mcp_plugin_case(report, root):
+    if not os.path.isfile(MARKETPLACE_PATH):
+        report.skip("mcp: M-36 the marketplace entry's server command starts the server",
+                    "not a repository checkout (installed copy or plugin cache)")
+        return
+    try:
+        with open(MARKETPLACE_PATH, encoding="utf-8") as fh:
+            entry = (json.load(fh).get("plugins") or [{}])[0]
+        server = list((entry.get("mcpServers") or {}).values())[0]
+    except (OSError, ValueError, IndexError, AttributeError) as exc:
+        report.fail("mcp: M-36 the marketplace entry's server command starts the server",
+                    "no readable mcpServers entry: %s" % exc)
+        return
+    args = [a.replace("${CLAUDE_PLUGIN_ROOT}", PKG_ROOT).replace("${CLAUDE_PROJECT_DIR}", root)
+            for a in server.get("args", [])]
+    script_ok = bool(args) and os.path.isfile(args[0])
+    code, out, err = _mcp_run([
+        json.dumps(_mcp_req(1, "initialize", {"protocolVersion": "2025-06-18",
+                                              "capabilities": {},
+                                              "clientInfo": {"name": "t", "version": "0"}})),
+        json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}),
+        json.dumps(_mcp_req(2, "tools/list"))],
+        [sys.executable] + args) if script_ok else (None, "", "")
+    frames = [json.loads(ln) for ln in out.splitlines()] if code == 0 else []
+    names = [t.get("name") for t in (frames[1].get("result") or {}).get("tools", [])] \
+        if len(frames) == 2 else []
+    report.check("mcp: M-36 the marketplace entry's server command starts the server",
+                 server.get("command") == "python3" and script_ok and code == 0
+                 and names == MCP_TOOL_NAMES,
+                 "command %r args %r exit %s stderr %r" % (server.get("command"), args, code,
+                                                           err[:200]))
+
+
+def phase_mcp_server(report, allow_missing):
+    script = os.path.join(SCRIPT_DIR, MCP_SCRIPT)
+    if not os.path.isfile(script) or missing_scripts():
+        note = "scripts absent: %s" % ", ".join(
+            missing_scripts() or ["scripts/%s" % MCP_SCRIPT])
+        if allow_missing:
+            report.skip("mcp: tool server cases", note)
+        else:
+            report.fail("mcp: tool server cases", note)
+        return
+    root = os.path.realpath(tempfile.mkdtemp(prefix="kbtm-mcp-"))
+    try:
+        try:
+            poison = _mcp_fixture_root(root)
+        except (OSError, RuntimeError) as exc:
+            report.fail("mcp: fixture root", str(exc))
+            return
+        os.symlink(os.path.join(FIXTURES, "buyers.golden.json"),
+                   os.path.join(root, "escape-link.json"))
+        messages = _mcp_readonly_transcript(root, poison)
+        code, out, err, by_id, frames = _mcp_session(
+            messages, root, extra=("--quiet", "--max-inline-bytes", MCP_BIG_INLINE))
+        _mcp_protocol_cases(report, by_id, frames, out, err, code)
+        _mcp_tool_list_cases(report, by_id, out)
+        _mcp_parity_cases(report, root, by_id)
+        _mcp_refusal_cases(report, by_id)
+        code2, out2, _err2, _b, _f = _mcp_session(
+            messages, root, extra=("--quiet", "--max-inline-bytes", MCP_BIG_INLINE))
+        report.check("mcp: M-24 INV-13 the same read-only transcript prints byte-identical "
+                     "stdout twice", code2 == code and out2 == out, "second run differed")
+        _mcp_write_cases(report, root, poison)
+        _mcp_package_rule(report)
+        _mcp_robustness_cases(report, root)
+        _mcp_cli_cases(report, root)
+        _mcp_plugin_case(report, root)
+        _mcp_review_cases(report, root)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def _mcp_review_cases(report, root):
+    """v0.3.0 final-review follow-ups on the server: logging and the child's stdin."""
+    code, _out, err, by_id, _f = _mcp_session([
+        _mcp_call(801, "score_buyer", {"as_of": AS_OF, "input_path": "../x.json"}),
+        _mcp_call(802, "score_buyer", {"as_of": AS_OF, "input_path": "buyers.golden.json",
+                                       "output_path": "buyers.golden.json"}),
+        _mcp_req(803, "ping")], root, extra=())
+    refused = [ln for ln in err.splitlines() if ln == "kbtm-mcp: score_buyer refused"]
+    report.check("mcp: M-47 without --quiet a refused call still logs one "
+                 "'kbtm-mcp: <tool> refused' line on stderr",
+                 code == 0 and len(refused) == 2
+                 and all(_mcp_is_error(by_id.get(i)) is True for i in (801, 802)),
+                 "exit %d stderr %r" % (code, err[-300:]))
+
+    # A driver process whose OWN stdin holds a valid buyer document: a child that
+    # inherited it would score that document and exit 0; with stdin closed it exits 2.
+    driver = (
+        "import json, sys\n"
+        "sys.path.insert(0, %r)\n"
+        "sys.dont_write_bytecode = True\n"
+        "import mcp_server as m\n"
+        "tool = [t for t in m.TOOLS if t['name'] == 'score_buyer'][0]\n"
+        "m.build_command = lambda tool, arguments, root: (['--as-of', %r], None, None, "
+        "'json')\n"
+        "result = m.call_tool(tool, {}, {'root': %r, 'timeout': 120, 'max_inline': 1 << 24,"
+        " 'quiet': True, 'python': sys.executable})\n"
+        "print(json.dumps(result['structuredContent']))\n" % (SCRIPT_DIR, AS_OF, root))
+    env = dict(os.environ)
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    with open(os.path.join(FIXTURES, "buyers.golden.json"), "rb") as fh:
+        feed = fh.read()
+    proc = subprocess.run([sys.executable, "-c", driver], input=feed, stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE, cwd=PKG_ROOT, env=env, timeout=300)
+    try:
+        structured = json.loads(proc.stdout.decode("utf-8"))
+    except ValueError:
+        structured = {}
+    report.check("mcp: M-48 a child started without a stdin document gets an empty stdin, "
+                 "never the server's own (the driver's stdin holds a valid document)",
+                 proc.returncode == 0 and structured.get("exit_code") == 2
+                 and "empty" in str(structured.get("error")),
+                 "exit %d %s %s" % (proc.returncode, proc.stdout[:300],
+                                    proc.stderr.decode("utf-8", "replace")[-300:]))
+
+
+REVIEW_BAD_AS_OF = "2026-13-01"
+
+
+def _review_exit(report, label, script, args, code_expected, expect, stdin_data=None):
+    code, out, err = run_script(script, args, stdin_data)
+    problems = []
+    if code != code_expected:
+        problems.append("exit %d, expected %d" % (code, code_expected))
+    if "Traceback (most recent call last)" in err:
+        problems.append("raw traceback escaped main()")
+    if expect and expect not in err:
+        problems.append("stderr lacks %r: %s" % (expect, err.strip()[-300:]))
+    report.check(label, not problems, "\n".join(problems))
+    return code, out, err
+
+
+def _review_as_of_cases(report, buyers_scored, sellers_scored, temp):
+    # R-04: one exit code for an impossible calendar date in every script (7.3: exit 2).
+    reviews = os.path.join(FIXTURES, "reviews.buyers.uae.csv")
+    rows = [
+        ("normalize_company.py", ["--input", os.path.join(FIXTURES, "buyers.golden.json")]),
+        ("dedupe_companies.py", ["--input", os.path.join(FIXTURES, "buyers.golden.json")]),
+        ("score_buyer.py", ["--input", os.path.join(FIXTURES, "buyers.golden.json")]),
+        ("score_seller.py", ["--input", os.path.join(FIXTURES, "sellers.golden.json")]),
+        ("score_match.py", ["--input", os.path.join(FIXTURES, "match-134.input.json")]),
+        ("validate_output.py", ["--input", buyers_scored]),
+        ("make_review_sheet.py", ["--input", buyers_scored]),
+        ("acceptance_report.py", ["--scored", buyers_scored, "--reviews", reviews]),
+        ("diff_runs.py", ["--before", buyers_scored, "--after", buyers_scored]),
+        ("stale_evidence.py", ["--input", buyers_scored]),
+        ("export_leads.py", ["--input", buyers_scored]),
+    ]
+    wrong = []
+    for script, args in rows:
+        for value in (REVIEW_BAD_AS_OF, "garbage"):
+            code, _o, err = run_script(script, args + ["--as-of", value])
+            if code != 2 or "--as-of" not in err or "Traceback" in err:
+                wrong.append("%s --as-of %s: exit %d %s" % (script, value, code,
+                                                            err.strip()[-160:]))
+    report.check("review: R-04 an impossible or malformed --as-of is exit 2 (a usage "
+                 "error, BUILD-CONTRACT 7.3) in all eleven scripts", not wrong,
+                 "\n".join(wrong[:12]))
+    for script, args in (("export_leads.py", ["--input", buyers_scored]),
+                         ("acceptance_report.py", ["--scored", buyers_scored,
+                                                   "--reviews", reviews])):
+        _review_exit(report, "review: R-05 %s refuses an empty --as-of (exit 2) instead of "
+                     "falling back or blaming another field" % script, script,
+                     args + ["--as-of", ""], 2, "--as-of is empty")
+
+
+def _review_validate_cases(report, temp):
+    expected_body = os.path.join(FIXTURES, "expected", "export.buyers.uae.tradewith.json")
+    code, out, _e = run_script("validate_output.py", ["--input", expected_body, "--strict",
+                                                       "--json"])
+    doc = json.loads(out) if out.strip().startswith("{") else {}
+    report.check("review: R-01 validate_output detects a tradewith-json body as "
+                 "tradewith-bulk-buyers and the golden passes --strict",
+                 code == 0 and doc.get("schema") == "tradewith-bulk-buyers"
+                 and doc.get("valid") is True, "exit %d %s" % (code, out[:300]))
+    bad = _write_temp_json({"buyers": [{"foo": 1}]}, "kbtm-review-bulk-")
+    temp.append(bad)
+    for extra, label in ((["--schema", "tradewith-bulk-buyers"], "--schema tradewith-bulk-"
+                          "buyers"), ([], "auto detection")):
+        code, out, err = run_script("validate_output.py", ["--input", bad, "--json"] + extra)
+        doc = json.loads(out) if out.strip().startswith("{") else {}
+        report.check("review: R-01 an invalid export body fails validate_output under %s "
+                     "(exit 1, schema errors)" % label,
+                     code == 1 and doc.get("valid") is False
+                     and any("sourceId" in e.get("message", "") for e in doc.get("errors", [])),
+                     "exit %d %s %s" % (code, out[:300], err.strip()[-200:]))
+    with open(expected_body, encoding="utf-8") as fh:
+        body = json.load(fh)
+    body["buyers"][0]["social"] = "https://www.linkedin.com/company/../in/ahmed-khan"
+    traversal = _write_temp_json(body, "kbtm-review-social-")
+    temp.append(traversal)
+    code, out, _e = run_script("validate_output.py", ["--input", traversal, "--json"])
+    doc = json.loads(out) if out.strip().startswith("{") else {}
+    report.check("review: R-03 the export schema's social pattern refuses a /company/ URL "
+                 "that resolves to a member profile (a hand-edited body)",
+                 code == 1 and any("social" in e.get("path", "") for e in doc.get("errors", [])),
+                 "exit %d %s" % (code, out[:300]))
+    unknown = _write_temp_json({"foo": 1}, "kbtm-review-unknown-")
+    temp.append(unknown)
+    code, out, _e = run_script("validate_output.py", [
+        "--input", unknown, "--json", "--schema-file",
+        os.path.join(SCHEMA_DIR, "tradewith-bulk-buyers.schema.json")])
+    doc = json.loads(out) if out.strip().startswith("{") else {}
+    report.check("review: R-02 --schema-file validates a document whose kind is not "
+                 "detectable instead of passing it with only a warning",
+                 code == 1 and doc.get("valid") is False and doc.get("errors"),
+                 "exit %d %s" % (code, out[:300]))
+    digest = os.path.join(FIXTURES, "expected", "match-134.expected.json")
+    for extra in ([], ["--no-validate"]):
+        code, out, err = run_script("validate_output.py", ["--input", digest, "--json"] + extra)
+        doc = json.loads(out) if out.strip().startswith("{") else {}
+        report.check("review: R-06 a document that only looks like a match-result is "
+                     "reported invalid, not a crash%s" % (" (--no-validate)" if extra else ""),
+                     code == 1 and "Traceback" not in err and "AttributeError" not in err
+                     and doc.get("valid") is False,
+                     "exit %d %s %s" % (code, out[:200], err.strip()[-200:]))
+
+
+def _review_export_cases(report, buyers_out, temp):
+    def gulf(d):
+        return _record(d, "BUY-gulfglow-example")
+
+    def social(value):
+        return lambda d: gulf(d)["contact_channels"].append({"type": "linkedin",
+                                                              "value": value})
+
+    for value in ("https://www.linkedin.com/company/../in/ahmed-khan",
+                  "https://www.linkedin.com/company/%2e%2e/in/ahmed-khan",
+                  "https://www.linkedin.com/company//in/ahmed-khan"):
+        path = _export_variant(buyers_out, temp, social(value))
+        code, out, err = run_script("export_leads.py", ["--input", path, "--format",
+                                                        "tradewith-json"])
+        rows = json.loads(out)["buyers"] if code == 0 else []
+        leaked = [r for r in rows if "ahmed-khan" in r.get("social", "")]
+        report.check("review: R-07 a /company/ URL that resolves to a member profile (%s) "
+                     "never becomes TradeWith social" % value.split("/company/")[1],
+                     code == 0 and not leaked and "withheld 1 linkedin" in err,
+                     "exit %d %s" % (code, err.strip()[-200:]))
+        code, out, err = run_script("export_leads.py", ["--input", path])
+        report.check("review: R-07 the generic csv withholds it too (%s)"
+                     % value.split("/company/")[1],
+                     code == 0 and "ahmed-khan" not in out and "withheld 1 linkedin" in err,
+                     "exit %d %s" % (code, err.strip()[-200:]))
+
+    def evidence_url(url):
+        def mutate(d):
+            gulf(d)["evidence"][0]["source_url"] = url
+        return mutate
+
+    encoded = _export_variant(buyers_out, temp, evidence_url(
+        "https://gulfglow.example/x?email=ahmed.khan%40gulfglow.example"))
+    _export_refusal(report, ["--input", encoded, "--format", "tradewith-json"], 1, "email",
+                    "a percent-encoded address in the tier-1 sourceUrl (R-08)")
+    slug = _export_variant(buyers_out, temp, evidence_url(
+        "https://gulfglow.example/team/ahmed-khan-mobile-0501234567"))
+    _export_refusal(report, ["--input", slug, "--format", "tradewith-json"], 1, "phone",
+                    "a mobile number in a URL slug in the sourceUrl (R-09)")
+    form = _export_variant(buyers_out, temp, lambda d: gulf(d)["contact_channels"][0].update(
+        {"value": "https://gulfglow.example/form?to=ahmed.khan%40gulfglow.example"}))
+    _export_refusal(report, ["--input", form], 1, "email",
+                    "a percent-encoded address in a partnership_form channel (R-10)")
+    named = _export_variant(buyers_out, temp, lambda d: _record(
+        d, "BUY-britsun-example")["contact_channels"][2].update(
+            {"value": "+44 20 7946 0100 (Mr. Ahmed Khan, mobile)"}))
+    _export_refusal(report, ["--input", named], 1, "phone",
+                    "a phone channel that carries more than a bare number (R-11)")
+    link = _export_variant(buyers_out, temp, lambda d: gulf(d)["contact_channels"].append(
+        {"type": "messenger", "value": "https://api.whatsapp.com/send?phone=97145550111"}))
+    code, out, err = run_script("export_leads.py", ["--input", link])
+    report.check("review: R-12 an official WhatsApp business link still exports as a "
+                 "messenger channel",
+                 code == 0 and "messenger=https://api.whatsapp.com/send?phone=97145550111"
+                 in out, "exit %d %s" % (code, err.strip()[-200:]))
+
+    for name, label in ((" =1+1", "a leading space"), ("＝1+1", "a full-width '='")):
+        path = _export_variant(buyers_out, temp, lambda d, n=name: gulf(d).update(
+            {"company_name": n}))
+        _export_refusal(report, ["--input", path, "--format", "tradewith-csv"], 1, "formula",
+                        "a formula behind %s in tradewith-csv (R-13)" % label)
+    spaced = _export_variant(buyers_out, temp, lambda d: gulf(d).update(
+        {"company_name": " =1+1"}))
+    code, out, err = run_script("export_leads.py", ["--input", spaced, "--format",
+                                                    "tradewith-json"])
+    report.check("review: R-14 tradewith-json keeps such a name verbatim and warns on stderr",
+                 code == 0 and '"companyName":" =1+1"' in out
+                 and "WARNING:" in err and "formula" in err,
+                 "exit %d %s" % (code, err.strip()[-200:]))
+    code, out, err = run_script("export_leads.py", ["--input", spaced])
+    report.check("review: R-15 the generic csv guards a formula behind leading whitespace",
+                 code == 0 and any(r["record_id"] == "BUY-gulfglow-example"
+                                   and r["company_name"] == "' =1+1" for r in _csv_rows(out)),
+                 "exit %d %s" % (code, err.strip()[-200:]))
+
+
+def _review_scan_cases(report):
+    sys.path.insert(0, SCRIPT_DIR)
+    sys.dont_write_bytecode = True
+    import _common
+    clean = ["https://hotel-20240101.example/rooms",
+             "https://registry.example/cert/0123456789",
+             "see https://cdsco.example/q?no=BPOM%20NA18230100123 for the record",
+             "https://telco.example/tel-plans/2024"]
+    flagged = [text for text in clean if _common.personal_data_hits(text)]
+    report.check("review: R-16 the widened URL scan still passes registry ids, dates and "
+                 "words that merely contain 'tel'", not flagged, "\n".join(flagged))
+    samples = [
+        ("from urllib import request", True), ("import urllib.request", True),
+        ("x = __import__('socket')", True), ("import importlib", True),
+        ("    mod = importlib.import_module(name)", True), ("import smtplib", True),
+        ("import subprocess", True), ("from urllib.parse import unquote, urlsplit", False),
+        ("import json", False), ("# importlib is never used here", False)]
+    wrong = [line for line, bad in samples if bool(_network_problem(line, False)) != bad]
+    wrong += ["subprocess allowed: " + line for line in ("import subprocess",)
+              if _network_problem(line, True)]
+    report.check("review: R-17 the network scan flags from-imports, __import__, importlib "
+                 "and a subprocess outside its allow-list", not wrong, "\n".join(wrong))
+
+
+def phase_review_followups(report, allow_missing):
+    """v0.3.0 final review: each case fails if its fix is reverted (tests/cases.md section 17)."""
+    needed = ["export_leads.py", "validate_output.py", "diff_runs.py", "stale_evidence.py",
+              "acceptance_report.py", "make_review_sheet.py"]
+    absent = [n for n in needed if not os.path.isfile(os.path.join(SCRIPT_DIR, n))]
+    if absent or missing_scripts():
+        note = "scripts absent: %s" % ", ".join(absent or missing_scripts())
+        if allow_missing:
+            report.skip("review: v0.3.0 review follow-ups", note)
+        else:
+            report.fail("review: v0.3.0 review follow-ups", note)
+        return
+    temp = []
+    try:
+        code, buyers_out, err = run_script("score_buyer.py", [
+            "--input", os.path.join(FIXTURES, "buyers.golden.json"),
+            "--query", os.path.join(FIXTURES, "query-buyer-uae-kbeauty.json"),
+            "--as-of", AS_OF, "--pretty"])
+        if code != 0:
+            report.fail("review: the UAE buyer run is scoreable", err.strip()[:400])
+            return
+        buyers_scored = _write_temp_text(buyers_out, "kbtm-review-buyers-", ".json")
+        temp.append(buyers_scored)
+        _review_as_of_cases(report, buyers_scored, None, temp)
+        _review_validate_cases(report, temp)
+        _review_export_cases(report, buyers_out, temp)
+        _review_scan_cases(report)
+    finally:
+        for path in temp:
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+
+
 def phase_safety(report):
     hits = []
     for path in package_files():
@@ -3225,6 +6143,7 @@ def phase_safety(report):
     wall_clock, third_party, network = [], [], []
     for path in glob.glob(os.path.join(SCRIPT_DIR, "*.py")):
         rel = os.path.relpath(path, PKG_ROOT)
+        allow_subprocess = os.path.basename(path) in SUBPROCESS_OK_SCRIPTS
         with open(path, encoding="utf-8", errors="replace") as fh:
             for lineno, line in enumerate(fh, 1):
                 for pattern in WALL_CLOCK_PATTERNS:
@@ -3236,8 +6155,10 @@ def phase_safety(report):
                     local = os.path.isfile(os.path.join(SCRIPT_DIR, module + ".py"))
                     if module not in STDLIB_OK and module != "__future__" and not local:
                         third_party.append("%s:%d: imports %s" % (rel, lineno, module))
-                    if module in ("socket", "ssl", "http") or "urllib.request" in line:
-                        network.append("%s:%d: %s" % (rel, lineno, line.strip()[:100]))
+                problem = _network_problem(line, allow_subprocess)
+                if problem:
+                    network.append("%s:%d: %s: %s" % (rel, lineno, problem,
+                                                      line.strip()[:100]))
     report.check("safety: INV-14 no wall-clock read on the scoring path", not wall_clock,
                  "\n".join(wall_clock[:10]))
     report.check("safety: INV-26 scripts import stdlib modules only", not third_party,
@@ -3281,6 +6202,7 @@ MANIFEST = [
     "references/qualification-rubric.md",
     "references/matching-rules.md",
     "references/evidence-policy.md",
+    "references/calibration-notes.md",
     "references/outreach-guidelines.md",
     "references/compliance-notes.md",
     "references/data-contract.md",
@@ -3294,6 +6216,9 @@ MANIFEST = [
     "schemas/scoring.config.json",
     "schemas/discovery-result.schema.json",
     "schemas/acceptance-report.schema.json",
+    "schemas/run-diff.schema.json",
+    "schemas/recheck-queue.schema.json",
+    "schemas/tradewith-bulk-buyers.schema.json",
     "scripts/_common.py",
     "scripts/normalize_company.py",
     "scripts/dedupe_companies.py",
@@ -3303,6 +6228,10 @@ MANIFEST = [
     "scripts/validate_output.py",
     "scripts/make_review_sheet.py",
     "scripts/acceptance_report.py",
+    "scripts/diff_runs.py",
+    "scripts/stale_evidence.py",
+    "scripts/export_leads.py",
+    "scripts/mcp_server.py",
     "templates/buyer_outreach.md",
     "templates/seller_outreach.md",
     "templates/legal_notices.md",
@@ -3321,8 +6250,12 @@ PORTABILITY_PATTERNS = [r"WebSearch", r"WebFetch", r"web\.run", r"browser\.", r"
 # make_review_sheet.py joins them because it takes the same --input: the same 0xff byte
 # must reach the same clean exit 2. acceptance_report.py does not, because it takes no
 # --input at all (--scored / --reviews are repeatable), so an --input there is an unknown
-# flag and argparse's own exit 2 is the correct answer (R7.1.4).
-CLI_SCRIPTS = [n for n in PIPELINE_SCRIPTS if n != "_common.py"] + ["make_review_sheet.py"]
+# flag and argparse's own exit 2 is the correct answer (R7.1.4). stale_evidence.py joins
+# too: it reads --input before it checks its required --as-of, so the same byte reaches
+# the UTF-8 error rather than the missing-flag one.
+CLI_SCRIPTS = [n for n in PIPELINE_SCRIPTS if n != "_common.py"] + ["make_review_sheet.py",
+                                                                    "stale_evidence.py",
+                                                                    "export_leads.py"]
 
 
 def _read_frontmatter(text):
@@ -3477,6 +6410,633 @@ def phase_package(report):
 
 
 # ---------------------------------------------------------------------------
+# 6b. plugin packaging: repository manifests and the release builder (P-01..P-11)
+#
+# The manifests and tools/build_release.py live at the REPOSITORY root, outside the
+# package, so an installed copy (a skills dir, the claude.ai sandbox, a plugin cache)
+# has none of them and the whole phase reports one SKIP there.
+# ---------------------------------------------------------------------------
+REPO_ROOT = os.path.dirname(PKG_ROOT)
+MARKETPLACE_PATH = os.path.join(REPO_ROOT, ".claude-plugin", "marketplace.json")
+OPENAI_MANIFEST_PATH = os.path.join(REPO_ROOT, "packaging", "openai", "plugin.json")
+TOOLS_DIR = os.path.join(REPO_ROOT, "tools")
+BUILDER = os.path.join(TOOLS_DIR, "build_release.py")
+SKILL_ZIP = "kbeauty-trade-matchmaker.zip"
+PLUGIN_ZIP = "kbeauty-trade-matchmaker-plugin.zip"
+
+# A plugin manifest or component dir at the package root changes how a plugin host
+# discovers the skill and leaks into the claude.ai skill ZIP (mirrors the builder).
+PLUGIN_COMPONENT_NAMES = (".claude-plugin", ".codex-plugin", ".agent-plugin", "plugin.json",
+                          ".mcp.json", "mcp.json", ".app.json", "skills", "agents", "commands",
+                          "hooks", "bin", "workflows", "output-styles", "monitors")
+MARKETPLACE_TOP_KEYS = {"name", "owner", "description", "plugins"}
+MARKETPLACE_ENTRY_KEYS = {"name", "source", "description", "version", "author", "homepage",
+                          "repository", "keywords", "strict", "skills", "mcpServers"}
+# Keys a skills-only portable plugin must never carry: component declarations would
+# make it Desktop only or conflict with skills/ discovery, and the repository has no
+# LICENSE file to point a license field at.
+OPENAI_FORBIDDEN_KEYS = {"skills", "apps", "hooks", "mcpServers", "screenshots", "license",
+                         "email"}
+MCP_SERVER_SCRIPT_ARG = "${CLAUDE_PLUGIN_ROOT}/scripts/mcp_server.py"
+ARCHIVE_DROPPINGS = ("__pycache__", ".pyc", ".DS_Store", ".kbtm-install-manifest", ".omc/",
+                     "tradewith-data")
+
+
+MCP_SERVER_ARGS = [MCP_SERVER_SCRIPT_ARG, "--root", "${CLAUDE_PROJECT_DIR}"]
+MCP_SERVER_REL = "scripts/mcp_server.py"
+
+
+def _fixture_git_env():
+    """Environment for git and the builder inside a throwaway fixture repository.
+
+    User and system git config (hooks, autocrlf, signing) are shut out, and the commit
+    identity and dates are fixed, so the fixture builds the same way on every machine.
+    """
+    env = dict(os.environ)
+    env.update({"PYTHONDONTWRITEBYTECODE": "1", "GIT_CONFIG_NOSYSTEM": "1",
+                "GIT_CONFIG_GLOBAL": os.devnull, "GIT_TERMINAL_PROMPT": "0",
+                "GIT_AUTHOR_NAME": "kbtm fixture", "GIT_AUTHOR_EMAIL": "fixture@kbtm.example",
+                "GIT_COMMITTER_NAME": "kbtm fixture",
+                "GIT_COMMITTER_EMAIL": "fixture@kbtm.example",
+                "GIT_AUTHOR_DATE": "2026-09-12T00:00:00+0000",
+                "GIT_COMMITTER_DATE": "2026-09-12T00:00:00+0000"})
+    return env
+
+
+def run_tool(path, args, env=None):
+    """run_script for a repository tool outside SCRIPT_DIR; cwd is the tool's repository."""
+    if env is None:
+        env = dict(os.environ)
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
+    proc = subprocess.run([sys.executable, path] + list(args), stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE, universal_newlines=True,
+                          cwd=os.path.dirname(os.path.dirname(path)), env=env)
+    return proc.returncode, proc.stdout, proc.stderr
+
+
+def _fixture_git(repo, args):
+    proc = subprocess.run(["git", "-C", repo] + list(args), stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE, env=_fixture_git_env())
+    if proc.returncode != 0:
+        raise RuntimeError("git %s: %s" % (" ".join(args[:2]),
+                                           proc.stderr.decode("utf-8", "replace").strip()))
+    return proc.stdout
+
+
+def _release_fixture(dest):
+    """A throwaway git repository holding this checkout's releasable files, committed.
+
+    The builder refuses a dirty or untracked package on purpose, so running it on the
+    working checkout would make this suite depend on commit state (a stray out.json, a
+    feature not yet committed). The fixture takes every git-tracked package file plus
+    every 2.2 manifest file, as they are on disk now, and commits them in a fresh repo.
+    """
+    tracked = subprocess.run(["git", "-C", REPO_ROOT, "ls-files", "-z", "--",
+                              os.path.basename(PKG_ROOT)], stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE).stdout.decode("utf-8").split("\0")
+    prefix = os.path.basename(PKG_ROOT) + "/"
+    rels = set(t[len(prefix):] for t in tracked if t.startswith(prefix))
+    rels.update(rel for rel in MANIFEST if rel != "tests/fixtures")
+    for rel in sorted(rels):
+        source = os.path.join(PKG_ROOT, *rel.split("/"))
+        if os.path.islink(source) or not os.path.isfile(source):
+            continue
+        target = os.path.join(dest, prefix, *rel.split("/"))
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        shutil.copyfile(source, target)
+    for source in (BUILDER, MARKETPLACE_PATH, OPENAI_MANIFEST_PATH):
+        target = os.path.join(dest, os.path.relpath(source, REPO_ROOT))
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        shutil.copyfile(source, target)
+    templates = os.path.join(dest, ".git-template")
+    os.mkdir(templates)
+    _fixture_git(dest, ["init", "-q", "--template=" + templates])
+    shutil.rmtree(templates)
+    _fixture_git(dest, ["add", "-A"])
+    _fixture_git(dest, ["commit", "-q", "--no-gpg-sign", "-m", "fixture"])
+    return os.path.join(dest, "tools", "build_release.py")
+
+
+def _mcp_pairing_problems(entry, script_present, script_in_manifest):
+    """P-04: the marketplace entry declares the MCP server exactly when the package ships it."""
+    problems = []
+    servers = entry.get("mcpServers")
+    ships = script_present and script_in_manifest
+    if servers is None:
+        if script_present or script_in_manifest:
+            problems.append("the package has %s (on disk: %s, in MANIFEST: %s) but the "
+                            "marketplace entry declares no mcpServers"
+                            % (MCP_SERVER_REL, script_present, script_in_manifest))
+        return problems
+    if not ships:
+        problems.append("mcpServers is declared but %s is %s" % (
+            MCP_SERVER_REL, "not in MANIFEST" if script_present else "not in the package"))
+    if not (isinstance(servers, dict) and len(servers) == 1):
+        problems.append("mcpServers must declare exactly one server")
+        return problems
+    server = list(servers.values())[0]
+    if not isinstance(server, dict):
+        problems.append("the server entry is not an object")
+        return problems
+    if server.get("command") != "python3":
+        problems.append("command %r, expected python3" % server.get("command"))
+    if server.get("args") != MCP_SERVER_ARGS:
+        problems.append("args %r, expected %r" % (server.get("args"), MCP_SERVER_ARGS))
+    banned = sorted(set(server) & {"url", "env", "headers", "headersHelper"})
+    if banned or server.get("type", "stdio") != "stdio":
+        problems.append("only a local stdio server is allowed (found %s)"
+                        % (banned or server.get("type")))
+    return problems
+
+
+def _all_keys(node, out):
+    if isinstance(node, dict):
+        for key, value in node.items():
+            out.add(key)
+            _all_keys(value, out)
+    elif isinstance(node, list):
+        for value in node:
+            _all_keys(value, out)
+    return out
+
+
+def _all_strings(node, out):
+    if isinstance(node, dict):
+        for value in node.values():
+            _all_strings(value, out)
+    elif isinstance(node, list):
+        for value in node:
+            _all_strings(value, out)
+    elif isinstance(node, str):
+        out.append(node)
+    return out
+
+
+def _skill_version_from_common():
+    path = os.path.join(SCRIPT_DIR, "_common.py")
+    text = open(path, encoding="utf-8").read() if os.path.isfile(path) else ""
+    found = re.search(r'^SKILL_VERSION = "([0-9]+\.[0-9]+\.[0-9]+)"', text, re.MULTILINE)
+    return found.group(1) if found else None
+
+
+def _allowlisted(rel):
+    """True when a package-relative file is a BUILD-CONTRACT 2.2 manifest row."""
+    return rel in MANIFEST or rel.startswith("tests/fixtures/")
+
+
+def phase_plugins(report):
+    if not os.path.isfile(MARKETPLACE_PATH):
+        report.skip("plugins: repository manifests",
+                    "not a repository checkout (installed copy or plugin cache)")
+        return
+    skill_version = _skill_version_from_common()
+    skill_name = dict(_read_frontmatter(open(os.path.join(PKG_ROOT, "SKILL.md"),
+                                             encoding="utf-8").read()) or []).get("name")
+    manifests = {}
+    for label, path in (("marketplace.json", MARKETPLACE_PATH),
+                        ("packaging/openai/plugin.json", OPENAI_MANIFEST_PATH)):
+        try:
+            with open(path, "rb") as fh:
+                raw = fh.read()
+            manifests[label] = (raw, json.loads(raw.decode("utf-8")))
+        except (OSError, UnicodeDecodeError, ValueError) as exc:
+            manifests[label] = (b"", None)
+            report.fail("plugins: %s parses as UTF-8 JSON" % label, str(exc))
+    market = manifests["marketplace.json"][1]
+    openai = manifests["packaging/openai/plugin.json"][1]
+
+    # ---- P-01 marketplace shape ------------------------------------------------------
+    problems = []
+    entry = {}
+    if not isinstance(market, dict):
+        problems.append("marketplace.json is not an object")
+    else:
+        extra = sorted(set(market) - MARKETPLACE_TOP_KEYS)
+        if extra:
+            problems.append("unexpected top-level keys %s" % extra)
+        if not re.match(r"^[a-z0-9]+(-[a-z0-9]+)*$", str(market.get("name", ""))):
+            problems.append("marketplace name %r is not kebab-case" % market.get("name"))
+        if not (market.get("owner") or {}).get("name"):
+            problems.append("owner.name is empty")
+        plugins = market.get("plugins")
+        if not (isinstance(plugins, list) and len(plugins) == 1
+                and isinstance(plugins[0], dict)):
+            problems.append("plugins must hold exactly one entry")
+        else:
+            entry = plugins[0]
+            extra = sorted(set(entry) - MARKETPLACE_ENTRY_KEYS)
+            if extra:
+                problems.append("unexpected plugin-entry keys %s" % extra)
+            if entry.get("name") != skill_name:
+                problems.append("plugin name %r != SKILL.md name %r"
+                                % (entry.get("name"), skill_name))
+            if entry.get("source") != "./" + os.path.basename(PKG_ROOT) \
+                    or entry.get("source") != "./kbeauty-trade-matchmaker":
+                problems.append("source %r must be ./kbeauty-trade-matchmaker, the package "
+                                "folder" % entry.get("source"))
+            # The entry is the whole definition (no plugin.json inside the package), and
+            # "./" names the root SKILL.md explicitly instead of relying on discovery.
+            if entry.get("strict") is not False:
+                problems.append("strict must be false: the entry is the whole definition")
+            if entry.get("skills") != ["./"]:
+                problems.append("skills must be [\"./\"] (the package root SKILL.md)")
+    report.check("plugins: P-01 marketplace.json lists the package folder as one "
+                 "single-skill plugin", not problems, "\n".join(problems))
+
+    # ---- P-02 BUILD-CONTRACT 12.1 --------------------------------------------------
+    stated = {"scripts/_common.py": skill_version,
+              "marketplace.json plugins[0].version": entry.get("version"),
+              "packaging/openai/plugin.json version":
+                  openai.get("version") if isinstance(openai, dict) else None}
+    report.check("plugins: P-02 BUILD-CONTRACT 12.1 every plugin manifest states "
+                 "skill_version", len(set(stated.values())) == 1 and None not in
+                 stated.values(), "; ".join("%s=%s" % kv for kv in sorted(stated.items())))
+
+    # ---- P-03 no plugin component inside the package -------------------------------
+    present = sorted(n for n in PLUGIN_COMPONENT_NAMES
+                     if os.path.lexists(os.path.join(PKG_ROOT, n)))
+    report.check("plugins: P-03 the package root holds no plugin manifest or component "
+                 "dir", not present, "found: %s" % ", ".join(present))
+
+    # ---- P-04 bundled MCP server declaration ---------------------------------------
+    script_path = os.path.join(PKG_ROOT, *MCP_SERVER_REL.split("/"))
+    problems = _mcp_pairing_problems(entry, os.path.isfile(script_path),
+                                     MCP_SERVER_REL in MANIFEST)
+    good = {"mcpServers": {"kbtm": {"command": "python3", "args": list(MCP_SERVER_ARGS)}}}
+    no_root = {"mcpServers": {"kbtm": {"command": "python3", "args": [MCP_SERVER_SCRIPT_ARG]}}}
+    for label, case, present, listed, want_ok in (
+            ("declared and shipped", good, True, True, True),
+            ("neither", {}, False, False, True),
+            ("declared, script missing", good, False, False, False),
+            ("declared, script not in MANIFEST", good, True, False, False),
+            ("shipped, not declared", {}, True, True, False),
+            ("declared without --root", no_root, True, True, False)):
+        if (not _mcp_pairing_problems(case, present, listed)) != want_ok:
+            problems.append("pairing rule self-check failed: %s" % label)
+    report.check("plugins: P-04 the marketplace entry declares the stdio MCP server exactly "
+                 "when the package ships scripts/mcp_server.py", not problems,
+                 "\n".join(problems))
+
+    # ---- P-05 OpenAI portable manifest, structural only -----------------------------
+    problems = []
+    if not isinstance(openai, dict):
+        problems.append("packaging/openai/plugin.json is not an object")
+    else:
+        if not str(openai.get("$schema", "")).startswith("https://"):
+            problems.append("$schema is missing")
+        if openai.get("name") != skill_name:
+            problems.append("name %r != SKILL.md name %r" % (openai.get("name"), skill_name))
+        if not str(openai.get("description", "")).strip():
+            problems.append("description is empty")
+        if not str((openai.get("author") or {}).get("name", "")).strip():
+            problems.append("author.name is empty")
+        extensions = openai.get("extensions") or {}
+        if set(extensions) - {"com.openai"}:
+            problems.append("unexpected extensions %s" % sorted(set(extensions) - {"com.openai"}))
+        interface = (extensions.get("com.openai") or {}).get("interface") or {}
+        if not str(interface.get("displayName", "")).strip():
+            problems.append("extensions.com.openai.interface.displayName is empty")
+        banned = sorted(_all_keys(openai, set()) & OPENAI_FORBIDDEN_KEYS)
+        if banned:
+            problems.append("keys a skills-only plugin must not carry: %s" % banned)
+    report.check("plugins: P-05 the OpenAI manifest is a skills-only portable plugin for "
+                 "this skill", not problems, "\n".join(problems))
+
+    # ---- P-06 portability and safety of both manifests ------------------------------
+    problems = []
+    common = None
+    try:
+        sys.path.insert(0, SCRIPT_DIR)
+        sys.dont_write_bytecode = True
+        import _common as common
+    except Exception as exc:  # pragma: no cover - defensive
+        problems.append("scripts/_common.py could not be imported: %s" % exc)
+    for label, (raw, doc) in sorted(manifests.items()):
+        text = raw.decode("utf-8", "replace")
+        if "\r" in text or not text.endswith("\n") or text.endswith("\n\n"):
+            problems.append("%s: not LF with exactly one final newline" % label)
+        if any(line != line.rstrip() for line in text.splitlines()):
+            problems.append("%s: trailing whitespace" % label)
+        if re.search(r"auto[_-]send", text, re.IGNORECASE):
+            problems.append("%s: names auto_send" % label)
+        if "email" in _all_keys(doc, set()):
+            problems.append("%s: carries an email field" % label)
+        for value in _all_strings(doc, []):
+            if common is not None and not value.startswith("https://") \
+                    and common.personal_data_hits(value):
+                problems.append("%s: personal-data shape in %r" % (label, value[:60]))
+    report.check("plugins: P-06 manifests carry no personal contact and are UTF-8/LF",
+                 not problems, "\n".join(problems))
+
+    # ---- builder cases run on a throwaway fixture repository --------------------------
+    if not os.path.isfile(BUILDER):
+        report.fail("plugins: P-07 tools/build_release.py exists", "missing %s" % BUILDER)
+        return
+    if not os.path.lexists(os.path.join(REPO_ROOT, ".git")) or shutil.which("git") is None:
+        report.skip("plugins: P-07..P-10 release builder",
+                    "not a git checkout (the builder archives committed files only)")
+        _phase_plugins_tool_scan(report)
+        return
+    with tempfile.TemporaryDirectory(prefix="kbtm-rel-fixture-") as scratch:
+        base = os.path.join(scratch, "base")
+        os.mkdir(base)
+        try:
+            builder = _release_fixture(base)
+        except (OSError, RuntimeError) as exc:
+            report.fail("plugins: P-07..P-10 fixture repository", str(exc))
+            _phase_plugins_tool_scan(report)
+            return
+        _phase_plugins_builder(report, scratch, base, builder)
+    _phase_plugins_tool_scan(report)
+
+
+def _phase_plugins_builder(report, scratch, base, builder):
+    env = _fixture_git_env()
+    fixture_pkg = os.path.join(base, os.path.basename(PKG_ROOT))
+
+    # ---- P-07 skill archive -----------------------------------------------------------
+    code, out, err = run_tool(builder, ["--list"], env)
+    listing = None
+    try:
+        listing = json.loads(out) if code == 0 else None
+    except ValueError:
+        listing = None
+    archives = dict((a.get("file"), a.get("entries")) for a in (listing or {}).get(
+        "archives", []) if isinstance(a, dict))
+    problems = []
+    if code != 0 or err.strip() or listing is None:
+        problems.append("--list exit %d, stderr %r" % (code, err.strip()[:200]))
+    skill_entries = archives.get(SKILL_ZIP) or []
+    prefix = "kbeauty-trade-matchmaker/"
+    skill_files = [n[len(prefix):] for n in skill_entries
+                   if n.startswith(prefix) and not n.endswith("/")]
+    if not skill_entries or any(not n.startswith(prefix) for n in skill_entries):
+        problems.append("skill archive entries must all sit under %s" % prefix)
+    if prefix + "SKILL.md" not in skill_entries:
+        problems.append("skill archive lacks %sSKILL.md" % prefix)
+    dropped = [n for n in skill_entries if any(d in n for d in ARCHIVE_DROPPINGS)]
+    if dropped:
+        problems.append("local droppings archived: %s" % dropped[:5])
+    # Allowlist both ways (BUILD-CONTRACT 2.2): every manifest row ships, and no
+    # git-tracked file outside the manifest rows ships.
+    files_listed = [rel for rel in MANIFEST if rel != "tests/fixtures"]
+    absent = [rel for rel in files_listed if rel not in skill_files]
+    if absent:
+        problems.append("manifest files missing from the archive: %s" % absent[:8])
+    if not any(rel.startswith("tests/fixtures/") for rel in skill_files):
+        problems.append("no tests/fixtures/ file is archived")
+    stray = [rel for rel in skill_files if not _allowlisted(rel)]
+    if stray:
+        problems.append("git-tracked files outside the BUILD-CONTRACT 2.2 manifest: %s"
+                        % stray[:8])
+    report.check("plugins: P-07 the skill ZIP holds exactly the 2.2 manifest under one "
+                 "top folder", not problems, "\n".join(problems))
+
+    # ---- P-08 plugin archive -----------------------------------------------------------
+    problems = []
+    plugin_entries = archives.get(PLUGIN_ZIP) or []
+    skill_prefix = "skills/kbeauty-trade-matchmaker/"
+    roots = sorted(set(n.split("/", 1)[0] + ("/" if "/" in n else "") for n in plugin_entries))
+    if roots != ["plugin.json", "skills/"]:
+        problems.append("archive root is %s, expected plugin.json and skills/" % roots)
+    outside = [n for n in plugin_entries
+               if n not in ("plugin.json", "skills/") and not n.startswith(skill_prefix)]
+    if outside:
+        problems.append("entries outside %s: %s" % (skill_prefix, outside[:5]))
+    for name in plugin_entries:
+        leaf = name.rstrip("/").split("/")[-1]
+        if leaf in ("mcp.json", ".mcp.json", ".app.json") and name.count("/") <= 2:
+            problems.append("MCP/app declaration archived: %s" % name)
+        if ".." in name.split("/") or name.startswith("/") or name.count("/") > 20:
+            problems.append("unsafe path: %s" % name)
+    plugin_files = [n[len(skill_prefix):] for n in plugin_entries
+                    if n.startswith(skill_prefix) and not n.endswith("/")]
+    if sorted(plugin_files) != sorted(skill_files):
+        problems.append("the two archives carry different package files")
+    report.check("plugins: P-08 the plugin ZIP is plugin.json plus the same files under "
+                 "skills/<name>/", not problems, "\n".join(problems))
+
+    # ---- P-09 INV-13 determinism and the --as-of timestamp -------------------------------
+    import zipfile
+    problems = []
+    code2, out2, _err2 = run_tool(builder, ["--list"], env)
+    if (code2, out2) != (code, out):
+        problems.append("two --list runs differ")
+    reports = []
+    for label, extra in (("a", []), ("b", []), ("dated", ["--as-of", "2026-09-19"])):
+        directory = os.path.join(scratch, "out-" + label)
+        os.mkdir(directory)
+        rc, stdout, stderr = run_tool(builder, ["--out", directory, "--quiet"] + extra, env)
+        if rc != 0 or stderr.strip():
+            problems.append("--out %s exit %d: %s" % (label, rc, stderr.strip()[:200]))
+            continue
+        reports.append(stdout)
+        for item in json.loads(stdout).get("archives", []):
+            with open(os.path.join(directory, item["file"]), "rb") as fh:
+                data = fh.read()
+            if hashlib.sha256(data).hexdigest() != item.get("sha256"):
+                problems.append("%s: reported sha256 does not match the file" % item["file"])
+        want_date = (2026, 9, 19, 0, 0, 0) if extra else (1980, 1, 1, 0, 0, 0)
+        for name in (SKILL_ZIP, PLUGIN_ZIP):
+            with zipfile.ZipFile(os.path.join(directory, name)) as archive:
+                for info in archive.infolist():
+                    mode = info.external_attr >> 16
+                    want = 0o40755 if info.filename.endswith("/") else (
+                        0o100755 if info.filename.endswith("/install.sh") else 0o100644)
+                    if info.date_time != want_date or mode != want:
+                        problems.append("%s %s: date %s mode %o (want %s, %o)"
+                                        % (label, info.filename, info.date_time, mode,
+                                           want_date, want))
+                        break
+                if name == SKILL_ZIP and [i.filename for i in archive.infolist()] \
+                        != skill_entries:
+                    problems.append("--out archive order differs from --list")
+    if len(reports) == 3:
+        if reports[0] != reports[1]:
+            problems.append("two --out builds produced different bytes")
+        if reports[2] == reports[0] or '"timestamp":"2026-09-19T00:00:00"' not in reports[2]:
+            problems.append("--as-of 2026-09-19 did not change the entry timestamps")
+    report.check("plugins: P-09 INV-13 identical input builds byte-identical archives; "
+                 "--as-of sets every entry date", not problems, "\n".join(problems))
+
+    # ---- P-10 refusals ---------------------------------------------------------------------
+    problems = []
+
+    def refused(tool, args, want, label, needle=None):
+        rc, stdout, stderr = run_tool(tool, args, env)
+        lines = [ln for ln in stderr.splitlines() if ln.startswith("ERROR:")]
+        if rc != want or len(lines) != 1 or stdout.strip() \
+                or "Traceback (most recent call last)" in stderr \
+                or (needle is not None and needle not in stderr):
+            problems.append("%s: exit %d (want %d), stderr %r, stdout %r"
+                            % (label, rc, want, stderr.strip()[:160], stdout[:80]))
+
+    counter = [0]
+
+    def variant(mutate, commit):
+        """A clone of the fixture with one mutation; returns its builder path."""
+        counter[0] += 1
+        repo = os.path.join(scratch, "v%02d" % counter[0])
+        subprocess.run(["git", "clone", "-q", base, repo], stdout=subprocess.PIPE,
+                       stderr=subprocess.PIPE, env=env, check=True)
+        mutate(repo, os.path.join(repo, os.path.basename(PKG_ROOT)))
+        if commit:
+            _fixture_git(repo, ["add", "-A"])
+            _fixture_git(repo, ["commit", "-q", "--no-gpg-sign", "-m", "mutation"])
+        return os.path.join(repo, "tools", "build_release.py")
+
+    def write(path, text):
+        with open(path, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(text)
+
+    def edit_json(path, change):
+        with open(path, encoding="utf-8") as fh:
+            doc = json.load(fh)
+        change(doc)
+        write(path, json.dumps(doc, indent=2) + "\n")
+
+    # usage (exit 2); none may leave a file behind in the package
+    before = sorted(os.listdir(os.path.join(fixture_pkg, "tests")))
+    refused(builder, [], 2, "no --out and no --list")
+    refused(builder, ["--list", "--out", base], 2, "--out with --list")
+    refused(builder, ["--out", os.path.join(base, "no-such-dir")], 2, "missing --out dir")
+    refused(builder, ["--out", os.path.join(fixture_pkg, "tests")], 2, "--out in the package")
+    refused(builder, ["--list", "--as-of", "2026-9-12"], 2, "malformed --as-of")
+    refused(builder, ["--list", "--as-of", "2026-02-31"], 2, "impossible --as-of",
+            "not a calendar date")
+    if sorted(os.listdir(os.path.join(fixture_pkg, "tests"))) != before:
+        problems.append("a refused build left files in tests/")
+
+    # the checkout differs from HEAD (exit 1)
+    refused(variant(lambda r, p: write(os.path.join(p, "scratch.txt"), "x\n"), False),
+            ["--list"], 1, "untracked package file", "untracked")
+    refused(variant(lambda r, p: write(os.path.join(p, "references", "evidence-policy.md"),
+                                       "uncommitted\n"), False),
+            ["--list"], 1, "edited, uncommitted tracked file", "uncommitted changes")
+    refused(variant(lambda r, p: os.unlink(os.path.join(p, "references",
+                                                        "evidence-policy.md")), False),
+            ["--list"], 1, "deleted, uncommitted tracked file", "uncommitted changes")
+    refused(variant(lambda r, p: write(os.path.join(r, "packaging", "openai", "plugin.json"),
+                                       "{}\n"), False),
+            ["--list"], 1, "edited, uncommitted manifest", "uncommitted changes")
+    refused(variant(lambda r, p: os.mkdir(os.path.join(p, "agents")), False),
+            ["--list"], 1, "plugin component dir in the package", "agents")
+
+    # a committed state that cannot ship
+    refused(variant(lambda r, p: edit_json(
+        os.path.join(r, ".claude-plugin", "marketplace.json"),
+        lambda d: d["plugins"][0].update(version="9.9.9")), True),
+        ["--list"], 1, "version drift", "skill_version disagrees")
+    refused(variant(lambda r, p: edit_json(
+        os.path.join(r, "packaging", "openai", "plugin.json"),
+        lambda d: d.update(version=["0.2.0"])), True),
+        ["--list"], 1, "list-valued version", "must be a version string")
+    refused(variant(lambda r, p: write(os.path.join(r, "packaging", "openai", "plugin.json"),
+                                       "{not json\n"), True),
+            ["--list"], 2, "invalid manifest JSON", "not valid UTF-8 JSON")
+    refused(variant(lambda r, p: os.unlink(os.path.join(r, "packaging", "openai",
+                                                        "plugin.json")), True),
+            ["--list"], 2, "manifest missing from HEAD", "not in the HEAD commit")
+    try:
+        link_builder = variant(lambda r, p: os.symlink("SKILL.md", os.path.join(p, "link.md")),
+                               True)
+    except (OSError, NotImplementedError):
+        link_builder = None
+    if link_builder is not None:
+        refused(link_builder, ["--list"], 1, "tracked symlink", "symlink tracked")
+
+    # bytes come from HEAD even when the index is told to ignore a working-tree edit
+    policy = os.path.join("references", "evidence-policy.md")
+    with open(os.path.join(fixture_pkg, policy), "rb") as fh:
+        committed = fh.read()
+
+    def hide_edit(repo, pkg):
+        _fixture_git(repo, ["update-index", "--assume-unchanged",
+                            os.path.basename(PKG_ROOT) + "/" + policy.replace(os.sep, "/")])
+        write(os.path.join(pkg, policy), "HIDDEN EDIT\n")
+
+    hidden = variant(hide_edit, False)
+    hidden_out = os.path.join(os.path.dirname(os.path.dirname(hidden)), "dist")
+    os.mkdir(hidden_out)
+    rc, _stdout, stderr = run_tool(hidden, ["--out", hidden_out, "--quiet"], env)
+    shipped = None
+    if rc == 0:
+        with zipfile.ZipFile(os.path.join(hidden_out, SKILL_ZIP)) as archive:
+            shipped = archive.read(prefix + policy.replace(os.sep, "/"))
+    if shipped != committed:
+        problems.append("a hidden working-tree edit reached the archive (exit %d: %s)"
+                        % (rc, stderr.strip()[:120]))
+
+    # a failure on either target leaves both targets untouched
+    blocked = os.path.join(scratch, "blocked")
+    os.mkdir(blocked)
+    os.mkdir(os.path.join(blocked, PLUGIN_ZIP))
+    refused(builder, ["--out", blocked, "--quiet"], 1, "plugin target is a directory",
+            "not a regular file")
+    if sorted(os.listdir(blocked)) != [PLUGIN_ZIP]:
+        problems.append("a refused build still wrote %s" % sorted(os.listdir(blocked)))
+
+    # a symlink at a target is replaced, never written through
+    out_dir = os.path.join(scratch, "linked")
+    os.mkdir(out_dir)
+    sentinel = os.path.join(scratch, "sentinel.txt")
+    write(sentinel, "untouched\n")
+    target = os.path.join(out_dir, SKILL_ZIP)
+    try:
+        os.symlink(sentinel, target)
+        linked = True
+    except (OSError, NotImplementedError):
+        linked = False
+    if linked:
+        rc, _stdout, stderr = run_tool(builder, ["--out", out_dir, "--quiet"], env)
+        with open(sentinel, encoding="utf-8") as fh:
+            if fh.read() != "untouched\n":
+                problems.append("a symlinked target was written through")
+        if rc != 0 or os.path.islink(target) or not os.path.isfile(target):
+            problems.append("a symlinked target was not replaced by the archive "
+                            "(exit %d: %s)" % (rc, stderr.strip()[:120]))
+        leftovers = [n for n in os.listdir(out_dir) if n.startswith(".kbtm-build-")]
+        if leftovers:
+            problems.append("temp files left behind: %s" % leftovers)
+    report.check("plugins: P-10 every refusal exits cleanly, only committed bytes ship, "
+                 "and --out never writes through a symlink or half a pair", not problems,
+                 "\n".join(problems))
+
+
+def _phase_plugins_tool_scan(report):
+    # ---- P-11 the scripts-only scans, applied to tools/*.py ------------------------------
+    problems = []
+    for path in sorted(glob.glob(os.path.join(TOOLS_DIR, "*.py"))):
+        rel = os.path.relpath(path, REPO_ROOT)
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+        try:
+            compile(text, path, "exec")
+        except SyntaxError as exc:
+            problems.append("%s: %s" % (rel, exc))
+        for lineno, line in enumerate(text.splitlines(), 1):
+            low = line.lower()
+            where = "%s:%d: %s" % (rel, lineno, line.strip()[:100])
+            if any(re.search(p, line, re.IGNORECASE) for p in SEND_PATTERNS) \
+                    and not any(m in low for m in NEGATION_MARKERS):
+                problems.append("send capability " + where)
+            if any(re.search(p, line) for p in WALL_CLOCK_PATTERNS + PLACEHOLDER_PATTERNS):
+                problems.append("clock read or placeholder " + where)
+            match = re.match(r"\s*(?:from|import)\s+([A-Za-z_][A-Za-z0-9_]*)", line)
+            if match:
+                module = match.group(1)
+                if module not in STDLIB_OK and module != "__future__":
+                    problems.append("non-allowlisted import " + where)
+            # tools/build_release.py runs git; nothing else under tools/ starts a child.
+            problem = _network_problem(
+                line, os.path.basename(rel) == "build_release.py")
+            if problem:
+                problems.append(problem + " " + where)
+    report.check("plugins: P-11 tools/*.py pass the send, clock, placeholder, stdlib and "
+                 "network scans", not problems, "\n".join(problems[:10]))
+
+
+# ---------------------------------------------------------------------------
 # 7. adapter guards: INV-10 / INV-25 dispatch keys, INV-34 live demand
 # ---------------------------------------------------------------------------
 def phase_adapter_guards(report):
@@ -3592,8 +7152,14 @@ def main(argv=None):
     phase_cases(report, pipeline, args.allow_missing_scripts)
     phase_field_regressions(report, args.allow_missing_scripts)
     phase_calibration(report, args.allow_missing_scripts)
+    phase_run_diff(report, args.allow_missing_scripts)
+    phase_recheck(report, args.allow_missing_scripts)
+    phase_export(report, args.allow_missing_scripts)
+    phase_mcp_server(report, args.allow_missing_scripts)
+    phase_review_followups(report, args.allow_missing_scripts)
     phase_safety(report)
     phase_package(report)
+    phase_plugins(report)
     phase_adapter_guards(report)
 
     passed, failed, skipped = report.counts()

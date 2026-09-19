@@ -10,19 +10,22 @@ The same folder runs unmodified in **Claude Code** and **OpenAI Codex**. Python 
 
 > A visual overview of the workflow: discover, verify, match, and keep a human in the loop.
 
-> **Status: v0.2.0.** The pipeline is tested against 252 cases on fictional fixtures and was trialled once against the live web. The scoring rubric is **not yet validated against real outcomes**: scores are reproducible and traceable, not yet known to be predictive. v0.2.0 adds the tooling to measure that ([Validating the scores](#validating-the-scores)), but no labelled sample exists yet. RFQ Matching and Outreach Draft have not been run on live data. Read [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) before trusting a score.
+> **Status: v0.3.0.** The pipeline is tested against 536 cases on fictional fixtures and was trialled once against the live web. The scoring rubric is **not yet validated against real outcomes**: scores are reproducible and traceable, not yet known to be predictive. v0.2.0 added the tooling to measure that ([Validating the scores](#validating-the-scores)), but no labelled sample exists yet. RFQ Matching and Outreach Draft have not been run on live data. Read [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) before trusting a score.
 
 ---
 
 ## What's new
 
-**v0.2.0 (2026-09-19).** No existing score changes.
+**v0.3.0 (2026-09-19).** No existing score changes. Everything new sits outside the scoring pipeline.
 
-- **Score-validation tooling.** A blind review sheet for a trade operator, and a report that compares their accept/reject calls with the scores. See [Validating the scores](#validating-the-scores).
-- **Market packs for India, Indonesia and Türkiye.** Local-language buyer search, market-entry rules used in matching (CDSCO, BPOM, Indonesia's mandatory halal certification, TİTCK), direct-marketing checklist rows and notice blocks, and company-name handling for `Pvt Ltd`, `PT`, `A.Ş.` and similar forms. See [Market packs](#market-packs).
-- Tests: 179 → 252 cases.
+- **Run diff.** `scripts/diff_runs.py` compares two scored runs of the same search or RFQ and lists new and gone companies, exclusions that moved, and score, rank, qualified-flag, confidence and Missing-line changes. It refuses runs scored with different rubric versions and copies no contact details. See [Comparing two runs](#comparing-two-runs).
+- **Re-check queue.** `scripts/stale_evidence.py` lists which stored records and evidence pages to re-read, most urgent first. It fetches nothing and changes no record or score. See [Re-check queue](#re-check-queue).
+- **Lead export.** `scripts/export_leads.py` writes a scored run as a spreadsheet/CRM CSV or as a TradeWith admin bulk-import file. It only writes a file. TradeWith rows carry no contact fields and land as tier C for an admin to review. See [Export to a spreadsheet, CRM or TradeWith](#export-to-a-spreadsheet-crm-or-tradewith).
+- **The scripts as MCP tools.** An optional local tool server (MCP, stdio) lets an agent call eleven scripts as tools. It reads and writes only inside one project folder, never overwrites a file and sends nothing. See [Use the scripts as MCP tools](#use-the-scripts-as-mcp-tools).
+- **Plugins.** Claude Code can install the skill as a plugin from this repository. ChatGPT and Codex get a skills-only plugin ZIP with each release, which is how the skill reaches ChatGPT on the web and mobile. See [Install as a plugin](#install-as-a-plugin).
+- Tests: 252 → 536 cases.
 
-Full notes for every release: [CHANGELOG.md](CHANGELOG.md).
+v0.2.0 added the [score-validation tooling](#validating-the-scores) and [market packs](#market-packs) for India, Indonesia and Türkiye. Full notes for every release: [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
@@ -160,6 +163,9 @@ kbeauty-trade-matchmaker/
 │   ├── match-result.schema.json  # One complete matching run
 │   ├── discovery-result.schema.json
 │   ├── acceptance-report.schema.json  # One calibration measurement (v0.2.0)
+│   ├── run-diff.schema.json      # One comparison of two scored runs (v0.3.0)
+│   ├── recheck-queue.schema.json # The evidence to re-read (v0.3.0)
+│   ├── tradewith-bulk-buyers.schema.json  # TradeWith bulk-import body; no contact fields (v0.3.0)
 │   └── scoring.config.json       # Every weight, threshold and penalty lives in this one file
 ├── scripts/                      # Standard library only. No network, no credentials
 │   ├── _common.py                # Config, rounding, normalisation, tri-state helpers, schema validator
@@ -170,7 +176,11 @@ kbeauty-trade-matchmaker/
 │   ├── score_match.py
 │   ├── validate_output.py        # Schema plus contract invariants
 │   ├── make_review_sheet.py      # Blind CSV review sheet for a trade operator (v0.2.0)
-│   └── acceptance_report.py      # Review sheets + scored runs -> Human Acceptance Rate report (v0.2.0)
+│   ├── acceptance_report.py      # Review sheets + scored runs -> Human Acceptance Rate report (v0.2.0)
+│   ├── diff_runs.py              # Two scored runs -> what changed between them (v0.3.0)
+│   ├── stale_evidence.py         # Stored records -> evidence to re-read, most urgent first (v0.3.0)
+│   ├── export_leads.py           # Scored run -> CSV or TradeWith import file; never sends (v0.3.0)
+│   └── mcp_server.py             # Optional stdio MCP server over the scripts above (v0.3.0)
 ├── templates/
 │   ├── buyer_outreach.md
 │   ├── seller_outreach.md        # With and without an RFQ
@@ -182,6 +192,14 @@ kbeauty-trade-matchmaker/
 ```
 
 Only the `kbeauty-trade-matchmaker/` folder is installed. The contract content the runtime needs is bundled in `references/data-contract.md` and `references/output-format.md`.
+
+Repository level, outside the package (not shipped):
+
+```
+.claude-plugin/marketplace.json   # Claude Code plugin marketplace: one plugin, the package folder
+packaging/openai/plugin.json      # Manifest of the ChatGPT/Codex plugin ZIP
+tools/build_release.py            # Builds both release ZIPs from the HEAD commit, deterministically
+```
 
 ---
 
@@ -268,6 +286,104 @@ v0.2.0 adds India, Indonesia and Türkiye. No scoring rule changed; a new test f
 
 ---
 
+## Comparing two runs
+
+Run the same search or RFQ again a month later and `diff_runs.py` tells you what moved. It reads two finished runs and changes no score.
+
+```bash
+cd kbeauty-trade-matchmaker
+python3 scripts/diff_runs.py --before out/buyers.2026-09-12.json --after out/buyers.2026-10-12.json --pretty --output out/diff.json
+```
+
+The diff lists new and gone companies, companies that became excluded or came back, exclusions whose rules changed, and per company the changes in score, rank (match runs), dimensions, qualified flag, confidence and the Missing line. It also flags a changed `as_of`, threshold, query or weights.
+
+- Records pair by id, then through `merged_from`. A company that a dedupe merged into another reads as `merged_into`, not as a lost lead. Nothing else is guessed, so a rename without `merged_from` shows as gone + new.
+- On a match run, "gone" means "not listed". A seller can drop out because of the threshold or the `--top` cut; the diff says so.
+- It refuses, rather than approximates, two runs scored under different `score_version`s, a buyer run against a seller run, a discovery run against a match run, and match runs for different RFQs.
+- It copies no contact channel, evidence or website. Only company name, domain and rule ids travel.
+
+Details: [`data-contract.md`](kbeauty-trade-matchmaker/references/data-contract.md) §9.4.
+
+## Re-check queue
+
+Evidence ages. `stale_evidence.py` reads stored records and lists what to re-read, most urgent first. It fetches nothing and changes no record or score.
+
+```bash
+cd kbeauty-trade-matchmaker
+python3 scripts/stale_evidence.py --input out/buyers.scored.json --as-of 2026-09-19 --top 20 --pretty
+```
+
+- `--as-of` is required: age is measured to the re-check date, and the clock is never read. `--top N` lists the first N records; the summary still counts all of them.
+- Reasons, most urgent first: site unreachable, record flagged stale, evidence past the stale threshold (730 days), source flagged stale, unresolved conflict, aging (over a year), undated. A material claim with no current evidence is reported on its own.
+- The age limits come from `scoring.config.json`, so the queue and the score agree on what "old" means. An old page is not queued when the same claim already has a current source. An undated page counts as current while its last reading does.
+- It accepts a scored run, a golden bundle, dedupe output, a match input, a list of records or one record. A match-result is refused; pass the match input instead.
+
+How to work the queue: [`evidence-policy.md`](kbeauty-trade-matchmaker/references/evidence-policy.md) §5.6.
+
+## Export to a spreadsheet, CRM or TradeWith
+
+`export_leads.py` writes the leads of one scored discovery run as a file a person imports. **It only writes a file.** It opens no connection and never posts, uploads or sends.
+
+```bash
+cd kbeauty-trade-matchmaker
+python3 scripts/export_leads.py --input out/buyers.scored.json --output out/leads.csv                     # Spreadsheet / CRM
+python3 scripts/export_leads.py --input out/buyers.scored.json --format tradewith-json --output out/tw.json # TradeWith bulk-import body
+python3 scripts/export_leads.py --input out/buyers.scored.json --format tradewith-csv --output out/tw.csv   # TradeWith admin import page
+```
+
+| `--format` | For | What it is |
+|---|---|---|
+| `csv` (default) | buyers, sellers | Fixed columns: scores, dimensions, status, company-level channels, the Missing line, `score_version` |
+| `tradewith-json` | buyers | The `{"buyers": [...]}` body of TradeWith's admin bulk-import endpoint |
+| `tradewith-csv` | buyers | The five columns the admin buyer-import page reads (`sourceId, companyName, country, website, industry`). It drops provenance and matching fields; prefer `tradewith-json` |
+
+Only qualified records are exported by default; add `--include-unqualified` or `--min-score N` to change that. Closed and unreachable companies and `excluded[]` are never exported.
+
+**What happens in TradeWith.** Rows land **unreviewed, as tier C**: the export sets no quality tier, and tier C is left out of buyer matching by default. An admin reviews each row, promotes it to tier A or B and adds its tags. Until then a row is not offered to sellers.
+
+- `contactName`, `contactEmail` and `contactPhone` are **never filled**, not even with a company role mailbox such as `sales@`. A filled `contactEmail` would mark the row as a verified contact, and a re-import would overwrite an address an admin corrected.
+- `sourceId` is `kbtm:<company domain>`, so importing a later run updates the same row instead of adding a new one.
+- `originalSource` records the package, `score_version`, `as_of`, record id and whether the record is stale. `social` is a LinkedIn company page only, never a person's profile.
+
+**The generic CSV** keeps company-level channels only. An email survives only as a role mailbox (`info@`, `sales@` …) on the company's own domain; a LinkedIn member profile is withheld. Every exported value goes through a personal-data scan, and one hit refuses the whole export. Cells a spreadsheet would run as a formula get a leading apostrophe.
+
+Details: [`data-contract.md`](kbeauty-trade-matchmaker/references/data-contract.md) §9.6.
+
+## Use the scripts as MCP tools
+
+`scripts/mcp_server.py` is an optional, standard-library-only MCP server over stdio. It exposes eleven scripts as tools, for a runtime that calls tools rather than a shell: `normalize_company`, `dedupe_companies`, `score_buyer`, `score_seller`, `score_match`, `validate_output`, `make_review_sheet`, `acceptance_report`, `diff_runs`, `stale_evidence` and `export_leads`. Each tool runs its script with a subset of its flags, and gives the same result as the command line. The internal-data adapter is not exposed.
+
+- **`--root DIR` is required**: the one folder tools may read from and write to. The server refuses `/`, your home directory or a parent of it. `../` and symlinks cannot lead out.
+- **`as_of` is required on every call.** The server never supplies a date.
+- **No overwrite.** `output_path` must be a new `.json` or `.csv` file inside the root, outside the skill package and not in a hidden folder. A full run is usually larger than the 32,768-byte inline limit, so pass `output_path` for real runs.
+- Nothing sends or fetches. Scripts run with `python3 -I` and without `TRADEWITH_*` variables.
+
+**Claude Code.** The plugin starts the server for you (see [Install as a plugin](#install-as-a-plugin)). After `install.sh`, add it by hand:
+
+```bash
+claude mcp add --transport stdio kbtm -- python3 /abs/path/kbeauty-trade-matchmaker/scripts/mcp_server.py --root /abs/path/to/project
+```
+
+**Codex CLI.** In `~/.codex/config.toml`; keep `tool_timeout_sec` above the server's `--tool-timeout` (default 120 seconds):
+
+```toml
+[mcp_servers.kbtm]
+command = "python3"
+args = ["/abs/path/kbeauty-trade-matchmaker/scripts/mcp_server.py", "--root", "/abs/path/to/project"]
+tool_timeout_sec = 180
+```
+
+**Cursor.** In `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global):
+
+```json
+{"mcpServers": {"kbtm": {"type": "stdio", "command": "python3",
+  "args": ["/abs/path/kbeauty-trade-matchmaker/scripts/mcp_server.py", "--root", "${workspaceFolder}"]}}}
+```
+
+Client configuration was checked against each vendor's documentation on 2026-09-19. Full rules, protocol versions and the flags left out: [`runtime-adapters.md`](kbeauty-trade-matchmaker/references/runtime-adapters.md) §5.6.
+
+---
+
 ## Installation
 
 ### claude.ai, no terminal
@@ -277,6 +393,37 @@ v0.2.0 adds India, Indonesia and Türkiye. No scoring rule changed; a new test f
 3. Turn on web search in a new chat and ask in plain language, for example "Find 5 K-Beauty distributors in the UAE that carry sunscreen." Five companies take about 10 to 15 minutes.
 
 Verified end to end on a paid plan on 2026-09-14: the skill was invoked without being named, ran web search and page fetches inside the skill, and executed the scoring scripts in the sandbox. Also verified on a free plan on 2026-09-19 with a small request (3 companies): the skill ran end to end, scoring scripts included, without hitting a usage limit. A larger request may still run into the free plan's limits. Korean step-by-step guide: [https://kbeauty.tradewith.kr/install-ko](https://kbeauty.tradewith.kr/install-ko). Stuck? [Message me on LinkedIn](https://www.linkedin.com/in/hm-choi).
+
+### Install as a plugin
+
+Pick **one** way to install per runtime. A plugin plus an `install.sh` copy in the same runtime loads two skills that both fire on the same requests.
+
+**Claude Code.** This repository is a plugin marketplace with one plugin, the package folder itself:
+
+```
+/plugin marketplace add choihyeonmuk/kbeauty-trade-matchmaker
+/plugin install kbeauty-trade-matchmaker@kbeauty-trade-matchmaker
+```
+
+The skill is `/kbeauty-trade-matchmaker:kbeauty-trade-matchmaker`, or fires implicitly. The plugin also starts the bundled MCP server (`kbtm`) with your project folder as its root; it needs `python3` on `PATH`. Start Claude Code inside a project folder: launched from your home directory, the server refuses to start and shows as failed. Update later with `/plugin marketplace update kbeauty-trade-matchmaker`.
+
+**ChatGPT and Codex.** Each release carries a second asset, [`kbeauty-trade-matchmaker-plugin.zip`](https://github.com/choihyeonmuk/kbeauty-trade-matchmaker/releases/latest/download/kbeauty-trade-matchmaker-plugin.zip). It is **skills only**, with no MCP server: OpenAI marks a plugin that declares one as desktop-only, and this ZIP exists to reach ChatGPT on the **web and mobile**.
+
+1. Unzip it into `~/.codex/plugins/kbeauty-trade-matchmaker`.
+2. Add this entry to the `plugins` array of `~/.agents/plugins/marketplace.json` (merge by hand if the file exists; the path is relative to `~`):
+
+```json
+{"name": "kbeauty-trade-matchmaker",
+ "source": {"source": "local", "path": "./.codex/plugins/kbeauty-trade-matchmaker"},
+ "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
+ "category": "Business & Operations"}
+```
+
+3. Restart the ChatGPT desktop app and install it from Plugins, or run `/plugins` in Codex CLI.
+4. For ChatGPT web and mobile, a workspace admin publishes the plugin to the workspace. A listing in the public directory depends on OpenAI's review of a submission.
+5. Run analyses in **Work** mode. OpenAI does not document that ordinary Chat mode runs bundled scripts. Where they cannot run, the skill says so and returns evidence without scores; it never estimates a score by hand.
+
+The Codex IDE extension does not support plugins; use `install.sh --runtime codex` there. The ZIP layout and marketplace entry follow OpenAI's documentation as checked on 2026-09-19; whether the scripts run in Work mode on web and mobile is inferred, not tested. Details: [`runtime-adapters.md`](kbeauty-trade-matchmaker/references/runtime-adapters.md) §5.5.
 
 ### Claude Code and Codex installer
 
@@ -325,7 +472,7 @@ sh kbeauty-trade-matchmaker/install.sh --runtime codex --project /path/to/your-r
 
 - Codex scans `.agents/skills` in every directory from the working directory up to the repository root. `~/.codex/skills` is deprecated but still supported; use `~/.agents/skills` for new installs.
 - Invoke explicitly with `$kbeauty-trade-matchmaker` or `/skills` in the CLI and IDE extension, or `@` in ChatGPT. Implicit invocation is decided by the `description`.
-- A standalone skill folder is visible in the **ChatGPT desktop app, Codex CLI and IDE extension** only. ChatGPT **web and mobile** need the skill packaged as a plugin, which v0.2.0 does not include.
+- A standalone skill folder is visible in the **ChatGPT desktop app, Codex CLI and IDE extension** only. ChatGPT **web and mobile** need the plugin ZIP; see [Install as a plugin](#install-as-a-plugin).
 - `AGENTS.md` is not a way to install skills. It is a separate Codex feature for always-on repository instructions.
 
 > **Checked against official documentation on 2026-09-13.** If anything here disagrees with the current docs, the docs are right.
@@ -356,6 +503,8 @@ python3 tests/run_tests.py -v    # One line per case, not just failures
 ```
 
 The runner uses only the standard library, finds fixtures relative to itself, passes `--as-of 2026-09-12` to every script, and compares output with the expected fixtures **byte for byte**. Before the fixture cases it checks the schemas themselves: that they parse, that every `$ref` resolves, that no unsupported keyword is used, that shared `$defs` agree across files, and that embedded versions match `scoring.config.json`.
+
+The `plugins` phase reads the repository-level manifests and builder, so the full count of 536 applies to a repository checkout; an installed copy reports two SKIPs (the `plugins` phase and one MCP case). The phase runs the release builder in a throwaway git repository, so uncommitted work does not affect the result.
 
 Scripts can also be run directly. JSON goes to `stdout` and every diagnostic to `stderr`, so pipes are safe.
 
@@ -419,7 +568,7 @@ Six questions remain open. Each has a default in this implementation, and every 
 
 | Version | Value | Describes | Lives in |
 |---|---|---|---|
-| `skill_version` | `0.2.0` | The package: prompts, references, scripts, templates, tests | `SKILL.md` body, `match-result.skill_version` |
+| `skill_version` | `0.3.0` | The package: prompts, references, scripts, templates, tests | `SKILL.md` body, `match-result.skill_version`, both plugin manifests |
 | `schema_version` | `0.1.0` | The shape contract: field names, enums, required lists | Every document, `schemas/*.json` |
 | `score_version` | `kbtm-score-0.1.0` | The rubric: weights, criteria, signals, penalties, thresholds, hard filters | `scoring.config.json`, every scored document |
 

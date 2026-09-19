@@ -56,6 +56,7 @@ Other fixtures:
 | `fixtures/expected/review-sheet.*.csv`, `fixtures/expected/acceptance.*.expected.json` | Golden review sheets and golden `acceptance-report` documents (section 11). |
 | `fixtures/rfq.id-halal.json`, `fixtures/match-id-halal.input.json` | RFQ #ID-701 — **destination `ID`, `required_certifications: ["HALAL"]`**, six Korean private-label serum makers of their own (not `sellers.golden.json`). Added to show that the v0.1.0 rubric already prices an emerging-market request with a claim certification and a destination registration **without any scorer, `scoring.config.json` or `score_version` change**. `run_tests.py` asserts that the envelope embeds the standalone RFQ byte-identically. |
 | `fixtures/expected/match-id-halal.expected.json` | Expectation for R9, same field-level shape as `match-134.expected.json`. |
+| `fixtures/expected/mcp.tools-list.expected.json` | The exact bytes of the MCP tool server's `tools/list` result, one compact JSON line (section 16, M-13). Unlike the expectation documents below it is a byte golden: regenerate it only when a tool, schema or annotation changes on purpose. |
 
 **Counts.** 20 buyer records across AE / GB / US / JP / SG / DE and 20 Korean seller records
 (19 `KR` + 1 with an unknown country), as the Phase 0 roadmap requires.
@@ -274,7 +275,7 @@ PRD 22 asks for ten or more negative/edge tests beyond T01–T10. These run insi
 | No placeholders | No `TODO`, `FIXME`, `XXX`, `NotImplementedError`, `pass # stub`, `test.skip`, `.only(` or `__INLINE_` token in any shipped file | INV-28 |
 | No wall clock | No `datetime.now`, `datetime.utcnow`, `date.today` or `time.time(` in `scripts/*.py` | INV-14 |
 | Stdlib only | Every import in `scripts/*.py` is stdlib, `__future__`, or a sibling script | INV-26 |
-| No network client | No `socket` / `ssl` / `http` / `urllib.request` import in `scripts/*.py` | R7.11.1 |
+| No network client | No `socket` / `ssl` / `http` / mail-protocol import, no `urllib.request` in any spelling (`from urllib import request` included), no `__import__` / `importlib`, and `subprocess` only in `mcp_server.py`, in `scripts/*.py` | R7.11.1 |
 | No transport module | No shipped file is named like a mailer or dispatcher | BUILD-CONTRACT 2.3 |
 
 ---
@@ -363,12 +364,16 @@ These are **reported, not absorbed**. Each one is a live failure or a documented
 
 ## 9. Current status
 
-`python3 tests/run_tests.py` → **PASS 252 / FAIL 0 / SKIP 0**, exit 0.
+`python3 tests/run_tests.py` → **PASS 536 / FAIL 0 / SKIP 0**, exit 0, in a repository checkout. An installed
+copy has no repository manifests, so section 15 reports one SKIP there instead of its repository cases
+and section 16 reports M-36 as one SKIP.
 
 Every scored record, every component score, every hard-filter decision, every exclusion, the whole
 ordering of all four ranked runs, T01–T10, E01–E19, the eleven field regressions of section 6,
-the package and adapter guards of section 10 and the calibration cases of section 11 and every
-safety and fixture case pass. Q4–Q6 remain open as documented divergences; none of them
+the package and adapter guards of section 10, the calibration cases of section 11, the run-diff
+cases of section 12, the re-check queue cases of section 13, the export cases of section 14, the plugin
+packaging cases of section 15, the MCP tool server cases of section 16, the v0.3.0 review follow-ups of section 17 and every safety and fixture case pass. Q4–Q6 remain open as documented
+divergences; none of them
 currently produces a wrong number on the golden set, which is why they are recorded here rather than
 absorbed into an expectation.
 
@@ -385,7 +390,7 @@ the post-audit pass, each of which had been demonstrated to be bypassable.
 | `package: README.md exists at the repository root` | `README.md` and `docs/` are repository files, not package files (2.2 note); the README documents the repo tree and `install.sh` ships only the package folder | BUILD-CONTRACT 2.2 |
 | `package: INV-36 SKILL.md names no provider-specific tool, model or API` | The case-insensitive grep list of INV-36 (`WebSearch`, `WebFetch`, `web.run`, `browser.`, `mcp__`, `claude`, `anthropic`, `openai`, `codex`, `gpt-`, `chatgpt`) matches nothing in `SKILL.md` outside a pointer at `references/runtime-adapters.md` | **INV-36** |
 | `package: BUILD-CONTRACT 2.2 row 1 SKILL.md frontmatter shape` | Frontmatter keys are exactly `name` + `description`; `name` is the `^[a-z0-9]+(-[a-z0-9]+)*$` slug `kbeauty-trade-matchmaker`, ≤ 64 chars; `description` is one line ≤ 1024 chars | BUILD-CONTRACT 2.2 row 1, INV-36 |
-| `package: R7.3.3 a non-UTF-8 input is a clean usage error, not a traceback` | All seven `--input`-taking CLI scripts (the six pipeline scripts plus `make_review_sheet.py`) fed a file with a raw `0xff` byte exit **2** with exactly one `ERROR:` line and empty stdout. `UnicodeDecodeError` is a `ValueError`, so it used to escape `read_input`'s `except (IOError, OSError)` and four scripts died with a bare traceback | R7.3.2, R7.3.3, **INV-35** |
+| `package: R7.3.3 a non-UTF-8 input is a clean usage error, not a traceback` | All eight `--input`-taking CLI scripts (the six pipeline scripts plus `make_review_sheet.py` and `export_leads.py`) fed a file with a raw `0xff` byte exit **2** with exactly one `ERROR:` line and empty stdout. `UnicodeDecodeError` is a `ValueError`, so it used to escape `read_input`'s `except (IOError, OSError)` and four scripts died with a bare traceback | R7.3.2, R7.3.3, **INV-35** |
 | `package: INV-35 a non-string canonical_domain degrades, never tracebacks` | `score_buyer.py` / `score_seller.py` fed a record whose `canonical_domain` is a list still write a document and one `ERROR:` line. The `excluded[]` sort key used to raise `TypeError` from outside every `try` | R7.3.2, R7.3.3, **INV-35** |
 | `adapter: a clean draft is still accepted` | The guards below did not simply break the adapter: a normal draft still stores at `READY_FOR_REVIEW` / `auto_send false` / `manual_approval_required true` | INV-09 |
 | `adapter: INV-10/INV-25 a NESTED dispatch or credential block is refused` | `delivery.{transport,recipients,schedule_at}` and `auth_block.{token,password}` are refused with their JSON paths named. The scan used to read only top-level keys, so a nested dispatch instruction and a cleartext credential were written to disk while the run reported "queued for human review" and exited 0 | **INV-10, INV-25** |
@@ -500,3 +505,318 @@ One case in section 10 grew out of this work:
 | Case | What it asserts | Invariant |
 |---|---|---|
 | `package: BUILD-CONTRACT 12.1 skill_version agrees everywhere it is stated` | The `skill_version` in the **body** of `SKILL.md`, `_common.SKILL_VERSION` and `adapters/tradewith_adapter.py`'s `SKILL_VERSION` are one value. Nothing checked this before, so a bump that reached two of the three would have shipped a package reporting a version it was not | BUILD-CONTRACT 12.1 |
+
+---
+
+## 12. Run diff — comparing two scored runs
+
+`phase_run_diff` runs after the calibration phase. It covers `scripts/diff_runs.py`, which reads two
+scored `discovery-result` or `match-result` documents and writes one `run-diff` document
+(`schemas/run-diff.schema.json`). Like the calibration scripts it changes no score, so the cases are
+about **pairing, refusal and privacy discipline**, not arithmetic. The field notes are
+`references/data-contract.md` §9.4.
+
+The inputs are scored in-phase from the existing fixtures and held in temp files: B1 = the UAE buyer
+run at `AS_OF`, B2 = the same at `2028-03-01`, B3 = the UK sunscreen query at `AS_OF`, BR = B1 with
+`--records-only`, S1 = the seller run, M1 = match-134, M2 = match-134 with `rerank-134.json`, MN =
+the no-match RFQ (`rfq_id` 901), MT = match-134 with `--threshold 90 --top 3`.
+
+### Fixtures
+
+| File | What it is |
+|---|---|
+| `fixtures/expected/diff.buyers.uae.asof.expected.json` | B1 → B2, **no `--as-of`**: the diff defaults to the later input date (2028-03-01). This is the one run in the suite that does not pass `AS_OF`, because an explicit `--as-of` earlier than an input run is refused by design |
+| `fixtures/expected/diff.match-134.rerank.expected.json` | M1 → M2 at `AS_OF` |
+| `fixtures/expected/diff.buyers.uae-uk.expected.json` | B1 → B3 at `AS_OF` |
+
+All three were generated by the script and then **checked field by field** against the two input
+runs before being trusted:
+
+| Golden | Hand check |
+|---|---|
+| UAE as-of | 20 paired (19 returned + 1 excluded), 17 changed, 3 unchanged (`palefade`, `northgateimport`, the excluded `quietharbour`). Every score falls (17 down, 0 up). Qualified lost on exactly `luminaglow` 71 → 69 and `lioncitybeauty` 70 → 69 at threshold 70. `kantoimport` confidence 0.41 → 0.15, delta **-0.26**; `gulfglow` 96 → 93 with `sourcing_intent` 100 → 92 and `evidence_quality` 94 → 85. No Missing-line change |
+| Match rerank | 19 paired, 2 changed: `hanbitcos` score 97 → 99 and rank 2 → 1 with **no** `base_score` key (its base did not move), `hansolodm` rank 1 → 2 with no score key. `weights_changed` false, `query_changed` null |
+| UAE vs UK | `query_changed` true; 15 changed, 11 score changes (7 up, 4 down), 9 Missing-line changes (`Requested category not evidenced: sunscreen` added on 8 records, `Category match against the request` added on `kantoimport`, nothing removed), qualified gained on `palefade` 57 → 72 and `novadrift` 63 → 74, lost on `dunesourcing` 84 → 69 |
+
+### Cases
+
+| Case | What it asserts |
+|---|---|
+| `run diff: <golden> exits 0` · `matches <file> byte for byte` · `INV-13 … is byte-identical on a re-run` · `passes validate_output --schema run-diff --strict` | The three goldens above, each four ways |
+| `run diff: a run diffed against itself reports no change` | Identity: every list empty, every count 0, `paired == unchanged == 20`, no note |
+| `run diff: swapping --before and --after negates every score delta and swaps qualified gained / lost` | Antisymmetry, plus the note that `--before` is dated later than `--after` |
+| `run diff: changed[] is ordered by \|score delta\| desc, then record_id` | The documented sort, never dict or set order |
+| `run diff: re-scoring at 2028-03-01 loses qualified on exactly luminaglow and lioncitybeauty` · `a confidence delta is computed in Decimal` · `the diff is dated at the later input run …` | The as-of golden's key facts, asserted on the parsed document |
+| `run diff: the rerank moves two ranks, and base_score is absent where the base did not change` | A key is present only when that field changed |
+| `run diff: the listed / not-listed note is on a match diff only` | `score_match.py` lists only results above the threshold and within `top_n`, so a match `gone` can mean *cut*, not *dropped*; the note says so on every match diff |
+| `run diff: a discovery diff has rank_changed null …` · `a changed query is flagged and Missing-line changes are reported` | Inapplicable fields are `null`, not 0; a widened query is reported, not refused |
+| `run diff: no contact channel, evidence, website or observed value is copied into a diff` | No key named `contact_channels`, `evidence`, `website`, `observed_value`, `required_value` or `failed_rules` anywhere in the three goldens |
+| `run diff: --before - reads stdin and yields the same diff` | One side may come from stdin |
+| `run diff: a record missing from --after is gone …` · `… missing from --before is new` | Mutation (a) |
+| `run diff: returned -> excluded is newly_excluded with the failed rule ids only` · `excluded -> returned is newly_returned with the old rule ids` | Mutation (b): only `HF-nn` ids travel, never the rule objects |
+| `run diff: an exclusion whose rule changes is an exclusion_change with rules_added / rules_removed` | Mutation (c) on M1: `HF-02` → `HF-03` |
+| `run diff: a re-keyed record pairs through merged_from and an absorbed one is gone with merged_into` | Mutation (d): the re-keyed pair is listed in `changed[]` with `matched_by: merged_from` even though its numbers are equal, and the absorbed record carries `merged_into` |
+| `run diff: an id renamed without merged_from is gone + new, not paired` | Mutation (e): the diff never guesses a pairing, not even by `canonical_domain` |
+| `run diff: a record with id "unknown" is listed as new, never paired, with a note` · `a --before record with id "unknown" is listed as gone …` | Mutation (f), on each side; the note names the side |
+| `run diff: a before record whose merged_from names the after id pairs through merged_from` | The reverse `merged_from` pass: before X lists Y, after carries Y. Excluded entries carry no `merged_from`, so an excluded-excluded pair is only ever joined by id |
+| `run diff: a base_score change is reported with its delta` | M1 with `results[0].base_score` lowered by 1: `base_score` is listed, `score` is not |
+| `run diff: a changed weights_used sets context.weights_changed` · `a different skill_version is echoed and noted` · `an empty skill_version on an input reads as unknown, not a failed diff` | Run-level context and notes; `skill_version: ""` passes the input schemas, so it must not fail the diff's own `minLength` |
+| `run diff: a changed threshold is flagged and cut sellers are gone with their rank` | M1 → MT: `threshold_changed` true, and every returned seller in `gone` carries its before rank |
+| `run diff: a Missing-line change lists added / removed labels in order` | Mutation (g) |
+| `run diff: a partial run is echoed and noted` | `partial: true` reaches `after.partial` and `notes[]` |
+| `run diff: a real dedupe merge reads as merged_into, not as a lost lead` | The raw B1 against `dedupe_companies.py` → `score_buyer.py`: `BUY-www-luminaglow-example` is gone with `merged_into: BUY-luminaglow-example`, nothing is new |
+| `run diff: refuses two runs scored with different score_versions` | **INV-23**, BUILD-CONTRACT 12.3 rule 4. There is no opt-in flag |
+| `run diff: refuses a run whose records disagree with its envelope` · `an unscored run` · `an input that fails its own schema` | Each input is schema-checked (discovery records against `buyer` / `seller`) and must carry one `score_version` |
+| `run diff: refuses a discovery run against a match run` · `a buyer run against a seller run` · `match runs for two different RFQs` | Different rubrics, populations or questions |
+| `run diff: refuses a bare --records-only array` · `a record id that appears twice in one run` · `an empty object` · `an --as-of earlier than an input run` · `a match record whose rank is not its position` | The remaining refusals. The diff reports list position as rank, so a present `rank` that is not index + 1 is refused, never silently overridden |
+| `run diff: usage error (missing --after)` · `(malformed --as-of)` · `(empty --as-of)` · `(non-UTF-8 input)` · `(both sides on stdin)` | Exit **2**, one `ERROR:` line, no traceback, empty stdout. `diff_runs.py` takes no `--input`, so it is not in `CLI_SCRIPTS`; its non-UTF-8 case lives here |
+| `run diff: a diff that fails its schema is not written at all` | Against a deliberately impossible `run-diff` schema: exit 1, empty stdout, `--output` not created |
+| `run diff: --version exits 0 and names the three versions` | The standard version line |
+
+Every refusal additionally asserts exit **1**, exactly one `ERROR:` line (R7.3.3), no traceback, a
+message naming the defect, and an **empty stdout** — unlike a scorer (R7.3.2), a refused diff writes
+nothing.
+## 13. Re-check queue — which stored evidence to re-read
+
+`phase_recheck` runs after the calibration phase. It covers `scripts/stale_evidence.py`, which reads
+records already on disk and emits a `recheck-queue` document (`schemas/recheck-queue.schema.json`):
+the records, material claims and evidence items to re-read, most urgent first, measured to the
+required `--as-of`. It fetches nothing and changes no record or score; no scorer reads it
+(INV-NEW-stale). The reason codes are `references/evidence-policy.md` §5.6.
+
+### Fixtures
+
+No new input fixture. The two goldens are generated from the existing bundles at `--as-of
+2026-09-12`:
+
+| File | What it is |
+|---|---|
+| `fixtures/expected/recheck.buyers.golden.expected.json` | Queue over `buyers.golden.json`: 3 of 20 records, 17 of 144 items |
+| `fixtures/expected/recheck.sellers.golden.expected.json` | Queue over `sellers.golden.json`: 3 of 20 records, 19 of 171 items |
+
+### How the goldens were checked by hand
+
+| Record | Why it is (or is not) queued |
+|---|---|
+| `BUY-northgateimport-example` | Position 1: `operational_status: unreachable` → `site_unreachable`. Every material item is dated 2024-08-14, 759 days before as_of and past `stale_threshold_days` 730 → `past_stale_threshold`, so all seven covered material claims are `no_current_evidence`. EV-006 (`operational_status`, not material, `stale: true`) ranks last |
+| `BUY-palefade-example` | Record `stale: true` → `record_flagged_stale`; every item is 2023-01-05 (1346 days) and flagged, so each carries `past_stale_threshold` + `source_flagged_stale` |
+| `BUY-kantoimport-example` | EV-002 (2026-02-14, 210 days, `current`) and EV-003 (2025-06-01, 468 days, `aging`) conflict on `country` with no `conflicts[]` entry → both `unresolved_conflict`. EV-003 gets **no** age reason: `country` already has a current item (EV-002), so the claim is not `no_current_evidence` |
+| `BUY-pacificglowdist-example` | Not queued. Its `company_type` conflict is resolved in `conflicts[]`, and the older EV-009 (569 days) is superseded by the current EV-001 |
+| `BUY-dunesourcing-example` | Not queued. EV-009 (2025-09-01, 376 days) is `aging`, but `company_type` also has the current EV-001 |
+| `BUY-gulfglow-example` | Not queued. EV-004 is 312 days (`current`). EV-008 is undated but was read on 2026-09-10, 2 days before as_of, so it is current by its reading |
+| `SEL-sopoongworks-example` | Position 1: `site_unreachable`; every item 2025-05-04 (496 days) → `aging`; EV-1409 also `source_flagged_stale` |
+| `SEL-areumfactory-example` | `record_flagged_stale`; items 2023-03-12 (1280 days) → `past_stale_threshold` + `source_flagged_stale`; the non-material EV-1509 → `past_stale_threshold` only, ranked last |
+| `SEL-yeonhwalab-example` | `certifications` rests only on EV-305 (2024-11-20, 661 days, `aging`) → `no_current_evidence`, counts `{old 1, undated 0, flagged 0}` |
+| `SEL-hanbitcos-example` | Not queued: its undated `moq` item was read 2026-09-10 |
+
+### Cases
+
+| Case | What it asserts |
+|---|---|
+| `recheck: stale_evidence.py (buyer / seller bundle) exits 0` · `the buyer / seller queue matches its golden byte for byte` | Byte-for-byte JSON comparison |
+| `recheck: INV-13 the buyer / seller queue is byte-identical on a re-run` | **INV-13** |
+| `recheck: the buyer / seller queue passes validate_output.py --strict` · `validate_output.py --schema auto routes a queue to recheck-queue` | `report_kind: recheck-queue` is the discriminator |
+| `recheck: an unreachable buyer is queued first …` · `evidence older than the stale threshold is past_stale_threshold …` · `a record flagged stale is record_flagged_stale …` · `an unresolved conflict queues both sides …` | The hand checks above |
+| `recheck: a resolved conflict, a superseded old item, fresh evidence and an undated item read recently queue nothing` | pacificglowdist, dunesourcing, marinaretail and gulfglow are absent. Old items that no longer drive the score are not worth a trip |
+| `recheck: undated items read recently are counted and named in notes[]` | Undated evidence cannot flood the queue: Korean company pages almost never print a date (`evidence.unknown_source_date_note`), so an undated item is current while its `observed_at` is, and the count is still reported |
+| `recheck: an unreachable seller …` · `a seller flagged stale …` · `a material claim resting only on aging evidence is no_current_evidence` · `a seller whose undated items were read recently is not queued` | The seller hand checks |
+| `recheck: the queue copies no value, quote_or_summary or contact channel` | Only locators and dates leave the record |
+| `recheck: --as-of alone drives age …` | At 2027-09-12 gulfglow EV-004 is `aging` and the undated EV-008 (read 367 days earlier) is `undated` |
+| `recheck: an undated item last read long ago is queued as undated` | EV-008 with `observed_at` 2025-01-10 → `undated`, and `contact_channels` is `no_current_evidence` with `newest_source_date: unknown` |
+| `recheck: a scored discovery-result is accepted and notes its excluded[]` | The UAE run: its queued ids are a subset of the bundle's, and `notes[]` says the excluded candidate carries no evidence |
+| `recheck: a match input is accepted and its RFQ is scanned too` | `records_scanned` = 20 records + 1 RFQ |
+| `recheck: an RFQ is classified as an RFQ …` | `rfq.134.json` carries `buyer_id`; it is still entity `rfq` with `record_id` `134`, and a `stale`/`unreachable` set on it adds no record-level reason, because no scorer penalises an RFQ for them |
+| `recheck: --top lists the first N and the summary still counts all` | `--top 1` on the seller bundle lists sopoongworks only; `records_queued` stays 3 |
+| `recheck: records scored under an older rubric are queued, not refused` | `score_version: kbtm-score-0.0.9` → exit 0 and a note. The queue aggregates no score, so the INV-23 refusal does not apply; re-checking old records is the point |
+| `recheck: an empty records[] is an empty queue, exit 0` · `--output writes the same bytes and leaves stdout empty` | |
+| `recheck: refuses a match-result` · `an acceptance report` · `a duplicate record id` · `a record without an id` · `an --as-of earlier than an observed_at (INV-24)` | Exit 1, one `ERROR:` line, empty stdout |
+| `recheck: a missing --as-of` · `a malformed --as-of` · `--top 0` · `a config without the due bucket` | Exit 2. `--as-of` is required: falling back to the newest `observed_at` would make every item look as fresh as its last reading |
+| `recheck: age 730 (= stale_threshold_days) is aging, 731 is past_stale_threshold; 365 is current and 366 is aging` | Both edges are inclusive, as in the scorer: an item exactly `stale_threshold_days` old is not yet past it, and the first bucket whose `max_age_days` is `>=` the age wins (`evidence.recency_note`) |
+| `recheck: an undated item with no observed_at is queued as undated, and a flagged undated item is source_flagged_stale only` | A reading with no usable date cannot prove the page current. A flagged item already has a reason, so `undated` is not added to it |
+| `recheck: claim counts.old counts only items in a due bucket` | `country` with one fresh flagged item (10 days) and one 800-day item → `{old 1, undated 0, flagged 1}` |
+| `recheck: records tied on priority rank by more claims without current evidence, then by the oldest queued item` | Four `aging` records: two claims beats one, then 600 days beats 500 beats 400, whatever the id order |
+| `recheck: a 200-character claim (the evidence schema's limit) is queued, and an over-long company_name is left out instead of failing the run` | The queue's `claim` limit matches `evidence.schema.json` (200), so valid input can never fail the queue's own schema. A display label over its limit is dropped; the id still names the record |
+| `recheck: refuses a claim longer than the input schema allows` | Exit 1. An over-long id, `evidence_id`, `claim`, `source_url` or `conflicts_with` id is refused, not cut: a cut locator points somewhere else |
+| `recheck: 320 unreadable source_dates, 12 non-list evidence values and over-long echoed values make one note of at most 1000 characters per kind` | Worst case with 128-character ids: tolerated bad data is summarised once per kind (count + first 10 cases, each echoed value at most 40 characters), so `notes[]` stays inside its 200-item / 1000-character schema limits |
+| `recheck: refuses a missing / integer / blank buyer_id even when the bundle names the entity` | Exit 1. Every queued record must be findable again; no record is queued as `unknown` |
+| `recheck: a non-string conflicts[].field is ignored, and a string conflicts_with is named on the item it flags` | A list `field` used to crash with an unhashable-type error. A bare string `conflicts_with` counts as one id, so the item that raises `unresolved_conflict` always says what it conflicts with |
+| `recheck: --top with a non-ASCII digit is a usage error (exit 2)` | `"²".isdigit()` is true but `int("²")` fails; the flag is checked as ASCII digits |
+| `recheck: a non-UTF-8 input is reported as such even without --as-of` | The input is read before the flag check, so the R7.3.3 harness check reaches the UTF-8 error |
+| `recheck: INV-NEW-stale no scoring path reads the re-check tool` | No scorer, `normalize_company.py`, `dedupe_companies.py` or `_common.py` names `stale_evidence`, its constants or (outside `_common.SCHEMA_NAMES`) `recheck-queue` |
+## 14. Lead export — `export_leads.py`
+
+`phase_export` runs after the calibration cases. It covers `scripts/export_leads.py`, which writes
+one scored `discovery-result` as a generic CSV (buyers or sellers), as the CSV TradeWith's admin
+buyer-import page reads, or as the admin bulk-import JSON body (buyers only). The script writes a
+file and nothing else, and no scorer reads what it writes, so every case here is about **what may
+leave the package**, not about arithmetic. The contract is `references/data-contract.md` §9.6.
+
+Inputs are the R3 UAE buyer run (19 records, 7 qualified, `BUY-northgateimport-example`
+unreachable) and the R4 sunscreen seller run (13 records, all qualified,
+`SEL-sopoongworks-example` unreachable, `SEL-hwadamglobal-example` country `unknown`), both
+re-scored at `--as-of 2026-09-12`.
+
+### Fixtures
+
+| File | What it is |
+|---|---|
+| `fixtures/expected/export.buyers.uae.csv` | Default generic CSV of R3: the 7 qualified buyers in document order |
+| `fixtures/expected/export.buyers.uae.tradewith.json` | `--format tradewith-json --pretty` of R3: 7 rows, countries AE / JP / GB / US / SG, `sourceId` `kbtm:<domain>`, `stale=false` in every `originalSource`, no `@` anywhere and one organisation-page `social` (sakura) |
+| `fixtures/expected/export.buyers.uae.tradewith.csv` | `--format tradewith-csv` of R3: the same 7 rows, five columns (`sourceId, companyName, country, website, industry`) |
+| `fixtures/expected/export.sellers.csv` | Default generic CSV of R4: 12 rows, the unreachable maker skipped, `hwadamglobal` kept with `country=unknown` |
+
+### Cases
+
+| Case | What it asserts |
+|---|---|
+| `export: X1 buyer csv …` · `X2 buyer tradewith-json …` · `X3 seller csv …` · `X4 buyer tradewith-csv …` | Each exits 0, matches its golden byte for byte, and a second run is identical (INV-13). X1 holds exactly the qualified records in document order, LF only, header first; X3 skips the unreachable maker, keeps the country-unknown one as the literal `unknown`, and names `operational_status=1` on stderr |
+| `export: X4 the admin import page's parser reads the tradewith-csv into exactly the tradewith-json rows` | The page's `parseCSV` + `mapRowToPayload` are transcribed into the harness; parsing the CSV yields the JSON rows projected onto its five columns. A comma inside a company name survives that parser. stderr notes that `tradewith-csv` drops provenance and points at `tradewith-json`; `tradewith-json` prints no such note |
+| `export: X5 …` | The body passes `tradewith-bulk-buyers.schema.json`; its only top-level key is `buyers`; every row's keys are a subset of the 25 BulkBuyerRowDto keys; no row carries `contactName`, `contactEmail`, `contactPhone`, `notes`, `extraNotes`, `qualityTierLabel` or `hsCodes`; no value is `null`, `""`, `"unknown"` or `[]`; no text value trips the personal-data scan; no `@` appears anywhere in the body; provenance and `stale=false` ride in `originalSource`, and `sourceUrl` is set |
+| `export: X6 …` | `sourceId` is `kbtm:` + the `www.`-stripped `canonical_domain`, unique. `--include-unqualified` is **refused** (exit 1) because `BUY-luminaglow-example` and `BUY-www-luminaglow-example` share `kbtm:luminaglow.example`; with the `www.` twin removed, the wider export carries the byte-same row for every record the default export has |
+| `export: X7 …` | `--include-unqualified` gives 18 rows (19 minus the unreachable one); `--min-score 80` gives 5; `BUY-kantoimport-example` has `product_categories=unknown` while `BUY-straitswholesale-example` has `contact_channels=none`; no `excluded[]` id appears in any export |
+| `export: X8 a dropped market_relevance is the literal not_applicable` | Unknown and not-applicable are different statements (INV-02) |
+| `export: X9 …` | A `=HYPERLINK(…)` company name is apostrophe-guarded in the generic CSV, kept raw in the JSON body (not a spreadsheet), and **refused** in `tradewith-csv`, where an apostrophe would be imported as part of the name |
+| `export: X10 …` | No address of any kind — role mailbox included — reaches a TradeWith row. In the generic CSV, `jane.doe@` on the company domain, `info@` on another domain and `sales@gmail.com` are dropped with `withheld 3 corporate_email` on stderr, while `partners@luminaglow.example` is kept; `sales@gmail.com` is withheld even when `gmail.com` is the record's own `canonical_domain` |
+| `export: refuses … (exit 2)` | A seller run as `tradewith-json` or `tradewith-csv`; `--pretty` with csv; `--min-score 101` and `abc`; `--as-of 2026-13-01`. Exactly one `ERROR:` line, empty stdout |
+| `export: refuses … (exit 1)` | An unscored run; a record whose `score_version` differs; a duplicated record id; an address in a company name (JSON and CSV); a phone number inside a website URL; under `--no-validate`, a non-string `canonical_domain`, a non-list `product_categories`, a non-object contact channel and a non-object record (typed guards, no traceback); a schema-invalid record without `--no-validate`; a `match-result` and an RFQ document (parse, but not a scored `discovery-result`: BUILD-CONTRACT 7.3). Each: one `ERROR:` line, empty stdout, and the `--output` file is **not** created |
+| `export: X13 …` | `--min-score 100` exits 0 with a header-only CSV or `{"buyers":[]}` and `WARNING: no record passed the filters` |
+| `export: X14 a body over TradeWith's JSON limit exits 0 with a WARNING` | 260 rows exceed the ~100 KB default body limit; the export still succeeds and says to split it |
+| `export: X15 …` | Under `--include-unqualified`, `BUY-luminaglow-example` and `BUY-www-luminaglow-example` are named in a `possible duplicate` WARNING; the default export warns of none |
+| `export: X16 --output writes the file and stdout stays empty` | The file equals the stdout export byte for byte |
+| `export: X18 …` (review follow-ups) | A qualified buyer with country `unknown` is skipped and counted (`country_unknown=1`) in `tradewith-json` and kept as `unknown` in the CSV; a `"` in a name is refused in `tradewith-csv`; a `partial: true` input exports with a `WARNING`; a LinkedIn `/in/` profile never becomes `social` and is withheld from the CSV too (`withheld 1 linkedin`); a `messenger` number `+971 4 555 0111` exports in the CSV, while an address in a `messenger` or `phone` channel is refused; a NaN `qualification_score` is refused with and without `--min-score`; a `company_type` outside the TradeWith enum is refused by the output schema even under `--no-validate`; an unknown domain gives `kbtm:id:<buyer_id>` and `stale: true` gives `stale=true` |
+| `export: X17 --version prints the standard version line` | `export_leads.py skill_version=… schema_version=0.1.0 score_version=kbtm-score-0.1.0` |
+
+`export_leads.py` also joins the non-UTF-8 input case of section 10, and
+`tradewith-bulk-buyers.schema.json` joins the schema self-check (parses, every `$ref` resolves,
+keyword subset only).
+## 15. Plugin packaging
+
+Phase `plugins` (`phase_plugins`, run after the package guards). It reads files at the
+**repository** root, outside the package: `.claude-plugin/marketplace.json`,
+`packaging/openai/plugin.json` and `tools/build_release.py`. An installed copy (a skills
+directory, the claude.ai sandbox, a plugin cache) has none of them, so the phase records one SKIP
+there and the PASS count of section 9 is a checkout count. In a checkout without `.git` (a source
+tarball) P-07..P-10 collapse into one SKIP, because the builder archives committed files only.
+P-07..P-10 never run the builder on the working checkout: the builder refuses a dirty or untracked
+package on purpose, and the suite must not depend on commit state (a stray `out.json`, a feature
+not yet committed). They copy every git-tracked package file plus every `MANIFEST` file, as they
+are on disk, together with `tools/build_release.py` and both manifests, into a throwaway
+repository, commit it with user and system git config shut out, and run the copied builder
+there. Each refusal runs in its own `git clone` of that repository with one mutation.
+Expected values come from the package itself: `skill_version` from `_common.SKILL_VERSION`, the
+plugin name from the `SKILL.md` frontmatter, the archive allowlist from `MANIFEST`
+(BUILD-CONTRACT 2.2). Every case was mutation-checked by breaking the manifest it guards.
+
+| Case | What it asserts |
+|---|---|
+| `plugins: P-01 marketplace.json lists the package folder as one single-skill plugin` | Known top-level and entry keys only; kebab-case `name`; non-empty `owner.name`; exactly one plugin whose `name` is the `SKILL.md` name, `source` is `./kbeauty-trade-matchmaker`, `strict` is `false` and `skills` is `["./"]`. With `strict: false` the entry is the whole definition, so the package needs no `plugin.json` and the claude.ai ZIP keeps its v0.2.0 shape |
+| `plugins: P-02 BUILD-CONTRACT 12.1 every plugin manifest states skill_version` | The marketplace entry's `version` and `packaging/openai/plugin.json`'s `version` equal `_common.SKILL_VERSION`. A Claude Code user receives an update only when the entry's `version` changes, so a forgotten bump strands them |
+| `plugins: P-03 the package root holds no plugin manifest or component dir` | None of `.claude-plugin`, `.codex-plugin`, `.agent-plugin`, `plugin.json`, `.mcp.json`, `mcp.json`, `.app.json`, `skills`, `agents`, `commands`, `hooks`, `bin`, `workflows`, `output-styles`, `monitors` exists in the package. Any of them would change plugin discovery and leak into the skill ZIP |
+| `plugins: P-04 the marketplace entry declares the stdio MCP server exactly when the package ships scripts/mcp_server.py` | The pairing goes both ways: `mcpServers` present requires `scripts/mcp_server.py` on disk **and** in `MANIFEST`, and a shipped script requires the declaration. The server is one entry, `command` `python3`, `args` exactly `["${CLAUDE_PLUGIN_ROOT}/scripts/mcp_server.py", "--root", "${CLAUDE_PROJECT_DIR}"]`, no `url`/`env`/`headers`, stdio only. The case also self-checks the rule on six synthetic entries (declared and shipped, neither, script missing, script not in `MANIFEST`, shipped but undeclared, no `--root`), so it cannot pass vacuously while no server exists |
+| `plugins: P-05 the OpenAI manifest is a skills-only portable plugin for this skill` | `$schema` set; `name` equals the skill name; non-empty `description`, `author.name` and `interface.displayName`; only the `com.openai` extension; no `skills`, `apps`, `hooks`, `mcpServers`, `screenshots`, `license` or `email` key anywhere. Structural only: the portal's length limits and category list are vendor policy, checked by hand at release (`references/runtime-adapters.md` §5.5 g) |
+| `plugins: P-06 manifests carry no personal contact and are UTF-8/LF` | Both manifests: LF with one final newline, no trailing whitespace, no `auto_send`, no `email` key, and `_common.personal_data_hits` finds nothing in any non-URL string |
+| `plugins: P-07 the skill ZIP holds exactly the 2.2 manifest under one top folder` | `build_release.py --list` exits 0 with empty stderr in the fixture repository. Every skill-ZIP entry sits under `kbeauty-trade-matchmaker/`, `SKILL.md` is there, no `__pycache__`/`.pyc`/`.DS_Store`/`.omc/`/adapter data. Allowlist both ways: every `MANIFEST` file is archived, and every archived file (so every git-tracked package file) is a `MANIFEST` row or under `tests/fixtures/`. A `MANIFEST` file nobody `git add`ed is caught at release time instead, where the builder refuses the untracked file |
+| `plugins: P-08 the plugin ZIP is plugin.json plus the same files under skills/<name>/` | Archive root is exactly `plugin.json` and `skills/`; everything else is under `skills/kbeauty-trade-matchmaker/`; no `mcp.json`, `.mcp.json` or `.app.json` at the plugin or skill root; no `..`, absolute path or path over 20 segments; the package file set equals the skill ZIP's |
+| `plugins: P-09 INV-13 identical input builds byte-identical archives; --as-of sets every entry date` | Two `--list` runs print identical bytes; two `--out` builds into separate temp dirs report identical sha256, and each reported sha256 matches the file on disk; in both ZIPs every entry is dated 1980-01-01 00:00:00 with mode 0755 for directories and `install.sh`, 0644 otherwise; the written order equals the `--list` order. A third build with `--as-of 2026-09-19` dates every entry of both ZIPs 2026-09-19 00:00:00, reports that timestamp and gives different bytes |
+| `plugins: P-10 every refusal exits cleanly, only committed bytes ship, and --out never writes through a symlink or half a pair` | Every refusal gives the expected exit, exactly one `ERROR:` line naming the cause, empty stdout and no traceback. **Exit 2** (usage, BUILD-CONTRACT 7.3): neither `--out` nor `--list`; both; a missing `--out` dir; `--out` inside the package; a malformed `--as-of`; an impossible `--as-of 2026-02-31`; a committed manifest that is not JSON; a manifest missing from HEAD. **Exit 1**: an untracked package file; an edited, a deleted, and an edited-manifest uncommitted change; an empty `agents/` dir in the package; a marketplace `version` that drifts; a list-valued `version`; a committed symlink. A tracked file edited under `git update-index --assume-unchanged` still ships its committed bytes (the builder reads blobs from HEAD). With the plugin target pre-created as a directory the run exits 1 and writes neither ZIP. No refused run leaves a file in `tests/`. A pre-existing symlink at the target path is replaced by the archive and its target stays untouched; no temp file is left behind |
+| `plugins: P-11 tools/*.py pass the send, clock, placeholder, stdlib and network scans` | The `scripts/*.py`-only scans of section 5 (`SEND_PATTERNS`, `WALL_CLOCK_PATTERNS`, `PLACEHOLDER_PATTERNS`, `STDLIB_OK`, and the shared `_network_problem` scan: no network module, no `urllib.request` in any spelling, no `__import__`/`importlib`, and `subprocess` only in `build_release.py`) and a compile check, applied to the repository's `tools/` directory, which the package-wide walk never reaches |
+
+Every builder refusal in P-09 and P-10 was mutation-checked on 2026-09-19: disabling the untracked,
+uncommitted-change, component, version-drift, version-type, symlink, calendar-date, target and
+missing-manifest checks, ignoring `--as-of`, reading bytes from the working tree instead of HEAD,
+flattening the mode table, or mapping manifest errors to exit 1 each turns P-09 or P-10 red.
+
+---
+
+## 16. MCP tool server — `mcp_server.py`
+
+`scripts/mcp_server.py` serves the eleven deterministic scripts as tools over stdio JSON-RPC
+(`references/runtime-adapters.md` §5.6). The `mcp` phase drives it offline with scripted stdin
+transcripts. Fixture paths are absolute and machine-specific, so the transcripts are built in code
+inside a throwaway `--root` that holds copies of `tests/fixtures/*` plus three scored runs the CLI
+produces first (UAE buyers, UK buyers, match-134 with the rerank). Every tool result is compared
+with the direct CLI run of the same script and, where one exists, with the existing golden; the
+only new golden is `expected/mcp.tools-list.expected.json`, the exact `tools/list` result bytes.
+One read-only transcript (M-01..M-24) runs twice with `--quiet --max-inline-bytes 16777216`; the
+write cases (M-25..M-32) run once with the defaults. The three stdin-isolation, path and overwrite
+guards were mutation-checked on 2026-09-19: letting a child inherit stdin, dropping the
+root check on reads or dropping the no-overwrite check each turns this phase red. M-37..M-45 cover
+the two 2026-09-19 review passes; each of their twelve fixes was reverted on its own and each revert
+turned at least one of them red (the per-frame catch-all in `serve` is defence in depth behind M-38
+and has no case of its own).
+
+| Case | What it asserts |
+|---|---|
+| `mcp: M-01 initialize echoes 2025-11-25 …` | `protocolVersion` echoed, `capabilities` exactly `{"tools": {}}`, `serverInfo.version` equals `_common.SKILL_VERSION`, `instructions` present, no `resultType` on a legacy result |
+| `mcp: M-02 version negotiation …` | `2025-11-25`, `2025-06-18`, `2025-03-26` and `2024-11-05` are each echoed; `1999-01-01` and `2026-07-28` sent through `initialize` are answered with `2025-11-25`, never an error |
+| `mcp: M-03 ping answers {} and notifications get no response` | `notifications/initialized`, an unknown notification and `foo/bar` sent as a notification produce no line; every output line carries an `id` |
+| `mcp: M-04 a malformed line is -32700 and a batch or a bad id is -32600, each with id null` | Exactly five `id: null` errors: garbage and a bare `NaN` (-32700), a batch array, `id: true`, `id: 1.5` (-32600) |
+| `mcp: M-05 a bad jsonrpc keeps the request id; an unknown method is -32601` | `"jsonrpc": "1.0"` with id 601 answers -32600 with id 601; `foo/bar` with an id answers -32601 |
+| `mcp: M-06 an unknown tool, non-object params and non-object arguments are -32602` | `send_everything`, `params: [...]`, `arguments: "x"` |
+| `mcp: M-07 a stray response is ignored and requests after errors are still answered` | A `{"id": 607, "result": {}}` message gets no reply; the final ping is answered |
+| `mcp: M-08 the 2026-07-28 path …` | `server/discover` returns `resultType: complete`, `supportedVersions: ["2026-07-28"]`, `capabilities`, `_meta` serverInfo; `tools/list` with `_meta` adds `resultType`, `ttlMs: 300000`, `cacheScope: public` and the same tools; `_meta` version `2099-01-01` is -32022 with `data.supported`; `_meta` without client capabilities is -32602; a modern `tools/call` carries `resultType`; the legacy `tools/list` carries only `tools` |
+| `mcp: M-09 stdout carries only JSON-RPC frames …` | Every stdout line is one `jsonrpc: "2.0"` object, stderr is empty under `--quiet`, end of input exits 0 |
+| `mcp: M-10 tools/list names the package scripts in pipeline order …` | Names equal `MCP_TOOL_NAMES` in order, match `^[A-Za-z0-9_.-]{1,128}$` and contain none of send, mail, fetch, http, post, dispatch, upload |
+| `mcp: M-11 every inputSchema is a closed object … honest annotations` | `type: object`, `additionalProperties: false`, `as_of` required, no top-level `oneOf`/`anyOf`/`allOf`, every keyword in the `_common.validate` subset, every `*_path` a string; all four hints set, `openWorldHint` and `destructiveHint` false, `readOnlyHint` and `idempotentHint` true exactly when no `output_path` is offered |
+| `mcp: M-12 the validate_output schema enum equals validate_output.KINDS + auto` | The server pins the enum instead of importing a script per request; this keeps the two in step |
+| `mcp: M-13 tools/list is byte-identical to mcp.tools-list.expected.json` | The raw response bytes, so any tool, schema or annotation change is a deliberate golden update |
+| `mcp: M-14 every tool returns exactly what its CLI prints (12 calls)` | normalize (`--envelope`), dedupe (`--no-strict-country`), score_buyer (`--top 5`), score_seller (`--threshold 60 --threshold-mode fixed`), score_match (`--rerank-input`, `--no-include-excluded`), validate_output (`--strict --json`), make_review_sheet, acceptance_report, diff_runs, stale_evidence, export_leads csv and tradewith-json: `isError` false, `exit_code` 0, `document` equals the parsed CLI stdout or `csv` equals it byte for byte, and the text block is the serialized `structuredContent`. All eleven tools are exercised |
+| `mcp: M-15 tool results match the existing goldens …` | `review-sheet.buyers.uae.blind.csv` and `export.buyers.uae.csv` byte for byte; `acceptance.buyers.uae.expected.json`, `diff.buyers.uae-uk.expected.json`, `recheck.buyers.golden.expected.json` and `export.buyers.uae.tradewith.json` parse equal |
+| `mcp: M-16 an inline document and a path give the same result …` | score_buyer with inline `input` + `query` equals the path call; diff_runs with inline `before` equals the path call |
+| `mcp: M-17 as_of is required …` | Missing, `2026-02-30`, `2026-09-12\n` and `20260912` are each `isError` with `exit_code: null` (no script ran) |
+| `mcp: M-18 argument errors are tool errors …` | Both `input` and `input_path`; neither; two inline documents on diff_runs; an unknown key (`pretty`); `top: "5"`; an empty `scored_paths` |
+| `mcp: M-19 an input path outside --root is refused …` | An absolute fixture path, the same path as `../…`, and a symlink inside the root that points at it: each refused naming `--root` |
+| `mcp: M-20 a directory, a NUL byte and output_path on the read-only validate_output are refused` | `input_path: "out"`, a path with `\u0000`, and `output_path` on a tool that offers none |
+| `mcp: M-21 a script data error (exit 1) …` | The poisoned `canonical_domain` input: `isError` true, `exit_code` 1, `error` set, an `ERROR:` line in `diagnostics`, and the document the scorer still wrote (R7.3.2) |
+| `mcp: M-22 validate_output exit 1 is a successful call …` | `isError` false, `exit_code` 1, `document.valid` false |
+| `mcp: M-23 score_match without input / input_path, or with only one of rfq_path / sellers_path, is refused …` | Both calls are `isError` with `exit_code: null` (no script ran) and an error naming `rfq_path together with sellers_path`, never an empty-stdin error blaming `<stdin>`; a 256 KiB ping sent between them is still answered. The stdin isolation itself is M-48 |
+| `mcp: M-24 INV-13 the same read-only transcript prints byte-identical stdout twice` | The whole read-only transcript, run a second time against the same root, prints the same bytes and exit code |
+| `mcp: M-25 output_path writes a new file inside the root …` | `output` equals `{path, bytes, sha256}` of the file on disk, no `document` is returned, and the file parses equal to the CLI output |
+| `mcp: M-26 an existing output_path is refused and the file is unchanged` | The same `output_path` again, and an input file as `output_path`: refused with "already exists", bytes unchanged |
+| `mcp: M-27 a script that exits 1 after writing …` | The poisoned input with `output_path`: `isError`, `exit_code` 1, `output.path` reported and the error says a retry needs a new `output_path` |
+| `mcp: M-28 output_path refusals …` | A dangling symlink (its target is not created), a missing directory (not created), a symlinked directory leading out of the root (nothing written outside) and an existing directory named `existing-dir.json` |
+| `mcp: M-29 nothing but the two requested files was written under the root` | `out/` holds exactly the test's own symlink plus the two written files |
+| `mcp: M-30 a result above the default inline cap is refused …` | The UAE buyer run (about 180 KB) without `output_path` under the default 32,768-byte cap: `isError`, `exit_code` 0, the error names `output_path`, no `document` |
+| `mcp: M-31 a message above 16 MiB is -32600 …` | The oversized line is answered -32600 with id null and the next ping is answered |
+| `mcp: M-32 without --quiet each call logs one stderr line …` | Every stderr line starts `kbtm-mcp: `, no traceback, exit 0 |
+| `mcp: M-33 output_path inside the skill package is refused …` | With `--root` set to the package itself, `output_path: scripts/…` is refused and nothing is created |
+| `mcp: M-34 --version prints the standard version line` | `mcp_server.py skill_version=… schema_version=0.1.0 score_version=kbtm-score-0.1.0` |
+| `mcp: M-35 the server refuses to start without a safe --root …` | No `--root`, a missing directory, `/`, a parent of `HOME`, `HOME` itself, `--tool-timeout 0`, `--max-inline-bytes 10` (exit 2, exactly one `ERROR:` line, empty stdout, no traceback) and an unknown flag (argparse exit 2) |
+| `mcp: M-36 the marketplace entry's server command starts the server` | The `mcpServers` entry of `.claude-plugin/marketplace.json` has `command` `python3`; its `args` with `${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_PROJECT_DIR}` substituted name an existing file that answers `initialize` and `tools/list` with the eleven tools and exits 0. SKIP in an installed copy (no repository manifests) |
+| `mcp: M-37 a lone surrogate echoed in an id, method, tool name or error …` | A request id `"\ud800"`, method `"\ud800x"`, tool name `"\ud800"`, `schema: "\udc80"` and `as_of: "\ud800"` are each answered (the frame falls back to `\u` escapes), stdout stays pure JSON and the final ping is answered |
+| `mcp: M-38 JSON nested deeper than the interpreter allows …` | 200,000 `[`, 200,000 nested objects and 200,000 levels inside `arguments` (CPython 3.12+ decodes a few thousand levels without error): at least two -32700 with id null, no traceback, the final ping answered, exit 0 |
+| `mcp: M-39 a closed stderr never stops the server …` | Launched with fd 2 closed and without `--quiet`: a `normalize_company` call succeeds and the next ping is answered, exit 0 |
+| `mcp: M-40 an inline query too large for the command line …` | A 2 MiB and a 70,000-byte inline `query` are tool errors naming `query_path` with `exit_code: null`; in process, a child that cannot start is `isError` "could not be started", not -32603 |
+| `mcp: M-41 an inline document or path holding a lone surrogate is a tool error …` | A lone surrogate in inline `input`, in inline `query` and in `input_path`: each `isError` naming UTF-8; the final ping is answered |
+| `mcp: M-42 a stray response is never answered, even with id null` | Responses with id `null`, `1.5` and `77` produce no line; the only frame is the ping reply |
+| `mcp: M-43 the package is recognised by file identity …` | With `--root` one level above the package, `output_path` spelt with the package folder's case swapped is refused and nothing is created (on a case-insensitive file system the error names the skill package); in process, `_within_package` recognises a symlinked alias of the package by `(st_dev, st_ino)` and rejects an unrelated folder |
+| `mcp: M-44 output_path must end in .json or .csv …` | `probe.py`, `.probe.json` and `.cfg/probe.json` are refused; `probe.JSON` is written; nothing else is created |
+| `mcp: M-45 a child runs isolated …` | With `PYTHONPATH` pointing at a `sitecustomize.py` that prints a marker, the child's diagnostics never show it (`-I`); in process, `_child_env()` drops `TRADEWITH_*` |
+| `mcp: M-47 without --quiet a refused call still logs one 'kbtm-mcp: <tool> refused' line …` | A `../` input path and an overwrite are each refused and each leaves exactly one `kbtm-mcp: score_buyer refused` line on stderr |
+| `mcp: M-48 a child started without a stdin document gets an empty stdin …` | A driver process whose own stdin holds the valid buyer golden calls `call_tool` with no stdin document: the child exits 2 with "empty"; had it inherited the driver's stdin it would have scored the document and exited 0 |
+
+---
+
+## 17. v0.3.0 final-review follow-ups
+
+`phase_review_followups` runs after section 16. Each case pins one fix from the three final
+reviews of v0.3.0 (cross-feature, safety, docs); every fix was reverted on its own on 2026-09-19 and
+each revert turned at least one case here (or the renumbered M-23 / M-47 / M-48 and the export
+exit-1 rows of section 14) red. No scorer, schema, golden or version changed.
+
+| Case | What it asserts |
+|---|---|
+| `review: R-01 …` | `validate_output.py` knows `tradewith-bulk-buyers`: the export golden is detected as that kind and passes `--strict`; `{"buyers":[{"foo":1}]}` fails (exit 1, `sourceId` required) under `--schema tradewith-bulk-buyers` and under auto detection |
+| `review: R-02 --schema-file validates a document whose kind is not detectable …` | `{"foo":1}` with `--schema-file schemas/tradewith-bulk-buyers.schema.json` is exit 1 with schema errors, not exit 0 with a "could not detect" warning |
+| `review: R-03 the export schema's social pattern refuses …` | `tradewith-bulk-buyers.schema.json` `social` now requires `/company|showcase|school/<name>` with no empty, `.` or `..` segment (percent-encoded dots included) and no userinfo, so a hand-edited body with `/company/../in/…` fails `validate_output.py` (exit 1, error on `social`) |
+| `review: R-04 an impossible or malformed --as-of is exit 2 …` | `--as-of 2026-13-01` and `--as-of garbage` give exit 2 naming `--as-of` in all eleven scripts (normalize, dedupe, the three scorers, validate, review sheet, acceptance report, diff, re-check queue, export) |
+| `review: R-05 … refuses an empty --as-of` | `export_leads.py` and `acceptance_report.py` with `--as-of ''`: exit 2, "--as-of is empty" (the acceptance report used to blame a valid `reviewed_on`) |
+| `review: R-06 a document that only looks like a match-result is reported invalid, not a crash` | `expected/match-134.expected.json` (a test digest with `no_match`) is exit 1 with no `AttributeError`, with and without `--no-validate` |
+| `review: R-07 …` | A `linkedin` channel `/company/../in/…`, `/company/%2e%2e/in/…` or `/company//in/…` never becomes TradeWith `social` and is withheld from the generic CSV (`withheld 1 linkedin`) |
+| `export: refuses … (R-08)` · `(R-09)` · `(R-10)` · `(R-11)` | Exit 1, nothing written: `%40` in the tier-1 `sourceUrl`; `…/ahmed-khan-mobile-0501234567` in the `sourceUrl`; `%40` in a `partnership_form` URL (CSV); a `phone` channel `+44 20 7946 0100 (Mr. Ahmed Khan, mobile)` (CSV) |
+| `review: R-12 an official WhatsApp business link still exports …` | `https://api.whatsapp.com/send?phone=97145550111` in a `messenger` channel is kept in the CSV |
+| `export: refuses … (R-13)` | `tradewith-csv` refuses a company name ` =1+1` (leading space) and `＝1+1` (full width) |
+| `review: R-14 tradewith-json keeps such a name verbatim and warns on stderr` | Exit 0, `"companyName":" =1+1"`, a `WARNING` naming the formula character |
+| `review: R-15 the generic csv guards a formula behind leading whitespace` | The CSV cell is `' =1+1` |
+| `review: R-16 the widened URL scan still passes …` | `hotel-20240101`, a registry id `0123456789` in a path, a `%20`-encoded BPOM number and `/tel-plans/2024` give no personal-data hit |
+| `review: R-17 the network scan flags …` | The shared scan helper flags `from urllib import request`, `__import__(…)`, `importlib`, a mail-protocol module and `subprocess` outside its allow-list (`scripts/mcp_server.py`, `tools/build_release.py`), and passes `urllib.parse` and comments |

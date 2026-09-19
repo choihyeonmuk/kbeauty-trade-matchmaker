@@ -45,7 +45,7 @@ runtime that spells the capability differently, and an operator cannot tell that
 | **Internal data** (TradeWith RFQ / Seller) | `adapters/tradewith_adapter.py`, or a TradeWith MCP server / connector where one exists | `adapters/tradewith_adapter.py`, or the TradeWith API / connector | `adapters/tradewith_adapter.py` (`file` backend needs nothing at all) | `adapters/tradewith_adapter.md` |
 | **CRM write** | A separate MCP server or tool — never this skill's own code beyond the adapter's review-queue writes | A separate app or tool | The adapter's `POST /research/leads`, `POST /matches`, `POST /outreach-drafts` | `adapters/tradewith_adapter.md` |
 | **Email** | **Draft only.** The skill ends at `READY_FOR_REVIEW`; a human approves and an external system does the sending | **Draft only**, same boundary | **Draft only**, same boundary | `references/outreach-guidelines.md`, `templates/*.md` |
-| **Scoring / normalization / validation** | `python3 scripts/*.py` | `python3 scripts/*.py` | `python3 scripts/*.py` | `scripts/` — stdlib only, no runtime dependency |
+| **Scoring / normalization / validation** | `python3 scripts/*.py`, or the same scripts as MCP tools (§5.6) | `python3 scripts/*.py`, or the MCP tools (§5.6) | `python3 scripts/*.py`, or the MCP tools (§5.6) | `scripts/` — stdlib only, no runtime dependency |
 
 Korean gloss (PRD 9.2 표 그대로): Core workflow는 공통 SKILL.md, Web research는 런타임의
 web/browser/search tool, Internal data는 TradeWith API/MCP/connector, CRM write는 별도 app/tool,
@@ -278,8 +278,8 @@ enabled = false
 
 **Which ChatGPT surfaces see a bare folder.** A standalone skill folder is available in the ChatGPT
 **desktop app**, **Codex CLI** and the **IDE extension**. To reach Chat and Work on ChatGPT **web and
-mobile**, the skill must be packaged as a **plugin** that bundles it. This package ships as a
-standalone folder; plugin packaging is out of scope for v0.1.0.
+mobile**, the skill must be packaged as a **plugin** that bundles it. Each release ships that plugin
+as the ZIP asset described in §5.5.
 
 > **Uncertain — a human should confirm (checked 2026-09-13).** The ChatGPT *workspace* upload and
 > enable procedure could not be verified: <https://help.openai.com/en/articles/20001066> ("Skills in
@@ -290,7 +290,8 @@ standalone folder; plugin packaging is out of scope for v0.1.0.
 > "Cannot execute `scripts/*.py`" row governs; the runtime's default sandbox/approval posture for
 > running them and for writing the intermediate `tmp.*.json` files; and whether any file-count or
 > package-size limit applies (none is documented for a local filesystem skill; this package is
-> ~55 files / ~2.0 MB).
+> ~55 files / ~2.0 MB). Re-checked 2026-09-19: ordinary Chat mode is still not documented to run
+> bundled scripts; Work mode runs the Codex harness with shell execution (§5.5 b, e).
 
 ### 5.3 Any other runtime
 
@@ -320,6 +321,231 @@ loaded `SKILL.md` at all — the silent failure §1 exists to prevent. Check it 
 | Claude Code | The skill is listed among available skills, and `/kbeauty-trade-matchmaker` resolves | Confirm the folder sits directly under one of §5.1's `.claude/skills` roots, that the directory is named `kbeauty-trade-matchmaker` (it must equal frontmatter `name`), and that `SKILL.md`'s **first line is exactly `---`** — if the opening `---` is not line 1, the whole file is treated as body text and the skill does not load. Check no higher-precedence scope holds a skill of the same name |
 | Codex CLI / IDE | `/skills` lists `kbeauty-trade-matchmaker`, or typing `$kbeauty` completes it | Same three checks against §5.2's `.agents/skills` roots, then restart Codex. With many skills installed Codex may shorten descriptions or omit skills from the startup list with a warning: that list is capped at 2% of the context window, or 8,000 characters when the window is unknown |
 
+### 5.5 Plugin packaging
+
+Korean gloss: 같은 패키지 폴더를 복제 없이 세 가지 경로로 배포한다 — Claude Code 플러그인(저장소 마켓플레이스), ChatGPT/Codex 플러그인 ZIP(스킬 전용), claude.ai 스킬 ZIP. 한 런타임에는 한 가지 방식만 설치한다.
+
+Every path below ships **this same folder**, byte for byte. None of them adds a file to the package,
+and none keeps a second copy in git. Checked against the official documentation on **2026-09-19**
+(sources in §6).
+
+**a. The three ship paths.**
+
+| Path | Built from | Who uses it |
+|---|---|---|
+| **Claude Code plugin** | `.claude-plugin/marketplace.json` at the repository root. Its one entry has `"source": "./kbeauty-trade-matchmaker"` (this folder), `"strict": false` (the entry is the whole definition, so the package needs no `plugin.json`) and `"skills": ["./"]` (the package root `SKILL.md` is the skill) | `/plugin marketplace add choihyeonmuk/kbeauty-trade-matchmaker`, then `/plugin install kbeauty-trade-matchmaker@kbeauty-trade-matchmaker`. The skill is `/kbeauty-trade-matchmaker:kbeauty-trade-matchmaker`, or fires implicitly |
+| **ChatGPT / Codex plugin** | Release asset `kbeauty-trade-matchmaker-plugin.zip`: the portable layout, `plugin.json` (from `packaging/openai/plugin.json`) plus `skills/kbeauty-trade-matchmaker/` (this folder). Skills only | ChatGPT desktop and Codex CLI through a personal marketplace; ChatGPT web and mobile once a workspace admin publishes it |
+| **claude.ai skill ZIP** | Release asset `kbeauty-trade-matchmaker.zip`: one top folder `kbeauty-trade-matchmaker/`, the same layout as the v0.2.0 asset | Upload as in §5.1 (zip upload under Settings → Features) |
+
+`tools/build_release.py` (repository root, not shipped) builds both ZIPs from the **HEAD commit**:
+it lists files with `git ls-tree` and reads their bytes with `git cat-file`, never from the working
+tree, so gitignored local state such as a filled review sheet, and any edit not yet committed, can
+never reach a public asset. It refuses (exit 1) when the package or either manifest has an
+uncommitted change or an untracked, unignored file, when the package holds a symlink or a plugin
+manifest or component directory, or when the two manifests' `version` disagrees with
+`skill_version`; a manifest missing from HEAD or not valid JSON is exit 2. Both ZIPs are built and
+both targets checked before either file is replaced. Entry order, timestamps (1980-01-01, or
+`--as-of`) and permissions (`install.sh` 0755, everything else 0644) are fixed, so one commit builds
+identical bytes on one toolchain. Deflate output can differ between zlib builds, so compare hashes
+on the same machine.
+
+**b. What runs where.**
+
+| Surface | Install | What runs |
+|---|---|---|
+| Claude Code | Plugin (recommended) or `install.sh` | Skill and scripts; the bundled MCP server (declared by the plugin, see d; by hand after `install.sh`, see §5.6) |
+| claude.ai web / Desktop chat | Skill ZIP upload | Scripts when code execution is on (checked 2026-09-14); no MCP server. Official pages disagree on whether web chat installs plugins, so this page does not document that path |
+| Claude Cowork | Not tested with this repository | Not advertised |
+| Codex CLI | `install.sh --runtime codex`, or the plugin ZIP through a personal marketplace | Scripts run; the MCP server needs a manual `codex mcp add` (§5.6 b) |
+| Codex IDE extension | `install.sh` only (the extension does not support plugins) | Scripts run |
+| ChatGPT desktop | Standalone folder (§5.2) or the plugin ZIP | Work mode is inferred to run the scripts |
+| ChatGPT web / mobile | Only a published plugin (workspace, or the public directory after OpenAI review) | Work mode runs the Codex harness with shell execution, so the scripts probably run (inferred; the Python version is unpublished). Ordinary Chat mode is **not documented** to run bundled scripts: apply (e) |
+
+**c. One install per runtime.** Installing the plugin **and** an `install.sh` copy in the same
+runtime loads two skills (`kbeauty-trade-matchmaker` and
+`kbeauty-trade-matchmaker:kbeauty-trade-matchmaker`) that both fire on the same requests. Pick one.
+
+**d. The MCP server.** Only the Claude Code plugin declares it, inline in the marketplace entry,
+and only while the package ships `scripts/mcp_server.py` (the `plugins` test phase enforces the
+pairing both ways, so the plugin never starts a server that is not there):
+`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/mcp_server.py --root ${CLAUDE_PROJECT_DIR}` (both
+placeholders are substituted in a stdio server's `args`). It starts when the plugin is enabled and
+needs `python3` on `PATH`. The server refuses a project directory that is `/`, your home directory
+or a parent of it, so start Claude Code inside a project folder; launched from `~`, the kbtm server
+shows as failed. The OpenAI ZIP carries **no** `mcp.json`: a plugin that declares an MCP
+server is marked *Desktop only* and disappears from web and mobile, which is the one thing the ZIP
+exists to reach. Register the server by hand where a runtime needs it.
+
+**e. When scripts cannot run.** In ChatGPT, run analyses in **Work** mode. If a `python3
+scripts/…` call cannot execute (ordinary Chat mode, or any sandbox without Python), §4's row
+"Cannot execute `scripts/*.py`" governs: return evidence-backed records marked **unscored** and say
+why. Never estimate a score by hand.
+
+**f. Codex marketplace limits.** Codex also reads a repository's `.claude-plugin/marketplace.json`,
+but this repository's plugin has no `skills/` directory, so `codex plugin marketplace add
+choihyeonmuk/kbeauty-trade-matchmaker` may list a broken or empty entry, and a ChatGPT workspace
+admin who imports the repository from GitHub may pick up an inline MCP server and get a Desktop-only
+plugin. Codex and ChatGPT users take the plugin ZIP instead. Unzip it into
+`~/.codex/plugins/kbeauty-trade-matchmaker`, then add this entry to the `plugins` array of
+`~/.agents/plugins/marketplace.json` (merge by hand if the file exists; `source.path` resolves
+against the marketplace root, which is `~` for the personal file):
+
+```json
+{"name": "kbeauty-trade-matchmaker",
+ "source": {"source": "local", "path": "./.codex/plugins/kbeauty-trade-matchmaker"},
+ "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
+ "category": "Business & Operations"}
+```
+
+Restart the ChatGPT desktop app and install from Plugins, or run `/plugins` in Codex CLI.
+
+**g. Maintainer release checks.**
+
+1. `python3 kbeauty-trade-matchmaker/tests/run_tests.py` exits 0 in the checkout. The `plugins`
+   phase checks both manifests and the builder; an installed copy has neither and reports two
+   SKIPs (the `plugins` phase and M-36).
+2. `claude plugin validate .` passes at the repository root.
+3. From a **fresh clone** (a working tree can carry untracked files into the plugin cache):
+   `/plugin marketplace add ./`, install, and confirm the skill (and the MCP server, when declared)
+   is listed (`claude plugin details kbeauty-trade-matchmaker@kbeauty-trade-matchmaker`).
+4. From the same clone (`dist/` is gitignored, so a fresh clone has none and the builder creates
+   no directory): `mkdir -p dist && python3 tools/build_release.py --out dist/ --as-of <release date>`.
+5. Upload both ZIPs to the GitHub release.
+6. Install the plugin ZIP in the ChatGPT desktop app following (f), and run one discovery.
+7. Only if the owner decides to submit to the public directory: the portal's listing limits are
+   checked by hand, not by the test suite, because they are vendor policy that changes without
+   notice. On 2026-09-19 they were `interface.displayName` and `shortDescription` ≤ 30 characters,
+   `longDescription` ≤ 4,000, `developerName` ≤ 80, `defaultPrompt` ≤ 3 × 128, one of 13 fixed
+   categories, `plugin-name:skill-name` ≤ 64 characters, and an archive of ≤ 5,000 entries,
+   ≤ 100 MB compressed and ≤ 512 MiB extracted. The repository has no LICENSE file, so neither
+   manifest states a `license`.
+
+### 5.6 Tool server (MCP)
+
+Korean gloss: `scripts/mcp_server.py`는 같은 스크립트를 MCP(stdio) 도구로 노출한다. `--root` 필수, 루트 밖 경로와 덮어쓰기는 거부, 모든 호출에 `as_of` 필수, 아무것도 전송하거나 가져오지 않는다.
+
+`scripts/mcp_server.py` is an optional, stdlib-only Model Context Protocol server over stdio. It
+exposes the package's deterministic scripts as tools for a runtime that calls tools rather than a
+shell. Each tool runs its script as a child process with a **subset** of that script's flags, and
+for the flags it exposes a tool result is exactly what the CLI prints (the `mcp:` test phase checks
+every tool against its CLI and the existing goldens, `tests/cases.md` §16). Nothing about scoring
+changes. Left out on purpose, so use the CLI for them: `--config`, `--schema-dir`, `--no-validate`
+(where the script has it) and the presentation flags `--pretty`, `--quiet` and `--version` on every
+tool; `--min-score`, `--hard-filter` / `--no-hard-filter` and `--records-only` on
+`score_buyer` / `score_seller`; `--match-run-id`, `--rerank-adjustments` and `--skill-version` on
+`score_match`; `--schema-file` on `validate_output`; `--name` and `--url` on `normalize_company`.
+
+| Tool | Script | Writes a file |
+|---|---|---|
+| `normalize_company` | `scripts/normalize_company.py` | only to `output_path` |
+| `dedupe_companies` | `scripts/dedupe_companies.py` | only to `output_path` |
+| `score_buyer` | `scripts/score_buyer.py` | only to `output_path` |
+| `score_seller` | `scripts/score_seller.py` | only to `output_path` |
+| `score_match` | `scripts/score_match.py` | only to `output_path` |
+| `validate_output` | `scripts/validate_output.py` | never (read-only) |
+| `make_review_sheet` | `scripts/make_review_sheet.py` | only to `output_path` |
+| `acceptance_report` | `scripts/acceptance_report.py` | only to `output_path` |
+| `diff_runs` | `scripts/diff_runs.py` | only to `output_path` |
+| `stale_evidence` | `scripts/stale_evidence.py` | only to `output_path` |
+| `export_leads` | `scripts/export_leads.py` | only to `output_path` |
+
+**Rules the server enforces.**
+
+- **`--root DIR` is required.** The server refuses to start without it, or when it is a filesystem
+  root, the home directory or a parent of the home directory (exit 2). Every input and output path
+  must resolve inside that one directory after `realpath`, so a `../` or a symlink cannot lead out.
+  Relative paths resolve against the root.
+- **`as_of` is required on every tool** and must be a real `YYYY-MM-DD` date. The server never
+  supplies a date and never reads the clock.
+- **The main document goes in `input` (inline JSON object) or `input_path` (a file), never both.**
+  An array of records is wrapped as `{"records": [...]}`. Only one document per call can be inline;
+  `diff_runs` takes `before`/`before_path` and `after`/`after_path` with at most one inline.
+  `score_match` needs `input`/`input_path`, or `rfq_path` and `sellers_path` together; anything
+  less is refused before the script runs. The
+  other inputs (`query_path`, `rfq_path`, `sellers_path`, `rerank_input_path`,
+  `rationale_input_path`, `scored_paths`, `reviews_paths`) are files, except that `score_buyer` and
+  `score_seller` also take an inline `query` of at most 65,536 bytes (it travels on the script's
+  command line; above that, save it and pass `query_path`). Inline JSON is re-serialized for the
+  script: `NaN`/`Infinity` are refused, duplicate keys keep the last value, and a string holding a
+  lone UTF-16 surrogate is refused as not valid UTF-8, as is such a path.
+- **No overwrite.** `output_path` must not exist yet (a dangling symlink counts as existing), its
+  directory must exist (the server creates none), it must end in `.json` or `.csv`, no part of it
+  below the root may start with a dot (no `.git/`, `.claude/`, `.env*`), and it must be outside the
+  skill package, which is recognised by file identity (`st_dev`, `st_ino`) so a case-changed or
+  differently normalised spelling of its path is refused too. The
+  server itself writes nothing; the script writes the file. A script that exits 1 after writing
+  (R7.3.2) leaves the file, so a retry needs a new name. That is why every tool can honestly carry
+  `destructiveHint: false`; only `validate_output` is `readOnlyHint: true`; `openWorldHint` is
+  false everywhere.
+- **Size cap.** A result larger than `--max-inline-bytes` (default 32,768 bytes, range
+  1,024–16,777,216) is not returned; the call is refused with a pointer to `output_path`, which
+  returns `{path, bytes, sha256}` instead. A full discovery or match run is usually larger than the
+  default, so pass `output_path` for real runs. Claude Code caps a tool result at
+  `MAX_MCP_OUTPUT_TOKENS` (25,000 tokens by default), and the result is sent both as
+  `structuredContent` and as a text block, so do not raise the cap far.
+- **Results.** `structuredContent` is `{tool, exit_code, document | csv | output, diagnostics,
+  error?}`. A script's exit 1 or 2, a refused argument and a timeout (`--tool-timeout`, default 120
+  seconds) are `isError: true`; `validate_output` exit 1 is a normal result whose report says
+  `valid: false`. A protocol error (unknown tool, malformed request) is a JSON-RPC error.
+- **Nothing else runs.** No tool sends, posts, fetches or opens a network connection, and the
+  server runs only the scripts in the table. The internal-data adapter is not exposed. `TRADEWITH_*`
+  variables are removed from a script's environment, the script runs with `python3 -I` (no
+  `PYTHONPATH`, no user site-packages) and never inherits the server's stdin.
+
+**Protocol.** Newline-delimited JSON-RPC 2.0 on stdin/stdout; diagnostics on stderr only (one line
+per tool call unless `--quiet`: `kbtm-mcp: <tool> exit=<n>` for a script run, `kbtm-mcp: <tool>
+refused` for an argument refusal, `kbtm-mcp: <tool> timeout` or `… could not start: <reason>`
+otherwise; best effort, so a closed
+stderr is harmless); end of input exits 0. No single line can end the process: nesting deeper than the
+interpreter allows is `-32700`, a reply that would echo a lone surrogate is written with `\u`
+escapes, and a response sent to the server (any id, even `null`) is never answered. `initialize`
+echoes a requested `2025-11-25`, `2025-06-18`, `2025-03-26` or `2024-11-05` and answers any other
+version with `2025-11-25`; `ping` answers `{}`; notifications are never answered. A request whose
+`params._meta` carries `io.modelcontextprotocol/protocolVersion` is served on the stateless
+`2026-07-28` path: `server/discover`, `resultType`, `ttlMs` and `cacheScope` are added,
+`-32022` answers an unsupported version and `-32602` a `_meta` without client capabilities. Claude
+Code talks to stdio servers the legacy way unless `MCP_PROTOCOL_NEGOTIATION=auto`; which revision
+Codex and Cursor send over stdio is not documented (inferred legacy), so both paths are kept.
+
+**a. Claude Code.** The plugin declares the server (§5.5 d); it fails to start when Claude Code
+was launched in `/`, the home directory or a parent of it, so open a project folder. By hand,
+point at the installed package folder and pass the project as the root:
+
+```bash
+claude mcp add --transport stdio kbtm -- python3 /abs/path/kbeauty-trade-matchmaker/scripts/mcp_server.py --root /abs/path/to/project
+```
+
+or in a project `.mcp.json` (approved on first use in interactive sessions):
+
+```json
+{"mcpServers": {"kbtm": {"command": "python3",
+  "args": ["/abs/path/kbeauty-trade-matchmaker/scripts/mcp_server.py", "--root", "/abs/path/to/project"]}}}
+```
+
+**b. Codex CLI.** In `~/.codex/config.toml` (or a trusted project's `.codex/config.toml`); keep
+`tool_timeout_sec` above the server's `--tool-timeout`:
+
+```toml
+[mcp_servers.kbtm]
+command = "python3"
+args = ["/abs/path/kbeauty-trade-matchmaker/scripts/mcp_server.py", "--root", "/abs/path/to/project"]
+tool_timeout_sec = 180
+```
+
+or `codex mcp add kbtm -- python3 /abs/path/kbeauty-trade-matchmaker/scripts/mcp_server.py --root /abs/path/to/project`.
+
+**c. Cursor.** In `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global):
+
+```json
+{"mcpServers": {"kbtm": {"type": "stdio", "command": "python3",
+  "args": ["/abs/path/kbeauty-trade-matchmaker/scripts/mcp_server.py", "--root", "${workspaceFolder}"]}}}
+```
+
+Client configuration was checked on 2026-09-19 against the sources in §6. A TOCTOU window remains:
+a symlink swapped in after the check and before the script opens the file could still escape the
+root. That is acceptable for a local, single-user stdio server and is why the root should be a
+project directory the user alone controls.
+
 ---
 
 ## 6. Sources (PRD 23)
@@ -338,6 +564,17 @@ against the current version of each before relying on a runtime detail.
 | OpenAI — Skills in the enterprise workspace | The workspace-Skill vs filesystem-skill vs plugin distinction | https://learn.chatgpt.com/docs/enterprise/skills |
 | OpenAI — `AGENTS.md` (agent configuration) | That `AGENTS.md` is always-on repository instructions, a **separate** feature from Skills, with its own `project_doc_max_bytes` 32 KiB chain limit | https://learn.chatgpt.com/docs/agent-configuration/agents-md |
 | OpenAI Codex source — `codex-rs/skills/` and `codex-rs/ext/skills/` | What the runtime **actually** enforces: the lenient frontmatter parser (`parser.rs` — `name` ≤ 64 chars, non-empty `description`, no regex or directory-match check), the `.system` bundle location (`lib.rs`), and the *"Deprecated … kept for backward compatibility"* comment on `$CODEX_HOME/skills` (`host_roots.rs`) | https://github.com/openai/codex/tree/main/codex-rs/skills |
+| Claude Code — Plugins reference (fetched 2026-09-19) | Plugin layout; a root `SKILL.md` as a single skill; `"skills": ["./"]` naming the plugin root; inline `mcpServers`; `${CLAUDE_PLUGIN_ROOT}` / `${CLAUDE_PROJECT_DIR}` substitution in a stdio server's `command`, `args`, `env`; the path-escape rule; the plugin cache | https://code.claude.com/docs/en/plugins-reference |
+| Claude Code — Plugin marketplaces (fetched 2026-09-19) | `marketplace.json` fields, relative `source`, `strict` (false = the entry is the whole definition), keeping `version` in one place, reserved names, `claude plugin validate` | https://code.claude.com/docs/en/plugin-marketplaces |
+| OpenAI — Build plugins (fetched 2026-09-19) | Portable root `plugin.json` with `extensions."com.openai".interface`, skills discovered from `skills/`, repo and personal marketplace files, `source.path` relative to the marketplace root, the `./.codex/plugins/<name>` personal pattern, `policy` and `category` required on each entry | https://developers.openai.com/plugins/build/plugins |
+| OpenAI — Plugin submission errors (fetched 2026-09-19) | Archive limits, manifest and listing field limits, the 13 categories, "a skills-only ZIP must not include `mcp.json`" | https://developers.openai.com/plugins/deploy/submission-errors |
+| Model Context Protocol — versioning, 2026-07-28 changelog, stdio transport, `server/discover`, tools (fetched 2026-09-19) | The current revision `2026-07-28`; the legacy `initialize` era (`2025-11-25` and earlier) and that a server MAY serve both; newline-delimited UTF-8 frames and stderr-only logging; `-32022` for an unsupported version; `resultType`, `ttlMs`, `cacheScope`; tool annotations and their pessimistic defaults | https://modelcontextprotocol.io/specification/versioning, https://modelcontextprotocol.io/specification/2026-07-28/changelog, https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/stdio, https://modelcontextprotocol.io/specification/2026-07-28/server/tools |
+| Model Context Protocol — 2025-11-25 lifecycle and ping (fetched 2026-09-19) | `initialize` version negotiation (echo a supported version, otherwise answer the newest supported), `notifications/initialized`, `ping` | https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle |
+| Claude Code — MCP (fetched 2026-09-19) | `claude mcp add --transport stdio`, `.mcp.json`, `MAX_MCP_OUTPUT_TOKENS`, `MCP_PROTOCOL_NEGOTIATION` (stdio servers are spoken to the legacy way by default) | https://code.claude.com/docs/en/mcp |
+| OpenAI Codex — MCP (fetched 2026-09-19) | `[mcp_servers.<name>]` with `command`, `args`, `env`, `cwd`, `tool_timeout_sec`; `codex mcp add` | https://learn.chatgpt.com/docs/extend/mcp?surface=cli |
+| Cursor — MCP (fetched 2026-09-19) | `.cursor/mcp.json` / `~/.cursor/mcp.json`, `"type": "stdio"`, `${workspaceFolder}` interpolation in `args` | https://cursor.com/docs/context/mcp |
+| OpenAI — Plugin management (fetched 2026-09-19) | "Any imported plugin that declares MCP servers … is marked Desktop only"; GitHub import and admin publishing | https://developers.openai.com/codex/enterprise/plugin-management |
+| OpenAI — Plugins and Build skills (fetched 2026-09-19) | Plugins reach Chat and Work on web, desktop and mobile; standalone skills reach only desktop, Codex CLI and the IDE extension; the IDE extension does not support plugins | https://learn.chatgpt.com/docs/plugins, https://learn.chatgpt.com/docs/build-skills |
 | Anthropic Engineering — "Equipping agents for the real world with Agent Skills" | Background on the design and on the 2025-12-18 release of the format as an open standard. **Not** the normative source; the constraints now live at agentskills.io | https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills |
 
 **Stale and blocked citations (checked 2026-09-13), kept because PRD 23 names them.**

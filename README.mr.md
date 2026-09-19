@@ -10,19 +10,22 @@
 
 > कार्यप्रवाहाचे दृश्य स्वरूप: शोधा, पडताळा, जुळवा आणि अंतिम निर्णय माणसाकडेच ठेवा.
 
-> **स्थिती: v0.2.0.** हा pipeline काल्पनिक fixtures वरील 252 cases वर तपासला गेला आहे आणि live वेबवर एकदा चाचणी घेतली गेली आहे. गुणांकन पद्धत (scoring rubric) **प्रत्यक्ष व्यावसायिक परिणामांशी अद्याप पडताळलेली नाही**: गुण पुन्हा तसेच मिळवता येतात आणि त्यांचा मागोवा घेता येतो, पण ते भविष्याचा अचूक अंदाज देतात हे अजून सिद्ध झालेले नाही. v0.2.0 मध्ये ते मोजण्यासाठीची साधने जोडली आहेत ([गुणांची पडताळणी](#गुणांची-पडताळणी)), पण label केलेला नमुना (labelled sample) अजून अस्तित्वात नाही. RFQ Matching आणि Outreach Draft हे live डेटावर अजून चालवलेले नाहीत. कोणत्याही गुणांवर विश्वास ठेवण्यापूर्वी [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) वाचा.
+> **स्थिती: v0.3.0.** हा pipeline काल्पनिक fixtures वरील 536 cases वर तपासला गेला आहे आणि live वेबवर एकदा चाचणी घेतली गेली आहे. गुणांकन पद्धत (scoring rubric) **प्रत्यक्ष व्यावसायिक परिणामांशी अद्याप पडताळलेली नाही**: गुण पुन्हा तसेच मिळवता येतात आणि त्यांचा मागोवा घेता येतो, पण ते भविष्याचा अचूक अंदाज देतात हे अजून सिद्ध झालेले नाही. v0.2.0 मध्ये ते मोजण्यासाठीची साधने जोडली गेली ([गुणांची पडताळणी](#गुणांची-पडताळणी)), पण label केलेला नमुना (labelled sample) अजून अस्तित्वात नाही. RFQ Matching आणि Outreach Draft हे live डेटावर अजून चालवलेले नाहीत. कोणत्याही गुणांवर विश्वास ठेवण्यापूर्वी [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) वाचा.
 
 ---
 
 ## नवीन काय आहे
 
-**v0.2.0 (2026-09-19).** विद्यमान कोणतेही गुण बदलत नाहीत.
+**v0.3.0 (2026-09-19).** विद्यमान कोणतेही गुण बदलत नाहीत. सर्व नवीन भाग गुणांकन pipeline च्या बाहेर आहेत.
 
-- **गुण-पडताळणीची साधने.** Trade operator (व्यापाराचे प्रत्यक्ष कामकाज पाहणारी व्यक्ती) साठी एक blind review sheet, आणि त्यांच्या accept/reject (स्वीकार/नकार) निर्णयांची गुणांशी तुलना करणारा एक report. [गुणांची पडताळणी](#गुणांची-पडताळणी) पहा.
-- **भारत, इंडोनेशिया आणि तुर्किये (Türkiye) साठी market packs.** स्थानिक भाषेत खरेदीदार शोध, matching मध्ये वापरले जाणारे बाजारपेठ-प्रवेशाचे नियम (CDSCO, BPOM, इंडोनेशियाचे अनिवार्य halal प्रमाणन, TİTCK), direct-marketing checklist च्या ओळी आणि notice blocks, आणि `Pvt Ltd`, `PT`, `A.Ş.` व तत्सम स्वरूपांसाठी कंपनीच्या नावांची हाताळणी. [Market packs](#market-packs-बाजारपेठनिहाय-संच) पहा.
-- Tests: 179 → 252 cases.
+- **Run diff (दोन runs मधील फरक).** `scripts/diff_runs.py` एकाच शोध किंवा RFQ च्या दोन गुणांकित runs ची तुलना करते, आणि नवीन व गायब झालेल्या कंपन्या, बदललेली वगळणी (exclusions), तसेच score, rank, qualified flag, confidence आणि Missing ओळीतील बदल यांची यादी देते. वेगवेगळ्या rubric आवृत्त्यांखाली गुणांकित झालेले runs ते नाकारते, आणि संपर्काचा कोणताही तपशील copy करत नाही. [दोन runs ची तुलना](#दोन-runs-ची-तुलना) पहा.
+- **Re-check queue (पुन्हा तपासणीची रांग).** `scripts/stale_evidence.py` साठवलेल्या कोणत्या नोंदी आणि पुराव्याची कोणती पृष्ठे पुन्हा वाचायची याची यादी, सर्वात तातडीचे आधी, देते. ते काहीही fetch करत नाही आणि कोणतीही नोंद किंवा गुण बदलत नाही. [Re-check queue](#re-check-queue-पुन्हा-तपासणीची-रांग) पहा.
+- **Lead export.** `scripts/export_leads.py` गुणांकित run ला spreadsheet/CRM CSV म्हणून किंवा TradeWith admin bulk-import file म्हणून लिहिते. ते फक्त file लिहिते. TradeWith च्या ओळींमध्ये संपर्काची कोणतीही fields नसतात आणि त्या admin ने review करण्यासाठी tier C म्हणून दाखल होतात. [Spreadsheet, CRM किंवा TradeWith मध्ये export](#spreadsheet-crm-किंवा-tradewith-मध्ये-export) पहा.
+- **Scripts MCP tools म्हणून.** एक ऐच्छिक local tool server (MCP, stdio) agent ला अकरा scripts tools म्हणून call करू देतो. तो फक्त एकाच project फोल्डरमध्ये वाचतो आणि लिहितो, कोणतीही file कधीही overwrite करत नाही आणि काहीही पाठवत नाही. [Scripts चा MCP tools म्हणून वापर](#scripts-चा-mcp-tools-म्हणून-वापर) पहा.
+- **Plugins.** Claude Code हे skill या repository मधून plugin म्हणून install करू शकतो. ChatGPT आणि Codex साठी प्रत्येक release सोबत फक्त skills असलेला plugin ZIP मिळतो, आणि याच मार्गाने हे skill web आणि mobile वरील ChatGPT पर्यंत पोहोचते. [Plugin म्हणून install करा](#plugin-म्हणून-install-करा) पहा.
+- Tests: 252 → 536 cases.
 
-प्रत्येक release च्या संपूर्ण नोंदी: [CHANGELOG.md](CHANGELOG.md) (फक्त इंग्रजीत उपलब्ध).
+v0.2.0 मध्ये [गुण-पडताळणीची साधने](#गुणांची-पडताळणी) आणि भारत, इंडोनेशिया व तुर्किये साठी [market packs](#market-packs-बाजारपेठनिहाय-संच) जोडले गेले. प्रत्येक release च्या संपूर्ण नोंदी: [CHANGELOG.md](CHANGELOG.md) (फक्त इंग्रजीत उपलब्ध).
 
 ---
 
@@ -160,6 +163,9 @@ kbeauty-trade-matchmaker/
 │   ├── match-result.schema.json  # One complete matching run
 │   ├── discovery-result.schema.json
 │   ├── acceptance-report.schema.json  # One calibration measurement (v0.2.0)
+│   ├── run-diff.schema.json      # One comparison of two scored runs (v0.3.0)
+│   ├── recheck-queue.schema.json # The evidence to re-read (v0.3.0)
+│   ├── tradewith-bulk-buyers.schema.json  # TradeWith bulk-import body; no contact fields (v0.3.0)
 │   └── scoring.config.json       # Every weight, threshold and penalty lives in this one file
 ├── scripts/                      # Standard library only. No network, no credentials
 │   ├── _common.py                # Config, rounding, normalisation, tri-state helpers, schema validator
@@ -170,7 +176,11 @@ kbeauty-trade-matchmaker/
 │   ├── score_match.py
 │   ├── validate_output.py        # Schema plus contract invariants
 │   ├── make_review_sheet.py      # Blind CSV review sheet for a trade operator (v0.2.0)
-│   └── acceptance_report.py      # Review sheets + scored runs -> Human Acceptance Rate report (v0.2.0)
+│   ├── acceptance_report.py      # Review sheets + scored runs -> Human Acceptance Rate report (v0.2.0)
+│   ├── diff_runs.py              # Two scored runs -> what changed between them (v0.3.0)
+│   ├── stale_evidence.py         # Stored records -> evidence to re-read, most urgent first (v0.3.0)
+│   ├── export_leads.py           # Scored run -> CSV or TradeWith import file; never sends (v0.3.0)
+│   └── mcp_server.py             # Optional stdio MCP server over the scripts above (v0.3.0)
 ├── templates/
 │   ├── buyer_outreach.md
 │   ├── seller_outreach.md        # With and without an RFQ
@@ -182,6 +192,14 @@ kbeauty-trade-matchmaker/
 ```
 
 फक्त `kbeauty-trade-matchmaker/` फोल्डर install केले जाते. Runtime ला आवश्यक असलेला contract मजकूर `references/data-contract.md` आणि `references/output-format.md` मध्ये समाविष्ट केलेला आहे.
+
+Repository स्तरावर, package च्या बाहेर (ship केले जात नाही):
+
+```
+.claude-plugin/marketplace.json   # Claude Code plugin marketplace: one plugin, the package folder
+packaging/openai/plugin.json      # Manifest of the ChatGPT/Codex plugin ZIP
+tools/build_release.py            # Builds both release ZIPs from the HEAD commit, deterministically
+```
 
 ---
 
@@ -268,6 +286,104 @@ v0.2.0 मध्ये भारत, इंडोनेशिया आणि �
 
 ---
 
+## दोन runs ची तुलना
+
+तोच शोध किंवा RFQ एका महिन्यानंतर पुन्हा चालवा, आणि काय बदलले ते `diff_runs.py` सांगते. ते दोन पूर्ण झालेले runs वाचते आणि कोणताही गुण बदलत नाही.
+
+```bash
+cd kbeauty-trade-matchmaker
+python3 scripts/diff_runs.py --before out/buyers.2026-09-12.json --after out/buyers.2026-10-12.json --pretty --output out/diff.json
+```
+
+Diff मध्ये नवीन आणि गायब झालेल्या कंपन्या, वगळल्या गेलेल्या किंवा परत आलेल्या कंपन्या, ज्यांच्या वगळणीचे नियम बदलले अशा वगळण्या, आणि प्रत्येक कंपनीसाठी score, rank (match runs), निकष, qualified flag, confidence आणि Missing ओळ यांतील बदल दिले जातात. `as_of`, threshold, query किंवा weights बदलले असल्यास तेही ते दाखवते.
+
+- नोंदी आधी id नुसार, मग `merged_from` द्वारे जोडल्या जातात. Dedupe मध्ये दुसऱ्या कंपनीत विलीन झालेली कंपनी `merged_into` म्हणून दिसते, हरवलेला lead म्हणून नाही. इतर कशाचाही अंदाज बांधला जात नाही, त्यामुळे `merged_from` शिवाय नाव बदललेली कंपनी gone + new म्हणून दिसते.
+- Match run मध्ये "gone" म्हणजे "यादीत नाही". Threshold मुळे किंवा `--top` च्या मर्यादेमुळे एखादा विक्रेता यादीतून बाहेर पडू शकतो; diff तसे स्पष्ट सांगते.
+- पुढील गोष्टी ते अंदाजे जुळवण्याऐवजी नाकारते: वेगवेगळ्या `score_version` खाली गुणांकित झालेले दोन runs, buyer run विरुद्ध seller run, discovery run विरुद्ध match run, आणि वेगवेगळ्या RFQs साठीचे match runs.
+- ते कोणतेही संपर्क माध्यम, पुरावा किंवा website copy करत नाही. फक्त कंपनीचे नाव, domain आणि rule ids पुढे जातात.
+
+तपशील: [`data-contract.md`](kbeauty-trade-matchmaker/references/data-contract.md) §9.4.
+
+## Re-check queue (पुन्हा तपासणीची रांग)
+
+पुरावा जुना होतो. `stale_evidence.py` साठवलेल्या नोंदी वाचते आणि काय पुन्हा वाचायचे याची यादी, सर्वात तातडीचे आधी, देते. ते काहीही fetch करत नाही आणि कोणतीही नोंद किंवा गुण बदलत नाही.
+
+```bash
+cd kbeauty-trade-matchmaker
+python3 scripts/stale_evidence.py --input out/buyers.scored.json --as-of 2026-09-19 --top 20 --pretty
+```
+
+- `--as-of` आवश्यक आहे: वय पुन्हा तपासणीच्या तारखेपर्यंत मोजले जाते, आणि घड्याळ कधीही वाचले जात नाही. `--top N` पहिल्या N नोंदी दाखवते; summary मध्ये तरीही सर्व नोंदी मोजल्या जातात.
+- कारणे, सर्वात तातडीचे आधी: site उघडता येत नाही, नोंद stale म्हणून चिन्हांकित, पुरावा stale मर्यादेपलीकडे (730 दिवस), स्रोत stale म्हणून चिन्हांकित, न सोडवलेला विरोध (conflict), जुना होत चाललेला (एका वर्षापेक्षा जास्त), तारीख नसलेला. सध्याचा पुरावा नसलेला महत्त्वाचा दावा स्वतंत्रपणे नोंदवला जातो.
+- वयाच्या मर्यादा `scoring.config.json` मधून येतात, त्यामुळे "जुने" म्हणजे काय यावर रांग आणि गुण सहमत असतात. त्याच दाव्याला सध्याचा स्रोत आधीच असल्यास जुने पृष्ठ रांगेत टाकले जात नाही. तारीख नसलेले पृष्ठ त्याचे शेवटचे वाचन सध्याचे असेपर्यंत सध्याचे मानले जाते.
+- ते गुणांकित run, golden bundle, dedupe output, match input, नोंदींची यादी किंवा एकच नोंद स्वीकारते. Match-result नाकारला जातो; त्याऐवजी match input द्या.
+
+रांगेवर काम कसे करायचे: [`evidence-policy.md`](kbeauty-trade-matchmaker/references/evidence-policy.md) §5.6.
+
+## Spreadsheet, CRM किंवा TradeWith मध्ये export
+
+`export_leads.py` एका गुणांकित discovery run मधील leads, एखादी व्यक्ती import करेल अशा file स्वरूपात लिहिते. **ते फक्त file लिहिते.** ते कोणतेही connection उघडत नाही, आणि कधीही post, upload किंवा पाठवत नाही.
+
+```bash
+cd kbeauty-trade-matchmaker
+python3 scripts/export_leads.py --input out/buyers.scored.json --output out/leads.csv                     # Spreadsheet / CRM
+python3 scripts/export_leads.py --input out/buyers.scored.json --format tradewith-json --output out/tw.json # TradeWith bulk-import body
+python3 scripts/export_leads.py --input out/buyers.scored.json --format tradewith-csv --output out/tw.csv   # TradeWith admin import page
+```
+
+| `--format` | कोणासाठी | हे काय आहे |
+|---|---|---|
+| `csv` (डिफॉल्ट) | खरेदीदार, विक्रेते | निश्चित columns: गुण, निकष, स्थिती, कंपनी-स्तरीय संपर्क माध्यमे, Missing ओळ, `score_version` |
+| `tradewith-json` | खरेदीदार | TradeWith च्या admin bulk-import endpoint चा `{"buyers": [...]}` body |
+| `tradewith-csv` | खरेदीदार | Admin buyer-import page वाचते ते पाच columns (`sourceId, companyName, country, website, industry`). यात provenance आणि matching fields सुटतात; `tradewith-json` ला प्राधान्य द्या |
+
+डिफॉल्टनुसार फक्त पात्र (qualified) नोंदी export होतात; हे बदलण्यासाठी `--include-unqualified` किंवा `--min-score N` जोडा. बंद झालेल्या आणि उघडता न येणाऱ्या कंपन्या आणि `excluded[]` कधीही export होत नाहीत.
+
+**TradeWith मध्ये काय होते.** ओळी **review न झालेल्या, tier C म्हणून** दाखल होतात: export कोणताही quality tier ठरवत नाही, आणि tier C डिफॉल्टनुसार buyer matching मधून वगळला जातो. Admin प्रत्येक ओळ review करतो, तिला tier A किंवा B मध्ये बढती देतो आणि तिचे tags जोडतो. तोपर्यंत ती ओळ विक्रेत्यांना दाखवली जात नाही.
+
+- `contactName`, `contactEmail` आणि `contactPhone` **कधीही भरले जात नाहीत**, `sales@` सारख्या कंपनीच्या role mailbox ने देखील नाही. भरलेला `contactEmail` ती ओळ पडताळलेला संपर्क म्हणून चिन्हांकित करेल, आणि पुन्हा import केल्यास admin ने दुरुस्त केलेला पत्ता overwrite होईल.
+- `sourceId` हा `kbtm:<company domain>` असतो, त्यामुळे नंतरचा run import केल्यास नवीन ओळ जोडली न जाता तीच ओळ अद्ययावत होते.
+- `originalSource` मध्ये package, `score_version`, `as_of`, record id आणि ती नोंद stale आहे का हे नोंदवले जाते. `social` फक्त LinkedIn वरील कंपनीचे पृष्ठ असते, कधीही एखाद्या व्यक्तीचे profile नाही.
+
+**सामान्य (generic) CSV** फक्त कंपनी-स्तरीय संपर्क माध्यमे ठेवते. ईमेल फक्त कंपनीच्या स्वतःच्या domain वरील role mailbox (`info@`, `sales@` …) असेल तरच राहतो; LinkedIn member profile रोखून ठेवले जाते. Export होणारे प्रत्येक मूल्य वैयक्तिक डेटाच्या scan मधून जाते, आणि एकही hit आढळल्यास संपूर्ण export नाकारले जाते. Spreadsheet ज्यांना formula म्हणून चालवेल अशा cells च्या सुरुवातीला apostrophe जोडला जातो.
+
+तपशील: [`data-contract.md`](kbeauty-trade-matchmaker/references/data-contract.md) §9.6.
+
+## Scripts चा MCP tools म्हणून वापर
+
+`scripts/mcp_server.py` हा stdio वरील एक ऐच्छिक, फक्त standard library वापरणारा MCP server आहे. Shell ऐवजी tools call करणाऱ्या runtime साठी तो अकरा scripts tools म्हणून उपलब्ध करतो: `normalize_company`, `dedupe_companies`, `score_buyer`, `score_seller`, `score_match`, `validate_output`, `make_review_sheet`, `acceptance_report`, `diff_runs`, `stale_evidence` आणि `export_leads`. प्रत्येक tool आपली script तिच्या flags च्या एका उपसंचासह चालवते, आणि command line सारखाच निकाल देते. अंतर्गत-डेटा adapter उपलब्ध केलेला नाही.
+
+- **`--root DIR` आवश्यक आहे**: tools ज्यातून वाचू आणि ज्यात लिहू शकतात असे एकमेव फोल्डर. Server `/`, तुमची home directory किंवा तिची parent directory नाकारतो. `../` आणि symlinks द्वारे बाहेर जाता येत नाही.
+- **प्रत्येक call वर `as_of` आवश्यक आहे.** Server कधीही स्वतःहून तारीख देत नाही.
+- **Overwrite नाही.** `output_path` ही root च्या आत, skill package च्या बाहेर आणि hidden फोल्डरमध्ये नसलेली नवीन `.json` किंवा `.csv` file असली पाहिजे. पूर्ण run सहसा 32,768-byte च्या inline मर्यादेपेक्षा मोठा असतो, त्यामुळे प्रत्यक्ष runs साठी `output_path` द्या.
+- काहीही पाठवले किंवा fetch केले जात नाही. Scripts `python3 -I` सह आणि `TRADEWITH_*` variables शिवाय चालतात.
+
+**Claude Code.** Plugin तुमच्यासाठी server सुरू करतो ([Plugin म्हणून install करा](#plugin-म्हणून-install-करा) पहा). `install.sh` नंतर तो हाताने जोडा:
+
+```bash
+claude mcp add --transport stdio kbtm -- python3 /abs/path/kbeauty-trade-matchmaker/scripts/mcp_server.py --root /abs/path/to/project
+```
+
+**Codex CLI.** `~/.codex/config.toml` मध्ये; `tool_timeout_sec` हे server च्या `--tool-timeout` (डिफॉल्ट 120 सेकंद) पेक्षा जास्त ठेवा:
+
+```toml
+[mcp_servers.kbtm]
+command = "python3"
+args = ["/abs/path/kbeauty-trade-matchmaker/scripts/mcp_server.py", "--root", "/abs/path/to/project"]
+tool_timeout_sec = 180
+```
+
+**Cursor.** `.cursor/mcp.json` (project) किंवा `~/.cursor/mcp.json` (global) मध्ये:
+
+```json
+{"mcpServers": {"kbtm": {"type": "stdio", "command": "python3",
+  "args": ["/abs/path/kbeauty-trade-matchmaker/scripts/mcp_server.py", "--root", "${workspaceFolder}"]}}}
+```
+
+Client configuration 2026-09-19 रोजी प्रत्येक vendor च्या documentation शी तपासले. संपूर्ण नियम, protocol आवृत्त्या आणि वगळलेले flags: [`runtime-adapters.md`](kbeauty-trade-matchmaker/references/runtime-adapters.md) §5.6.
+
+---
+
 ## Installation (स्थापना)
 
 ### claude.ai, terminal शिवाय
@@ -277,6 +393,37 @@ v0.2.0 मध्ये भारत, इंडोनेशिया आणि �
 3. नवीन chat मध्ये web search चालू करा आणि साध्या भाषेत विचारा, उदाहरणार्थ "Find 5 K-Beauty distributors in the UAE that carry sunscreen." पाच कंपन्यांसाठी साधारण 10 ते 15 मिनिटे लागतात.
 
 2026-09-14 रोजी सशुल्क (paid) plan वर संपूर्ण प्रक्रिया सुरुवातीपासून शेवटपर्यंत पडताळली गेली: skill चे नाव न घेता ते आपोआप सुरू झाले, skill मध्येच web search आणि page fetch चालले, आणि sandbox मध्ये scoring scripts चालल्या. 2026-09-19 रोजी मोफत (free) plan वरही एका लहान request (3 companies) सह पडताळले: scoring scripts सह skill सुरुवातीपासून शेवटपर्यंत चालले आणि usage limit आली नाही. मोठ्या request वर मोफत plan ची मर्यादा येऊ शकते. कोरियन भाषेतील टप्प्याटप्प्याने मार्गदर्शक: [https://kbeauty.tradewith.kr/install-ko](https://kbeauty.tradewith.kr/install-ko) (टीप: हे मार्गदर्शक फक्त कोरियन भाषेत उपलब्ध आहे). अडचण येत आहे? [मला LinkedIn वर संदेश पाठवा](https://www.linkedin.com/in/hm-choi).
+
+### Plugin म्हणून install करा
+
+प्रत्येक runtime साठी install करण्याचा **एकच** मार्ग निवडा. एकाच runtime मध्ये plugin आणि `install.sh` ची प्रत दोन्ही असल्यास दोन skills load होतात आणि दोन्ही एकाच requests वर सुरू होतात.
+
+**Claude Code.** हे repository एक plugin marketplace आहे, ज्यात एकच plugin आहे: package फोल्डर स्वतः.
+
+```
+/plugin marketplace add choihyeonmuk/kbeauty-trade-matchmaker
+/plugin install kbeauty-trade-matchmaker@kbeauty-trade-matchmaker
+```
+
+Skill `/kbeauty-trade-matchmaker:kbeauty-trade-matchmaker` आहे, किंवा ते आपोआप (implicitly) सुरू होते. Plugin सोबत दिलेला MCP server (`kbtm`) देखील तुमच्या project फोल्डरला root म्हणून घेऊन सुरू करतो; त्यासाठी `PATH` वर `python3` असणे आवश्यक आहे. Claude Code एखाद्या project फोल्डरमध्ये सुरू करा: home directory मधून सुरू केल्यास server सुरू होण्यास नकार देतो आणि failed म्हणून दिसतो. नंतर `/plugin marketplace update kbeauty-trade-matchmaker` ने अद्ययावत करा.
+
+**ChatGPT आणि Codex.** प्रत्येक release सोबत दुसरा asset असतो, [`kbeauty-trade-matchmaker-plugin.zip`](https://github.com/choihyeonmuk/kbeauty-trade-matchmaker/releases/latest/download/kbeauty-trade-matchmaker-plugin.zip). तो **फक्त skills** असलेला आहे, त्यात MCP server नाही: MCP server घोषित करणाऱ्या plugin ला OpenAI फक्त desktop साठी म्हणून चिन्हांकित करते, आणि हा ZIP ChatGPT च्या **web आणि mobile** पर्यंत पोहोचण्यासाठीच आहे.
+
+1. तो `~/.codex/plugins/kbeauty-trade-matchmaker` मध्ये unzip करा.
+2. ही नोंद `~/.agents/plugins/marketplace.json` च्या `plugins` array मध्ये जोडा (file आधीच असल्यास हाताने merge करा; path `~` च्या सापेक्ष आहे):
+
+```json
+{"name": "kbeauty-trade-matchmaker",
+ "source": {"source": "local", "path": "./.codex/plugins/kbeauty-trade-matchmaker"},
+ "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
+ "category": "Business & Operations"}
+```
+
+3. ChatGPT desktop app पुन्हा सुरू (restart) करा आणि Plugins मधून install करा, किंवा Codex CLI मध्ये `/plugins` चालवा.
+4. ChatGPT web आणि mobile साठी, workspace admin plugin workspace मध्ये publish करतो. सार्वजनिक directory मधील listing हे submission च्या OpenAI च्या review वर अवलंबून असते.
+5. विश्लेषणे **Work** mode मध्ये चालवा. सामान्य Chat mode सोबत दिलेल्या scripts चालवतो असे OpenAI नमूद करत नाही. जिथे त्या चालू शकत नाहीत, तिथे skill तसे सांगते आणि गुणांशिवाय पुरावा देते; ते कधीही हाताने गुणांचा अंदाज बांधत नाही.
+
+Codex IDE extension plugins ना समर्थन देत नाही; तिथे `install.sh --runtime codex` वापरा. ZIP ची रचना आणि marketplace नोंद 2026-09-19 रोजी तपासलेल्या OpenAI documentation नुसार आहेत; web आणि mobile वरील Work mode मध्ये scripts चालतात की नाही हे अनुमान आहे, तपासलेले नाही. तपशील: [`runtime-adapters.md`](kbeauty-trade-matchmaker/references/runtime-adapters.md) §5.5.
 
 ### Claude Code आणि Codex installer
 
@@ -325,7 +472,7 @@ sh kbeauty-trade-matchmaker/install.sh --runtime codex --project /path/to/your-r
 
 - Codex working directory पासून repository root पर्यंतच्या प्रत्येक directory मध्ये `.agents/skills` शोधतो. `~/.codex/skills` deprecated आहे पण अजूनही समर्थित आहे; नवीन installation साठी `~/.agents/skills` वापरा.
 - CLI आणि IDE extension मध्ये `$kbeauty-trade-matchmaker` किंवा `/skills` वापरून, किंवा ChatGPT मध्ये `@` वापरून स्पष्टपणे सुरू करा. आपोआप सुरू होणे (implicit invocation) `description` वरून ठरते.
-- स्वतंत्र skill फोल्डर फक्त **ChatGPT desktop app, Codex CLI आणि IDE extension** मध्ये दिसते. ChatGPT **web आणि mobile** साठी skill plugin स्वरूपात package करावे लागते, जे v0.2.0 मध्ये समाविष्ट नाही.
+- स्वतंत्र skill फोल्डर फक्त **ChatGPT desktop app, Codex CLI आणि IDE extension** मध्ये दिसते. ChatGPT **web आणि mobile** साठी plugin ZIP आवश्यक आहे; [Plugin म्हणून install करा](#plugin-म्हणून-install-करा) पहा.
 - `AGENTS.md` हा skills install करण्याचा मार्ग नाही. ते repository साठी नेहमी लागू असणाऱ्या सूचनांचे वेगळे Codex वैशिष्ट्य आहे.
 
 > **2026-09-13 रोजी अधिकृत documentation शी तपासले.** येथील काही माहिती सध्याच्या docs शी जुळत नसेल, तर docs बरोबर आहेत.
@@ -356,6 +503,8 @@ python3 tests/run_tests.py -v    # One line per case, not just failures
 ```
 
 Runner फक्त standard library वापरतो, fixtures स्वतःच्या स्थानाच्या सापेक्ष शोधतो, प्रत्येक script ला `--as-of 2026-09-12` देतो, आणि output ची अपेक्षित fixtures शी **byte-by-byte** तुलना करतो. Fixture cases च्या आधी तो schemas स्वतः तपासतो: ते parse होतात का, प्रत्येक `$ref` resolve होतो का, कोणताही असमर्थित keyword वापरलेला नाही ना, सामायिक `$defs` सर्व files मध्ये एकसारख्या आहेत का, आणि आत नमूद केलेल्या आवृत्त्या `scoring.config.json` शी जुळतात का.
+
+`plugins` phase repository-स्तरावरील manifests आणि builder वाचतो, त्यामुळे 536 ही पूर्ण संख्या repository checkout ला लागू होते; install केलेली प्रत दोन SKIPs दाखवते (`plugins` phase आणि एक MCP case). हा phase release builder एका तात्पुरत्या (throwaway) git repository मध्ये चालवतो, त्यामुळे commit न केलेल्या कामाचा निकालावर परिणाम होत नाही.
 
 Scripts थेटही चालवता येतात. JSON `stdout` वर जातो आणि प्रत्येक diagnostic संदेश `stderr` वर, त्यामुळे pipes सुरक्षित आहेत.
 
@@ -419,7 +568,7 @@ Environment variables import च्या वेळी नव्हे तर ca
 
 | आवृत्ती | मूल्य | काय दर्शवते | कुठे असते |
 |---|---|---|---|
-| `skill_version` | `0.2.0` | Package: prompts, references, scripts, templates, tests | `SKILL.md` चा मुख्य मजकूर, `match-result.skill_version` |
+| `skill_version` | `0.3.0` | Package: prompts, references, scripts, templates, tests | `SKILL.md` चा मुख्य मजकूर, `match-result.skill_version`, दोन्ही plugin manifests |
 | `schema_version` | `0.1.0` | रचनेचा contract: field names, enums, आवश्यक fields च्या याद्या | प्रत्येक document, `schemas/*.json` |
 | `score_version` | `kbtm-score-0.1.0` | Rubric: weights, निकष, संकेत, दंड, thresholds, hard filters | `scoring.config.json`, प्रत्येक गुणांकित document |
 

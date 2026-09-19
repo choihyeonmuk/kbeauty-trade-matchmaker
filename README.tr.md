@@ -10,19 +10,22 @@ Aynı klasör **Claude Code** ve **OpenAI Codex** üzerinde hiçbir değişiklik
 
 > İş akışına genel bakış: keşfet, doğrula, eşleştir ve son incelemeyi insana bırak.
 
-> **Durum: v0.2.0.** Pipeline, kurgusal fixture'lar üzerinde 252 vakaya karşı test edilmiş ve canlı web üzerinde bir kez denenmiştir. Puanlama rubriği **henüz gerçek sonuçlara karşı doğrulanmamıştır**: puanlar tekrarlanabilir ve izlenebilirdir, ancak öngörü gücü henüz bilinmemektedir. v0.2.0 bunu ölçmeye yarayan araçları ekler ([Puanları doğrulama](#puanları-doğrulama)), ancak henüz etiketlenmiş bir örneklem yoktur. RFQ Matching ve Outreach Draft modları canlı veri üzerinde çalıştırılmamıştır. Bir puana güvenmeden önce [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) dosyasını okuyun.
+> **Durum: v0.3.0.** Pipeline, kurgusal fixture'lar üzerinde 536 vakaya karşı test edilmiş ve canlı web üzerinde bir kez denenmiştir. Puanlama rubriği **henüz gerçek sonuçlara karşı doğrulanmamıştır**: puanlar tekrarlanabilir ve izlenebilirdir, ancak öngörü gücü henüz bilinmemektedir. v0.2.0 bunu ölçmeye yarayan araçları eklemiştir ([Puanları doğrulama](#puanları-doğrulama)), ancak henüz etiketlenmiş bir örneklem yoktur. RFQ Matching ve Outreach Draft modları canlı veri üzerinde çalıştırılmamıştır. Bir puana güvenmeden önce [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) dosyasını okuyun.
 
 ---
 
 ## Yenilikler
 
-**v0.2.0 (2026-09-19).** Mevcut hiçbir puan değişmez.
+**v0.3.0 (2026-09-19).** Mevcut hiçbir puan değişmez. Yeni olan her şey puanlama pipeline'ının dışında yer alır.
 
-- **Puan doğrulama araçları.** Bir ticaret operatörü için kör inceleme sayfası ve operatörün kabul/ret kararlarını puanlarla karşılaştıran bir rapor. Bkz. [Puanları doğrulama](#puanları-doğrulama).
-- **Hindistan, Endonezya ve Türkiye için pazar paketleri.** Yerel dilde alıcı araması, eşleştirmede kullanılan pazara giriş kuralları (CDSCO, BPOM, Endonezya'nın zorunlu helal sertifikasyonu, TİTCK), doğrudan pazarlama kontrol listesi satırları ve bildirim blokları ile `Pvt Ltd`, `PT`, `A.Ş.` ve benzeri şirket türü eklerinin şirket adlarında ele alınması. Bkz. [Pazar paketleri](#pazar-paketleri).
-- Testler: 179 → 252 vaka.
+- **Çalıştırma farkı.** `scripts/diff_runs.py` aynı arama veya RFQ'nun puanlanmış iki çalıştırmasını karşılaştırır; yeni eklenen ve kaybolan şirketleri, yeri değişen hariç tutmaları ve puan, sıra, qualified işareti, güven düzeyi ve Missing satırındaki değişiklikleri listeler. Farklı rubrik sürümleriyle puanlanmış çalıştırmaları reddeder ve hiçbir iletişim bilgisini kopyalamaz. Bkz. [İki çalıştırmayı karşılaştırma](#i̇ki-çalıştırmayı-karşılaştırma).
+- **Yeniden kontrol kuyruğu.** `scripts/stale_evidence.py` saklanan kayıtlardan ve kanıt sayfalarından hangilerinin yeniden okunması gerektiğini, en acil olandan başlayarak listeler. Hiçbir şey getirmez; hiçbir kaydı veya puanı değiştirmez. Bkz. [Yeniden kontrol kuyruğu](#yeniden-kontrol-kuyruğu).
+- **Lead dışa aktarma.** `scripts/export_leads.py` puanlanmış bir çalıştırmayı elektronik tablo/CRM için CSV olarak veya TradeWith yönetici toplu içe aktarma dosyası olarak yazar. Yalnızca bir dosya yazar. TradeWith satırları hiçbir iletişim alanı içermez ve bir yöneticinin incelemesi için C kademesi olarak içeri alınır. Bkz. [Elektronik tabloya, CRM'e veya TradeWith'e aktarma](#elektronik-tabloya-crme-veya-tradewithe-aktarma).
+- **MCP araçları olarak script'ler.** İsteğe bağlı yerel bir araç sunucusu (MCP, stdio), bir agent'ın on bir script'i araç olarak çağırmasını sağlar. Yalnızca tek bir proje klasörü içinde okur ve yazar, hiçbir dosyanın üzerine yazmaz ve hiçbir şey göndermez. Bkz. [Script'leri MCP araçları olarak kullanma](#scriptleri-mcp-araçları-olarak-kullanma).
+- **Plugin'ler.** Claude Code, skill'i bu repository'den bir plugin olarak kurabilir. ChatGPT ve Codex için her sürümle birlikte yalnızca skill içeren bir plugin ZIP'i yayımlanır; skill, web ve mobildeki ChatGPT'ye bu yolla ulaşır. Bkz. [Plugin olarak kurulum](#plugin-olarak-kurulum).
+- Testler: 252 → 536 vaka.
 
-Her sürümün tam notları: [CHANGELOG.md](CHANGELOG.md) (değişiklik günlüğü yalnızca İngilizcedir).
+v0.2.0, [puan doğrulama araçlarını](#puanları-doğrulama) ve Hindistan, Endonezya ve Türkiye için [pazar paketlerini](#pazar-paketleri) eklemiştir. Her sürümün tam notları: [CHANGELOG.md](CHANGELOG.md) (değişiklik günlüğü yalnızca İngilizcedir).
 
 ---
 
@@ -160,6 +163,9 @@ kbeauty-trade-matchmaker/
 │   ├── match-result.schema.json  # One complete matching run
 │   ├── discovery-result.schema.json
 │   ├── acceptance-report.schema.json  # One calibration measurement (v0.2.0)
+│   ├── run-diff.schema.json      # One comparison of two scored runs (v0.3.0)
+│   ├── recheck-queue.schema.json # The evidence to re-read (v0.3.0)
+│   ├── tradewith-bulk-buyers.schema.json  # TradeWith bulk-import body; no contact fields (v0.3.0)
 │   └── scoring.config.json       # Every weight, threshold and penalty lives in this one file
 ├── scripts/                      # Standard library only. No network, no credentials
 │   ├── _common.py                # Config, rounding, normalisation, tri-state helpers, schema validator
@@ -170,7 +176,11 @@ kbeauty-trade-matchmaker/
 │   ├── score_match.py
 │   ├── validate_output.py        # Schema plus contract invariants
 │   ├── make_review_sheet.py      # Blind CSV review sheet for a trade operator (v0.2.0)
-│   └── acceptance_report.py      # Review sheets + scored runs -> Human Acceptance Rate report (v0.2.0)
+│   ├── acceptance_report.py      # Review sheets + scored runs -> Human Acceptance Rate report (v0.2.0)
+│   ├── diff_runs.py              # Two scored runs -> what changed between them (v0.3.0)
+│   ├── stale_evidence.py         # Stored records -> evidence to re-read, most urgent first (v0.3.0)
+│   ├── export_leads.py           # Scored run -> CSV or TradeWith import file; never sends (v0.3.0)
+│   └── mcp_server.py             # Optional stdio MCP server over the scripts above (v0.3.0)
 ├── templates/
 │   ├── buyer_outreach.md
 │   ├── seller_outreach.md        # With and without an RFQ
@@ -182,6 +192,14 @@ kbeauty-trade-matchmaker/
 ```
 
 Yalnızca `kbeauty-trade-matchmaker/` klasörü kurulur. Runtime'ın ihtiyaç duyduğu sözleşme içeriği `references/data-contract.md` ve `references/output-format.md` dosyalarında paketle birlikte gelir.
+
+Paketin dışında, repository düzeyinde bulunanlar (pakete dahil değildir):
+
+```
+.claude-plugin/marketplace.json   # Claude Code plugin marketplace: one plugin, the package folder
+packaging/openai/plugin.json      # Manifest of the ChatGPT/Codex plugin ZIP
+tools/build_release.py            # Builds both release ZIPs from the HEAD commit, deterministically
+```
 
 ---
 
@@ -268,6 +286,104 @@ v0.2.0 Hindistan, Endonezya ve Türkiye'yi ekler. Hiçbir puanlama kuralı deği
 
 ---
 
+## İki çalıştırmayı karşılaştırma
+
+Aynı aramayı veya RFQ'yu bir ay sonra yeniden çalıştırdığınızda `diff_runs.py` neyin değiştiğini söyler. Tamamlanmış iki çalıştırmayı okur ve hiçbir puanı değiştirmez.
+
+```bash
+cd kbeauty-trade-matchmaker
+python3 scripts/diff_runs.py --before out/buyers.2026-09-12.json --after out/buyers.2026-10-12.json --pretty --output out/diff.json
+```
+
+Fark raporu; yeni eklenen ve kaybolan şirketleri, hariç tutulan ya da listeye geri dönen şirketleri, hariç tutma kuralları değişen kayıtları ve şirket bazında puan, sıra (eşleştirme çalıştırmalarında), boyutlar, qualified işareti, güven düzeyi ve Missing satırındaki değişiklikleri listeler. Ayrıca `as_of`, eşik, sorgu veya ağırlıklar değiştiyse bunu işaretler.
+
+- Kayıtlar önce id ile, ardından `merged_from` üzerinden eşleştirilir. Mükerrer kayıt birleştirmesiyle (dedupe) başka bir şirkete katılan bir şirket, kaybedilmiş bir lead olarak değil `merged_into` olarak görünür. Bunun dışında hiçbir şey tahmin edilmez; bu nedenle `merged_from` olmadan yapılan bir ad değişikliği kaybolan + yeni olarak görünür.
+- Bir eşleştirme çalıştırmasında "kaybolan", "listelenmeyen" anlamına gelir. Bir satıcı eşik veya `--top` kesimi nedeniyle listeden düşebilir; fark raporu bunu belirtir.
+- Farklı `score_version` değerleriyle puanlanmış iki çalıştırmayı, bir alıcı çalıştırmasını bir satıcı çalıştırmasıyla, bir keşif çalıştırmasını bir eşleştirme çalıştırmasıyla ve farklı RFQ'lara ait eşleştirme çalıştırmalarını yaklaşık bir sonuç üretmek yerine reddeder.
+- Hiçbir iletişim kanalını, kanıtı veya web sitesini kopyalamaz. Yalnızca şirket adı, alan adı ve kural id'leri aktarılır.
+
+Ayrıntılar: [`data-contract.md`](kbeauty-trade-matchmaker/references/data-contract.md) §9.4.
+
+## Yeniden kontrol kuyruğu
+
+Kanıtlar eskir. `stale_evidence.py` saklanan kayıtları okur ve neyin yeniden okunması gerektiğini, en acil olandan başlayarak listeler. Hiçbir şey getirmez; hiçbir kaydı veya puanı değiştirmez.
+
+```bash
+cd kbeauty-trade-matchmaker
+python3 scripts/stale_evidence.py --input out/buyers.scored.json --as-of 2026-09-19 --top 20 --pretty
+```
+
+- `--as-of` zorunludur: yaş, yeniden kontrol tarihine göre ölçülür ve sistem saati asla okunmaz. `--top N` ilk N kaydı listeler; özet yine de tüm kayıtları sayar.
+- Gerekçeler, en acil olandan başlayarak: siteye erişilemiyor, kayıt eskimiş olarak işaretlenmiş, kanıt eskime eşiğini (730 gün) aşmış, kaynak eskimiş olarak işaretlenmiş, çözülmemiş çelişki, eskimekte (bir yıldan eski), tarihsiz. Güncel kanıtı olmayan önemli bir iddia ayrıca raporlanır.
+- Yaş sınırları `scoring.config.json` dosyasından gelir; böylece kuyruk ve puan "eski"nin ne demek olduğu konusunda aynı fikirdedir. Aynı iddianın zaten güncel bir kaynağı varsa eski bir sayfa kuyruğa alınmaz. Tarihsiz bir sayfa, son okunduğu tarih güncel olduğu sürece güncel sayılır.
+- Puanlanmış bir çalıştırmayı, bir golden paketi, dedupe çıktısını, bir eşleştirme girdisini, bir kayıt listesini veya tek bir kaydı kabul eder. match-result reddedilir; bunun yerine eşleştirme girdisini verin.
+
+Kuyruğun nasıl işleneceği: [`evidence-policy.md`](kbeauty-trade-matchmaker/references/evidence-policy.md) §5.6.
+
+## Elektronik tabloya, CRM'e veya TradeWith'e aktarma
+
+`export_leads.py`, puanlanmış tek bir keşif çalıştırmasının lead'lerini bir kişinin içe aktaracağı bir dosya olarak yazar. **Yalnızca bir dosya yazar.** Hiçbir bağlantı açmaz ve asla gönderi yapmaz, yükleme yapmaz veya göndermez.
+
+```bash
+cd kbeauty-trade-matchmaker
+python3 scripts/export_leads.py --input out/buyers.scored.json --output out/leads.csv                     # Spreadsheet / CRM
+python3 scripts/export_leads.py --input out/buyers.scored.json --format tradewith-json --output out/tw.json # TradeWith bulk-import body
+python3 scripts/export_leads.py --input out/buyers.scored.json --format tradewith-csv --output out/tw.csv   # TradeWith admin import page
+```
+
+| `--format` | Kimin için | Nedir |
+|---|---|---|
+| `csv` (varsayılan) | alıcılar, satıcılar | Sabit sütunlar: puanlar, boyutlar, durum, şirket düzeyindeki kanallar, Missing satırı, `score_version` |
+| `tradewith-json` | alıcılar | TradeWith yönetici toplu içe aktarma endpoint'inin `{"buyers": [...]}` gövdesi |
+| `tradewith-csv` | alıcılar | Yönetici alıcı içe aktarma sayfasının okuduğu beş sütun (`sourceId, companyName, country, website, industry`). Kaynak (provenance) ve eşleştirme alanlarını düşürür; `tradewith-json` tercih edin |
+
+Varsayılan olarak yalnızca nitelikli (qualified) kayıtlar dışa aktarılır; bunu değiştirmek için `--include-unqualified` veya `--min-score N` ekleyin. Kapanmış ve erişilemeyen şirketler ile `excluded[]` asla dışa aktarılmaz.
+
+**TradeWith'te ne olur.** Satırlar **incelenmemiş olarak, C kademesinde** içeri alınır: dışa aktarma hiçbir kalite kademesi belirlemez ve C kademesi varsayılan olarak alıcı eşleştirmesinin dışında tutulur. Bir yönetici her satırı inceler, A veya B kademesine yükseltir ve etiketlerini ekler. O zamana kadar satır satıcılara sunulmaz.
+
+- `contactName`, `contactEmail` ve `contactPhone` **asla doldurulmaz**; `sales@` gibi bir şirket rol adresiyle bile. Doldurulmuş bir `contactEmail` satırı doğrulanmış bir iletişim bilgisi olarak işaretler ve yeniden içe aktarma, bir yöneticinin düzelttiği bir adresin üzerine yazar.
+- `sourceId` değeri `kbtm:<company domain>` şeklindedir; böylece sonraki bir çalıştırmayı içe aktarmak yeni bir satır eklemek yerine aynı satırı günceller.
+- `originalSource` paketi, `score_version`, `as_of`, kayıt id'sini ve kaydın eskimiş olup olmadığını kaydeder. `social` yalnızca bir LinkedIn şirket sayfasıdır, asla bir kişinin profili değildir.
+
+**Genel CSV** yalnızca şirket düzeyindeki kanalları tutar. Bir e-posta yalnızca şirketin kendi alan adındaki bir rol adresi (`info@`, `sales@` …) ise korunur; LinkedIn üye profilleri çıkarılır. Dışa aktarılan her değer bir kişisel veri taramasından geçer ve tek bir eşleşme tüm dışa aktarmanın reddedilmesine yol açar. Bir elektronik tablonun formül olarak çalıştıracağı hücrelerin başına kesme işareti eklenir.
+
+Ayrıntılar: [`data-contract.md`](kbeauty-trade-matchmaker/references/data-contract.md) §9.6.
+
+## Script'leri MCP araçları olarak kullanma
+
+`scripts/mcp_server.py`, stdio üzerinden çalışan, isteğe bağlı ve yalnızca standart kütüphaneyi kullanan bir MCP sunucusudur. Shell yerine araç çağıran bir runtime için on bir script'i araç olarak sunar: `normalize_company`, `dedupe_companies`, `score_buyer`, `score_seller`, `score_match`, `validate_output`, `make_review_sheet`, `acceptance_report`, `diff_runs`, `stale_evidence` ve `export_leads`. Her araç kendi script'ini parametrelerinin bir alt kümesiyle çalıştırır ve komut satırıyla aynı sonucu verir. Dahili veri adapter'ı sunulmaz.
+
+- **`--root DIR` zorunludur**: araçların okuyabildiği ve yazabildiği tek klasör. Sunucu `/`, ev dizininizi veya onun bir üst dizinini reddeder. `../` ve symlink'ler dışarı çıkmaya izin vermez.
+- **Her çağrıda `as_of` zorunludur.** Sunucu asla kendiliğinden tarih vermez.
+- **Üzerine yazma yoktur.** `output_path`, kök klasör içinde, skill paketinin dışında ve gizli bir klasörde olmayan yeni bir `.json` veya `.csv` dosyası olmalıdır. Tam bir çalıştırma genellikle 32.768 baytlık satır içi sınırdan büyüktür; bu nedenle gerçek çalıştırmalarda `output_path` verin.
+- Hiçbir şey göndermez veya getirmez. Script'ler `python3 -I` ile ve `TRADEWITH_*` değişkenleri olmadan çalışır.
+
+**Claude Code.** Plugin sunucuyu sizin için başlatır (bkz. [Plugin olarak kurulum](#plugin-olarak-kurulum)). `install.sh` ile kurduysanız elle ekleyin:
+
+```bash
+claude mcp add --transport stdio kbtm -- python3 /abs/path/kbeauty-trade-matchmaker/scripts/mcp_server.py --root /abs/path/to/project
+```
+
+**Codex CLI.** `~/.codex/config.toml` içinde; `tool_timeout_sec` değerini sunucunun `--tool-timeout` değerinin (varsayılan 120 saniye) üzerinde tutun:
+
+```toml
+[mcp_servers.kbtm]
+command = "python3"
+args = ["/abs/path/kbeauty-trade-matchmaker/scripts/mcp_server.py", "--root", "/abs/path/to/project"]
+tool_timeout_sec = 180
+```
+
+**Cursor.** `.cursor/mcp.json` (proje) veya `~/.cursor/mcp.json` (genel) içinde:
+
+```json
+{"mcpServers": {"kbtm": {"type": "stdio", "command": "python3",
+  "args": ["/abs/path/kbeauty-trade-matchmaker/scripts/mcp_server.py", "--root", "${workspaceFolder}"]}}}
+```
+
+İstemci yapılandırması 2026-09-19 tarihinde her sağlayıcının dokümantasyonuyla karşılaştırılarak kontrol edilmiştir. Tüm kurallar, protokol sürümleri ve dışarıda bırakılan parametreler: [`runtime-adapters.md`](kbeauty-trade-matchmaker/references/runtime-adapters.md) §5.6.
+
+---
+
 ## Kurulum
 
 ### claude.ai, terminal gerektirmez
@@ -277,6 +393,37 @@ v0.2.0 Hindistan, Endonezya ve Türkiye'yi ekler. Hiçbir puanlama kuralı deği
 3. Yeni bir sohbette web aramasını açın ve sade bir dille sorun; örneğin "Find 5 K-Beauty distributors in the UAE that carry sunscreen." (BAE'de güneş kremi taşıyan 5 K-Beauty distribütörü bul.) Beş şirket yaklaşık 10 ila 15 dakika sürer.
 
 2026-09-14 tarihinde ücretli bir planda uçtan uca doğrulanmıştır: skill adı anılmadan çağrıldı, skill içinde web araması ve sayfa getirme işlemlerini yürüttü ve puanlama script'lerini sandbox içinde çalıştırdı. 2026-09-19 tarihinde ücretsiz bir planda da küçük bir istekle (3 şirket) doğrulandı: skill, puanlama script'leri dahil uçtan uca çalıştı ve kullanım sınırına takılmadı. Daha büyük bir istek ücretsiz planın sınırlarına takılabilir. Adım adım kurulum kılavuzu (yalnızca Korece): [https://kbeauty.tradewith.kr/install-ko](https://kbeauty.tradewith.kr/install-ko). Takıldınız mı? [Bana LinkedIn üzerinden mesaj gönderin](https://www.linkedin.com/in/hm-choi).
+
+### Plugin olarak kurulum
+
+Her runtime için kurulum yöntemlerinden **yalnızca birini** seçin. Aynı runtime'da bir plugin ile bir `install.sh` kopyası birlikte bulunursa, aynı isteklerde birlikte tetiklenen iki skill yüklenir.
+
+**Claude Code.** Bu repository, tek bir plugin içeren bir plugin marketplace'idir; plugin, paket klasörünün kendisidir:
+
+```
+/plugin marketplace add choihyeonmuk/kbeauty-trade-matchmaker
+/plugin install kbeauty-trade-matchmaker@kbeauty-trade-matchmaker
+```
+
+Skill `/kbeauty-trade-matchmaker:kbeauty-trade-matchmaker` olarak çağrılır veya örtük olarak tetiklenir. Plugin ayrıca paketteki MCP sunucusunu (`kbtm`) proje klasörünüzü kök klasör olarak kullanarak başlatır; bunun için `PATH` üzerinde `python3` bulunmalıdır. Claude Code'u bir proje klasörünün içinde başlatın: ev dizininizden başlatıldığında sunucu başlamayı reddeder ve başarısız olarak görünür. Daha sonra `/plugin marketplace update kbeauty-trade-matchmaker` ile güncelleyin.
+
+**ChatGPT ve Codex.** Her sürüm ikinci bir dosya içerir: [`kbeauty-trade-matchmaker-plugin.zip`](https://github.com/choihyeonmuk/kbeauty-trade-matchmaker/releases/latest/download/kbeauty-trade-matchmaker-plugin.zip). Bu dosya MCP sunucusu olmadan **yalnızca skill** içerir: OpenAI, MCP sunucusu tanımlayan bir plugin'i yalnızca masaüstü olarak işaretler ve bu ZIP, **web ve mobildeki** ChatGPT'ye ulaşmak için vardır.
+
+1. ZIP'i `~/.codex/plugins/kbeauty-trade-matchmaker` içine açın.
+2. Bu girdiyi `~/.agents/plugins/marketplace.json` dosyasındaki `plugins` dizisine ekleyin (dosya zaten varsa elle birleştirin; yol `~`'ye görelidir):
+
+```json
+{"name": "kbeauty-trade-matchmaker",
+ "source": {"source": "local", "path": "./.codex/plugins/kbeauty-trade-matchmaker"},
+ "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
+ "category": "Business & Operations"}
+```
+
+3. ChatGPT masaüstü uygulamasını yeniden başlatıp Plugins bölümünden kurun veya Codex CLI'da `/plugins` komutunu çalıştırın.
+4. ChatGPT web ve mobil için plugin'i bir workspace yöneticisi workspace'e yayımlar. Herkese açık dizinde listelenmesi, OpenAI'ın başvuruyu incelemesine bağlıdır.
+5. Analizleri **Work** modunda çalıştırın. OpenAI, sıradan Chat modunun paketteki script'leri çalıştırdığını belgelemez. Script'ler çalıştırılamadığında skill bunu belirtir ve puan içermeyen kanıtlar döndürür; hiçbir zaman elle puan tahmin etmez.
+
+Codex IDE eklentisi plugin'leri desteklemez; orada `install.sh --runtime codex` kullanın. ZIP yapısı ve marketplace girdisi, 2026-09-19 tarihinde kontrol edilen OpenAI dokümantasyonuna uygundur; script'lerin web ve mobilde Work modunda çalışıp çalışmadığı test edilmemiş, çıkarım yoluyla varılmış bir sonuçtur. Ayrıntılar: [`runtime-adapters.md`](kbeauty-trade-matchmaker/references/runtime-adapters.md) §5.5.
 
 ### Claude Code ve Codex kurulum aracı
 
@@ -325,7 +472,7 @@ sh kbeauty-trade-matchmaker/install.sh --runtime codex --project /path/to/your-r
 
 - Codex, çalışma dizininden repository köküne kadar her dizindeki `.agents/skills` klasörünü tarar. `~/.codex/skills` kullanımdan kaldırılmıştır (deprecated) ancak hâlâ desteklenmektedir; yeni kurulumlar için `~/.agents/skills` kullanın.
 - Açıkça çağırmak için CLI ve IDE eklentisinde `$kbeauty-trade-matchmaker` veya `/skills`, ChatGPT'de ise `@` kullanın. Örtük çağırma `description` alanına göre belirlenir.
-- Bağımsız bir skill klasörü yalnızca **ChatGPT masaüstü uygulaması, Codex CLI ve IDE eklentisinde** görünür. ChatGPT **web ve mobil** sürümleri, skill'in bir plugin olarak paketlenmesini gerektirir; v0.2.0 bunu içermez.
+- Bağımsız bir skill klasörü yalnızca **ChatGPT masaüstü uygulaması, Codex CLI ve IDE eklentisinde** görünür. ChatGPT **web ve mobil** sürümleri plugin ZIP'ini gerektirir; bkz. [Plugin olarak kurulum](#plugin-olarak-kurulum).
 - `AGENTS.md` bir skill kurulum yöntemi değildir. Repository için sürekli geçerli talimatlar sağlayan ayrı bir Codex özelliğidir.
 
 > **2026-09-13 tarihinde resmi dokümantasyonla karşılaştırılarak kontrol edilmiştir.** Buradaki herhangi bir bilgi güncel dokümantasyonla çelişirse, dokümantasyon esas alınmalıdır.
@@ -356,6 +503,8 @@ python3 tests/run_tests.py -v    # One line per case, not just failures
 ```
 
 Test çalıştırıcısı yalnızca standart kütüphaneyi kullanır, fixture'ları kendi konumuna göre bulur, her script'e `--as-of 2026-09-12` parametresini iletir ve çıktıyı beklenen fixture'larla **bayt bayt** karşılaştırır. Fixture vakalarından önce şemaların kendisini kontrol eder: ayrıştırılabildiklerini, her `$ref` referansının çözümlendiğini, desteklenmeyen bir anahtar sözcük kullanılmadığını, paylaşılan `$defs` tanımlarının dosyalar arasında tutarlı olduğunu ve gömülü sürümlerin `scoring.config.json` ile eşleştiğini.
+
+`plugins` aşaması repository düzeyindeki manifest'leri ve derleyiciyi okur; bu nedenle toplam 536 vaka sayısı bir repository checkout'u için geçerlidir. Kurulu bir kopya iki SKIP bildirir (`plugins` aşaması ve bir MCP vakası). Bu aşama sürüm derleyicisini geçici bir git repository'sinde çalıştırır; bu nedenle commit edilmemiş çalışmalar sonucu etkilemez.
 
 Script'ler doğrudan da çalıştırılabilir. JSON `stdout`'a, tüm tanılama mesajları ise `stderr`'e gider; bu nedenle pipe kullanımı güvenlidir.
 
@@ -419,7 +568,7 @@ Altı soru hâlâ açıktır. Her birinin bu uygulamada bir varsayılanı vardı
 
 | Sürüm | Değer | Neyi tanımlar | Nerede bulunur |
 |---|---|---|---|
-| `skill_version` | `0.2.0` | Paket: prompt'lar, referanslar, script'ler, şablonlar, testler | `SKILL.md` gövdesi, `match-result.skill_version` |
+| `skill_version` | `0.3.0` | Paket: prompt'lar, referanslar, script'ler, şablonlar, testler | `SKILL.md` gövdesi, `match-result.skill_version`, her iki plugin manifest'i |
 | `schema_version` | `0.1.0` | Yapı sözleşmesi: alan adları, enum'lar, zorunlu alan listeleri | Her belge, `schemas/*.json` |
 | `score_version` | `kbtm-score-0.1.0` | Rubrik: ağırlıklar, kriterler, sinyaller, cezalar, eşikler, kesin filtreler | `scoring.config.json`, puanlanmış her belge |
 

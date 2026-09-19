@@ -1,0 +1,31 @@
+{
+  "name": "kbeauty-trade-matchmaker",
+  "owner": {
+    "name": "choihyeonmuk",
+    "url": "https://github.com/choihyeonmuk"
+  },
+  "description": "K-Beauty buyer discovery, seller sourcing, RFQ matching and outreach drafts. Evidence-first, deterministic scoring, never sends.",
+  "plugins": [
+    {
+      "name": "kbeauty-trade-matchmaker",
+      "source": "./kbeauty-trade-matchmaker",
+      "description": "K-Beauty buyer discovery, seller sourcing, RFQ matching and outreach drafts. Evidence-first, deterministic scoring, never sends.",
+      "version": "0.3.0",
+      "author": {
+        "name": "choihyeonmuk",
+        "url": "https://github.com/choihyeonmuk"
+      },
+      "homepage": "https://kbeauty.tradewith.kr",
+      "repository": "https://github.com/choihyeonmuk/kbeauty-trade-matchmaker",
+      "keywords": ["k-beauty", "cosmetics", "b2b-trade", "rfq", "sourcing", "buyer-discovery"],
+      "strict": false,
+      "skills": ["./"],
+      "mcpServers": {
+        "kbtm": {
+          "command": "python3",
+          "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/mcp_server.py", "--root", "${CLAUDE_PROJECT_DIR}"]
+        }
+      }
+    }
+  ]
+}

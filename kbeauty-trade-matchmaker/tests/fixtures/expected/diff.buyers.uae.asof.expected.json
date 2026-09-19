@@ -1,0 +1,514 @@
+{
+  "report_kind": "run-diff",
+  "schema_version": "0.1.0",
+  "score_version": "kbtm-score-0.1.0",
+  "skill_version": "0.3.0",
+  "as_of": "2028-03-01",
+  "kind": "discovery-result",
+  "entity": "buyer",
+  "before": {
+    "as_of": "2026-09-12",
+    "score_version": "kbtm-score-0.1.0",
+    "skill_version": "0.3.0",
+    "match_run_id": null,
+    "rfq_id": null,
+    "threshold_used": 70,
+    "threshold_mode": "fixed",
+    "partial": false,
+    "returned": 19,
+    "excluded": 1
+  },
+  "after": {
+    "as_of": "2028-03-01",
+    "score_version": "kbtm-score-0.1.0",
+    "skill_version": "0.3.0",
+    "match_run_id": null,
+    "rfq_id": null,
+    "threshold_used": 70,
+    "threshold_mode": "fixed",
+    "partial": false,
+    "returned": 19,
+    "excluded": 1
+  },
+  "context": {
+    "as_of_changed": true,
+    "threshold_changed": false,
+    "query_changed": false,
+    "weights_changed": null
+  },
+  "summary": {
+    "paired": 20,
+    "unchanged": 3,
+    "new": 0,
+    "gone": 0,
+    "newly_excluded": 0,
+    "newly_returned": 0,
+    "exclusion_changed": 0,
+    "changed": 17,
+    "score_changed": 17,
+    "score_up": 0,
+    "score_down": 17,
+    "qualified_gained": 0,
+    "qualified_lost": 2,
+    "confidence_changed": 13,
+    "rank_changed": null,
+    "missing_changed": 0
+  },
+  "new": [],
+  "gone": [],
+  "newly_excluded": [],
+  "newly_returned": [],
+  "exclusion_changes": [],
+  "changed": [
+    {
+      "record_id": "BUY-kantoimport-example",
+      "matched_by": "id",
+      "company_name": "Kanto Import Partners KK",
+      "score": {
+        "before": 36,
+        "after": 32,
+        "delta": -4
+      },
+      "dimensions": [
+        {
+          "dimension": "evidence_quality",
+          "before": 64,
+          "after": 23,
+          "delta": -41
+        }
+      ],
+      "confidence": {
+        "before": 0.41,
+        "after": 0.15,
+        "delta": -0.26
+      }
+    },
+    {
+      "record_id": "BUY-gulfglow-example",
+      "matched_by": "id",
+      "company_name": "Gulf Glow Trading FZ-LLC",
+      "score": {
+        "before": 96,
+        "after": 93,
+        "delta": -3
+      },
+      "dimensions": [
+        {
+          "dimension": "sourcing_intent",
+          "before": 100,
+          "after": 92,
+          "delta": -8
+        },
+        {
+          "dimension": "evidence_quality",
+          "before": 94,
+          "after": 85,
+          "delta": -9
+        }
+      ],
+      "confidence": {
+        "before": 0.94,
+        "after": 0.85,
+        "delta": -0.09
+      }
+    },
+    {
+      "record_id": "BUY-marinaretail-example",
+      "matched_by": "id",
+      "company_name": "Marina Retail Boutique LLC",
+      "score": {
+        "before": 53,
+        "after": 50,
+        "delta": -3
+      },
+      "dimensions": [
+        {
+          "dimension": "sourcing_intent",
+          "before": 26,
+          "after": 18,
+          "delta": -8
+        },
+        {
+          "dimension": "evidence_quality",
+          "before": 95,
+          "after": 85,
+          "delta": -10
+        }
+      ],
+      "confidence": {
+        "before": 0.95,
+        "after": 0.85,
+        "delta": -0.1
+      }
+    },
+    {
+      "record_id": "BUY-sakurabeautytrading-example",
+      "matched_by": "id",
+      "company_name": "Sakura Beauty Trading KK",
+      "score": {
+        "before": 82,
+        "after": 79,
+        "delta": -3
+      },
+      "dimensions": [
+        {
+          "dimension": "sourcing_intent",
+          "before": 100,
+          "after": 92,
+          "delta": -8
+        },
+        {
+          "dimension": "evidence_quality",
+          "before": 95,
+          "after": 85,
+          "delta": -10
+        }
+      ],
+      "confidence": {
+        "before": 0.95,
+        "after": 0.85,
+        "delta": -0.1
+      }
+    },
+    {
+      "record_id": "BUY-albionbeautyhall-example",
+      "matched_by": "id",
+      "company_name": "Albion Beauty Hall Ltd",
+      "score": {
+        "before": 43,
+        "after": 41,
+        "delta": -2
+      },
+      "dimensions": [
+        {
+          "dimension": "sourcing_intent",
+          "before": 48,
+          "after": 44,
+          "delta": -4
+        },
+        {
+          "dimension": "evidence_quality",
+          "before": 82,
+          "after": 76,
+          "delta": -6
+        }
+      ],
+      "confidence": {
+        "before": 0.74,
+        "after": 0.68,
+        "delta": -0.06
+      }
+    },
+    {
+      "record_id": "BUY-britsun-example",
+      "matched_by": "id",
+      "company_name": "Britannia Sun Collective Ltd",
+      "score": {
+        "before": 81,
+        "after": 79,
+        "delta": -2
+      },
+      "dimensions": [
+        {
+          "dimension": "sourcing_intent",
+          "before": 100,
+          "after": 92,
+          "delta": -8
+        }
+      ]
+    },
+    {
+      "record_id": "BUY-cascademarket-example",
+      "matched_by": "id",
+      "company_name": "Cascade Marketplace Inc",
+      "score": {
+        "before": 32,
+        "after": 30,
+        "delta": -2
+      },
+      "dimensions": [
+        {
+          "dimension": "sourcing_intent",
+          "before": 32,
+          "after": 28,
+          "delta": -4
+        },
+        {
+          "dimension": "evidence_quality",
+          "before": 82,
+          "after": 76,
+          "delta": -6
+        }
+      ],
+      "confidence": {
+        "before": 0.74,
+        "after": 0.68,
+        "delta": -0.06
+      }
+    },
+    {
+      "record_id": "BUY-libertybeautysupply-example",
+      "matched_by": "id",
+      "company_name": "Liberty Beauty Supply LLC",
+      "score": {
+        "before": 66,
+        "after": 64,
+        "delta": -2
+      },
+      "dimensions": [
+        {
+          "dimension": "sourcing_intent",
+          "before": 64,
+          "after": 60,
+          "delta": -4
+        },
+        {
+          "dimension": "evidence_quality",
+          "before": 91,
+          "after": 85,
+          "delta": -6
+        }
+      ],
+      "confidence": {
+        "before": 0.91,
+        "after": 0.85,
+        "delta": -0.06
+      }
+    },
+    {
+      "record_id": "BUY-luminaglow-example",
+      "matched_by": "id",
+      "company_name": "Lumina Glow Distribution Ltd",
+      "score": {
+        "before": 71,
+        "after": 69,
+        "delta": -2
+      },
+      "dimensions": [
+        {
+          "dimension": "sourcing_intent",
+          "before": 69,
+          "after": 65,
+          "delta": -4
+        },
+        {
+          "dimension": "evidence_quality",
+          "before": 91,
+          "after": 85,
+          "delta": -6
+        }
+      ],
+      "qualified": {
+        "before": true,
+        "after": false,
+        "flip": "lost"
+      },
+      "confidence": {
+        "before": 0.91,
+        "after": 0.85,
+        "delta": -0.06
+      }
+    },
+    {
+      "record_id": "BUY-rheinkosmetik-example",
+      "matched_by": "id",
+      "company_name": "Rhein Kosmetik Handels GmbH",
+      "score": {
+        "before": 68,
+        "after": 66,
+        "delta": -2
+      },
+      "dimensions": [
+        {
+          "dimension": "sourcing_intent",
+          "before": 63,
+          "after": 59,
+          "delta": -4
+        },
+        {
+          "dimension": "evidence_quality",
+          "before": 91,
+          "after": 85,
+          "delta": -6
+        }
+      ],
+      "confidence": {
+        "before": 0.91,
+        "after": 0.85,
+        "delta": -0.06
+      }
+    },
+    {
+      "record_id": "BUY-desertbulk-example",
+      "matched_by": "id",
+      "company_name": "Desert Bulk Supplies LLC",
+      "score": {
+        "before": 53,
+        "after": 52,
+        "delta": -1
+      },
+      "dimensions": [
+        {
+          "dimension": "sourcing_intent",
+          "before": 32,
+          "after": 28,
+          "delta": -4
+        },
+        {
+          "dimension": "evidence_quality",
+          "before": 87,
+          "after": 81,
+          "delta": -6
+        }
+      ],
+      "confidence": {
+        "before": 0.83,
+        "after": 0.77,
+        "delta": -0.06
+      }
+    },
+    {
+      "record_id": "BUY-dunesourcing-example",
+      "matched_by": "id",
+      "company_name": "Dune Sourcing Partners LLC",
+      "score": {
+        "before": 84,
+        "after": 83,
+        "delta": -1
+      },
+      "dimensions": [
+        {
+          "dimension": "sourcing_intent",
+          "before": 63,
+          "after": 59,
+          "delta": -4
+        }
+      ]
+    },
+    {
+      "record_id": "BUY-lioncitybeauty-example",
+      "matched_by": "id",
+      "company_name": "Lion City Beauty Pte Ltd",
+      "score": {
+        "before": 70,
+        "after": 69,
+        "delta": -1
+      },
+      "dimensions": [
+        {
+          "dimension": "sourcing_intent",
+          "before": 60,
+          "after": 56,
+          "delta": -4
+        }
+      ],
+      "qualified": {
+        "before": true,
+        "after": false,
+        "flip": "lost"
+      }
+    },
+    {
+      "record_id": "BUY-novadrift-example",
+      "matched_by": "id",
+      "company_name": "Nova Drift Trading Ltd",
+      "score": {
+        "before": 63,
+        "after": 62,
+        "delta": -1
+      },
+      "dimensions": [
+        {
+          "dimension": "sourcing_intent",
+          "before": 50,
+          "after": 46,
+          "delta": -4
+        },
+        {
+          "dimension": "evidence_quality",
+          "before": 87,
+          "after": 81,
+          "delta": -6
+        }
+      ],
+      "confidence": {
+        "before": 0.83,
+        "after": 0.77,
+        "delta": -0.06
+      }
+    },
+    {
+      "record_id": "BUY-pacificglowdist-example",
+      "matched_by": "id",
+      "company_name": "Pacific Glow Distributors Inc",
+      "score": {
+        "before": 80,
+        "after": 79,
+        "delta": -1
+      },
+      "dimensions": [
+        {
+          "dimension": "sourcing_intent",
+          "before": 94,
+          "after": 90,
+          "delta": -4
+        }
+      ]
+    },
+    {
+      "record_id": "BUY-straitswholesale-example",
+      "matched_by": "id",
+      "company_name": "Straits Wholesale Pte Ltd",
+      "score": {
+        "before": 52,
+        "after": 51,
+        "delta": -1
+      },
+      "dimensions": [
+        {
+          "dimension": "sourcing_intent",
+          "before": 49,
+          "after": 45,
+          "delta": -4
+        },
+        {
+          "dimension": "evidence_quality",
+          "before": 87,
+          "after": 81,
+          "delta": -6
+        }
+      ],
+      "confidence": {
+        "before": 0.83,
+        "after": 0.77,
+        "delta": -0.06
+      }
+    },
+    {
+      "record_id": "BUY-www-luminaglow-example",
+      "matched_by": "id",
+      "company_name": "Lumina Glow Distribution Limited",
+      "score": {
+        "before": 53,
+        "after": 52,
+        "delta": -1
+      },
+      "dimensions": [
+        {
+          "dimension": "evidence_quality",
+          "before": 82,
+          "after": 76,
+          "delta": -6
+        }
+      ],
+      "confidence": {
+        "before": 0.74,
+        "after": 0.68,
+        "delta": -0.06
+      }
+    }
+  ],
+  "notes": [
+    "The runs were scored at different as_of dates (2026-09-12, 2028-03-01); recency and staleness can move scores with no change in evidence (BUILD-CONTRACT 12.3 rule 3)."
+  ]
+}

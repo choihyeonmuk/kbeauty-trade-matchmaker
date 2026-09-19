@@ -32,7 +32,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PACKAGE_ROOT = os.path.dirname(SCRIPT_DIR)
 SCHEMA_DIR = os.path.join(PACKAGE_ROOT, "schemas")
 
-SKILL_VERSION = "0.2.0"
+SKILL_VERSION = "0.3.0"
 SCHEMA_VERSION = "0.1.0"
 UNKNOWN = "unknown"
 
@@ -572,6 +572,15 @@ SCHEMA_NAMES = (
     # A MEASUREMENT document, not a scored one: scripts/acceptance_report.py emits it and
     # no scorer reads it (references/calibration-notes.md section 7).
     "acceptance-report",
+    # A COMPARISON document: scripts/diff_runs.py emits it and no scorer reads it
+    # (references/data-contract.md section 9.4).
+    "run-diff",
+    # An AUDIT document: the re-check queue of references/evidence-policy.md 5.6 lists
+    # the evidence to re-read. It changes no record, and no scorer reads it.
+    "recheck-queue",
+    # An EXPORT document: scripts/export_leads.py writes it for a TradeWith admin to
+    # import and no scorer reads it (references/data-contract.md section 9.4).
+    "tradewith-bulk-buyers",
 )
 
 _DATE_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
@@ -1185,7 +1194,11 @@ def resolve_as_of(records, explicit, config=None):
         text = str(explicit).strip()
         if not _DATE_RE.match(text):
             raise UsageError("--as-of %r is not a YYYY-MM-DD date" % explicit)
-        _as_date(text)  # reject 2026-13-40
+        try:
+            _as_date(text)  # reject 2026-13-40
+        except DataError as exc:
+            # A well-shaped but impossible date is still a bad flag value (7.3: exit 2).
+            raise UsageError("--as-of %s" % (exc,))
         return text
     observed = []
     _iter_observed_at(records, observed)
@@ -2007,7 +2020,10 @@ _URL_ANYWHERE_RE = re.compile(r"(?:https?://|www\.)\S+", re.IGNORECASE)
 #: number or a tel/phone/mobile query label counts here; a bare id run does not.
 _PHONE_IN_URL_RE = re.compile(
     r"(?:(?<![0-9])0[0-9]{1,3}[-.][0-9]{3,4}[-.][0-9]{4}(?![0-9])"
-    r"|(?:tel|phone|mobile|whatsapp)[=:/][+]?[0-9][0-9\-.]{6,})",
+    r"|(?:tel|phone|mobile|whatsapp)[=:/][+]?[0-9][0-9\-.]{6,}"
+    # A slug label ("/team/jane-mobile-0501234567"): the label must start a word, so
+    # "hotel-2024..." in a path is not read as "tel-2024...".
+    r"|(?<![A-Za-z])(?:tel|phone|mobile|whatsapp)[_-][+]?[0-9][0-9\-.]{6,})",
     re.IGNORECASE,
 )
 _ISO_DATE_ANYWHERE_RE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
@@ -2056,11 +2072,17 @@ def personal_data_hits(text):
     if not isinstance(text, str) or not text.strip():
         return []
     normalised = unicodedata.normalize("NFKC", text)
+    # A percent-encoded "%40" or "%2B" hides an address or a "+" prefix from the plain
+    # scan, so the email and in-URL checks also read the decoded form. The free-text
+    # telephone pass below does not: decoding "%20" would split a URL and expose its
+    # numeric path segments as if they were prose.
+    decoded = _percent_decode(normalised)
     hits = []
-    if _EMAIL_LIKE_RE.search(normalised) or _EMAIL_OBFUSCATED_RE.search(normalised):
+    if any(_EMAIL_LIKE_RE.search(form) or _EMAIL_OBFUSCATED_RE.search(form)
+           for form in (normalised, decoded)):
         hits.append("an email address")
     for url in _URL_ANYWHERE_RE.findall(normalised):
-        if _PHONE_IN_URL_RE.search(url):
+        if _PHONE_IN_URL_RE.search(url) or _PHONE_IN_URL_RE.search(_percent_decode(url)):
             hits.append("a phone-number-like string")
             return hits
     scrubbed = _URL_ANYWHERE_RE.sub(" ", normalised)
@@ -2083,24 +2105,48 @@ def personal_data_hits(text):
     return hits
 
 
+def _percent_decode(text):
+    """text with %XX escapes decoded (NFKC again), or text itself when there are none."""
+    if "%" not in text:
+        return text
+    from urllib.parse import unquote
+
+    return unicodedata.normalize("NFKC", unquote(text))
+
+
+def _formula_lead(value):
+    """True when a spreadsheet may read this cell as a formula.
+
+    The raw first character is checked, and so is the first character after leading
+    whitespace and NFKC folding: " =1+1" is text in most spreadsheets, but an importer
+    that trims cells (as many CRM and admin import pages do) stores "=1+1", and a
+    full-width "＝" folds to "=" in the same way.
+    """
+    if not isinstance(value, str) or not value:
+        return False
+    if value[0] in CSV_FORMULA_LEAD:
+        return True
+    folded = unicodedata.normalize("NFKC", value).lstrip()
+    return bool(folded) and folded[0] in CSV_FORMULA_LEAD
+
+
 def csv_safe_cell(value):
     """One CSV cell with any spreadsheet formula lead neutralised.
 
     A leading "=", "+", "-", "@", tab or carriage return makes a spreadsheet evaluate
     the cell instead of showing it, and `company_name` / `website` come straight off a
-    harvested public page. The apostrophe prefix is the standard fix and leaves the
+    harvested public page. The same holds after leading whitespace or a full-width
+    form (see _formula_lead). The apostrophe prefix is the standard fix and leaves the
     original text readable.
     """
-    if not isinstance(value, str) or not value:
-        return value
-    if value[0] in CSV_FORMULA_LEAD:
+    if _formula_lead(value):
         return CSV_FORMULA_GUARD + value
     return value
 
 
 def csv_needs_formula_guard(value):
     """True when csv_safe_cell would change this value."""
-    return isinstance(value, str) and bool(value) and value[0] in CSV_FORMULA_LEAD
+    return _formula_lead(value)
 
 
 def blind_order_key(record_id):

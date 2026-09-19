@@ -1,0 +1,90 @@
+{
+  "report_kind": "run-diff",
+  "schema_version": "0.1.0",
+  "score_version": "kbtm-score-0.1.0",
+  "skill_version": "0.3.0",
+  "as_of": "2026-09-12",
+  "kind": "match-result",
+  "entity": "seller",
+  "before": {
+    "as_of": "2026-09-12",
+    "score_version": "kbtm-score-0.1.0",
+    "skill_version": "0.3.0",
+    "match_run_id": "MR-134-2026-09-12-01",
+    "rfq_id": "134",
+    "threshold_used": 70,
+    "threshold_mode": "fixed",
+    "partial": false,
+    "returned": 10,
+    "excluded": 9
+  },
+  "after": {
+    "as_of": "2026-09-12",
+    "score_version": "kbtm-score-0.1.0",
+    "skill_version": "0.3.0",
+    "match_run_id": "MR-134-2026-09-12-01",
+    "rfq_id": "134",
+    "threshold_used": 70,
+    "threshold_mode": "fixed",
+    "partial": false,
+    "returned": 10,
+    "excluded": 9
+  },
+  "context": {
+    "as_of_changed": false,
+    "threshold_changed": false,
+    "query_changed": null,
+    "weights_changed": false
+  },
+  "summary": {
+    "paired": 19,
+    "unchanged": 17,
+    "new": 0,
+    "gone": 0,
+    "newly_excluded": 0,
+    "newly_returned": 0,
+    "exclusion_changed": 0,
+    "changed": 2,
+    "score_changed": 1,
+    "score_up": 1,
+    "score_down": 0,
+    "qualified_gained": 0,
+    "qualified_lost": 0,
+    "confidence_changed": 0,
+    "rank_changed": 2,
+    "missing_changed": 0
+  },
+  "new": [],
+  "gone": [],
+  "newly_excluded": [],
+  "newly_returned": [],
+  "exclusion_changes": [],
+  "changed": [
+    {
+      "record_id": "SEL-hanbitcos-example",
+      "matched_by": "id",
+      "company_name": "Hanbit Cosmetics Co., Ltd.",
+      "score": {
+        "before": 97,
+        "after": 99,
+        "delta": 2
+      },
+      "rank": {
+        "before": 2,
+        "after": 1
+      }
+    },
+    {
+      "record_id": "SEL-hansolodm-example",
+      "matched_by": "id",
+      "company_name": "Hansol ODM Corp",
+      "rank": {
+        "before": 1,
+        "after": 2
+      }
+    }
+  ],
+  "notes": [
+    "A seller absent from one match run may have been cut by the threshold or by top_n rather than dropped as a candidate; new and gone mean listed / not listed in the run's output."
+  ]
+}

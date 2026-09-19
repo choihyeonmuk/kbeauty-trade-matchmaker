@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tradewith.example/kbeauty-trade-matchmaker/v0.1.0/tradewith-bulk-buyers.schema.json",
+  "title": "TradeWith Bulk Buyer Import",
+  "description": "The request body scripts/export_leads.py writes for TradeWith's admin buyer bulk import: exactly {\"buyers\": [row, ...]}, each row a BulkBuyerRowDto (tradewith-api BulkImportDto) MINUS every field this package must never fill. contactName, contactEmail, contactPhone, notes, extraNotes, qualityTierLabel and hsCodes are absent from `properties`, so additionalProperties:false forbids them structurally - no contact field is ever sent, not even a company role mailbox, because TradeWith marks a row with an email as a high-confidence contact and a re-import would overwrite an address an admin corrected. It is an EXPORT document: no scorer reads it and producing one never changes a score. The --format tradewith-csv rows are validated against the same shape. See references/data-contract.md section 9.6. Korean gloss: TradeWith 관리자 바이어 일괄 등록 요청 본문.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["buyers"],
+  "properties": {
+    "buyers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/row" }
+    }
+  },
+  "$defs": {
+    "text": {
+      "type": "string",
+      "description": "A real value: never empty, never whitespace only, never the literal unknown. An omitted key leaves the stored TradeWith value alone; an explicit value overwrites it.",
+      "minLength": 1,
+      "maxLength": 4000,
+      "pattern": "^(?!unknown$)(?!\\s*$)"
+    },
+    "url": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 2048,
+      "pattern": "^https?://\\S+$"
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceId", "companyName", "country", "industry"],
+      "properties": {
+        "sourceId": {
+          "type": "string",
+          "description": "kbtm:<canonical_domain without www.>, or kbtm:id:<buyer_id> when the domain is unknown. The domain is the merge key and survives dedupe survivor-id churn, so a re-import updates the same TradeWith row; the kbtm: prefix keeps these ids apart from every other CSV import.",
+          "pattern": "^kbtm:(id:)?[A-Za-z0-9][A-Za-z0-9_.-]{0,250}$"
+        },
+        "companyName": { "$ref": "#/$defs/text" },
+        "country": {
+          "type": "string",
+          "description": "ISO 3166-1 alpha-2. A record whose country is unknown is skipped, never sent.",
+          "pattern": "^[A-Z]{2}$"
+        },
+        "website": { "$ref": "#/$defs/url" },
+        "industry": { "const": "BEAUTY" },
+        "category": {
+          "type": "string",
+          "enum": ["distributor", "importer", "wholesaler", "retailer", "brand", "marketplace", "other"]
+        },
+        "productsSummary": { "$ref": "#/$defs/text" },
+        "originalSource": { "$ref": "#/$defs/text" },
+        "sourceUrl": { "$ref": "#/$defs/url" },
+        "social": {
+          "type": "string",
+          "description": "A LinkedIn organisation page (/company/, /showcase/ or /school/ plus a name; no empty, . or .. segment, percent-encoded dots included, and no userinfo). A member profile is never sent: matching shows this field to sellers unmasked.",
+          "maxLength": 2048,
+          "pattern": "^https?://[^/?#\\s@]+/([Cc][Oo][Mm][Pp][Aa][Nn][Yy]|[Ss][Hh][Oo][Ww][Cc][Aa][Ss][Ee]|[Ss][Cc][Hh][Oo][Oo][Ll])(/(?!(\\.|%2[Ee]){1,2}(/|\\?|#|$))[^/?#\\s]+)+/?([?#]\\S*)?$"
+        }
+      }
+    }
+  }
+}

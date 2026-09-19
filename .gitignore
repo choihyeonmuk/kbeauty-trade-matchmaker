@@ -60,3 +60,6 @@ docs/PRD-v0.1.md
 # Field-trial working artifact: contains real company names and domains with
 # evaluative judgements gathered from the live web. Kept locally, not published.
 docs/FIELD-FINDINGS.json
+
+# Release archives built by tools/build_release.py
+dist/

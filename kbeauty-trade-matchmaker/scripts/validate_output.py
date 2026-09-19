@@ -32,6 +32,15 @@ KINDS = (
     # A calibration MEASUREMENT document (scripts/acceptance_report.py). It carries no
     # score of its own, so only the generic document-shape invariants apply to it.
     "acceptance-report",
+    # A COMPARISON of two scored runs (scripts/diff_runs.py). Like the acceptance report
+    # it carries no score of its own, so only the generic invariants apply to it.
+    "run-diff",
+    # An AUDIT document (scripts/stale_evidence.py): which evidence to re-read. Like the
+    # acceptance report it carries no score, so only the generic invariants apply.
+    "recheck-queue",
+    # An EXPORT document (scripts/export_leads.py --format tradewith-json): the TradeWith
+    # bulk-import request body. It carries no score, so only the generic invariants apply.
+    "tradewith-bulk-buyers",
 )
 
 # BUILD-CONTRACT 7.5: the closed keyword subset _common.validate implements. A keyword
@@ -138,6 +147,10 @@ def _detect_kind(document):
     # because the report echoes score_version and as_of like every other document.
     if document.get("report_kind") == "acceptance-report":
         return "acceptance-report"
+    if document.get("report_kind") == "run-diff":
+        return "run-diff"
+    if document.get("report_kind") == "recheck-queue":
+        return "recheck-queue"
     if "match_run_id" in document or "no_match" in document:
         return "match-result"
     if "entity" in document and "records" in document:
@@ -150,6 +163,10 @@ def _detect_kind(document):
         return "buyer"
     if "evidence_id" in document and "source_url" in document:
         return "evidence"
+    # Checked last: the export body has no discriminator of its own, only its "buyers"
+    # array, so any other kind that matched above wins.
+    if "buyers" in document:
+        return "tradewith-bulk-buyers"
     return None
 
 
@@ -895,6 +912,9 @@ def _load_schema_for(kind, args, cache):
 
 
 def _run(args, config):
+    if args.as_of:
+        # 7.3: an --as-of that is not a real YYYY-MM-DD date is a usage error (exit 2).
+        _common.resolve_as_of([], args.as_of)
     payload = _common.read_input(args)
     items, envelope_kind = _documents(payload, args.schema)
 
@@ -916,6 +936,10 @@ def _run(args, config):
             continue
         checked += 1
         kind = hint if hint not in (None, "auto") else _detect_kind(document)
+        if kind is None and args.schema_file:
+            # An explicit --schema-file names the shape even when the kind is unknown:
+            # validate against it and apply only the generic invariants.
+            kind = "custom"
         if kind is None:
             warnings.append(
                 {
@@ -968,7 +992,21 @@ def _run(args, config):
                 )
 
         if args.invariants:
-            _run_invariants(document, kind, index, config, failures)
+            try:
+                _run_invariants(document, kind, index, config, failures)
+            except (AttributeError, TypeError):
+                # The invariants read the document's own shape; a document that merely
+                # looks like `kind` (a hand-edited file, a test digest) is a finding, not
+                # a crash, and the schema errors above say what is wrong with it.
+                errors.append(
+                    {
+                        "index": index,
+                        "id": _doc_id(document),
+                        "path": "<root>",
+                        "message": "the %s invariants could not be evaluated: the document "
+                        "does not have the %s shape" % (kind, kind),
+                    }
+                )
 
     profile = args.profile
     if profile == "auto":
