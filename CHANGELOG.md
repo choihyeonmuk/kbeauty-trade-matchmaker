@@ -6,6 +6,11 @@ Every feature update to this package gets an entry here, and a short version of 
 
 The package carries three independent versions (see "Versions" in the README). Each entry says which of them moved.
 
+## Unreleased
+
+- Docs: the claude.ai install path is now also verified on a **free plan** (2026-09-19, a 3-company request ran end to
+  end, scoring scripts included, without hitting a usage limit). READMEs and the project page say so.
+
 ## v0.2.0 (2026-09-19)
 
 `skill_version` 0.1.1 → **0.2.0** · `schema_version` 0.1.0 (unchanged) · `score_version` `kbtm-score-0.1.0` (unchanged)

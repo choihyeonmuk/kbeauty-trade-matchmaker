@@ -276,7 +276,7 @@ v0.2.0 मध्ये भारत, इंडोनेशिया आणि �
 2. claude.ai मध्ये Settings → Capabilities उघडा आणि code execution चालू असल्याची खात्री करा. नंतर Customize → Skills उघडा, Upload skill निवडा, ZIP टाका आणि save करा.
 3. नवीन chat मध्ये web search चालू करा आणि साध्या भाषेत विचारा, उदाहरणार्थ "Find 5 K-Beauty distributors in the UAE that carry sunscreen." पाच कंपन्यांसाठी साधारण 10 ते 15 मिनिटे लागतात.
 
-2026-09-14 रोजी सशुल्क (paid) plan वर संपूर्ण प्रक्रिया सुरुवातीपासून शेवटपर्यंत पडताळली गेली: skill चे नाव न घेता ते आपोआप सुरू झाले, skill मध्येच web search आणि page fetch चालले, आणि sandbox मध्ये scoring scripts चालल्या. मोफत (free) plan वर संपूर्ण run साठी पुरेसा वापर मिळतो की नाही हे तपासलेले नाही. कोरियन भाषेतील टप्प्याटप्प्याने मार्गदर्शक: [https://kbeauty.tradewith.kr/install-ko](https://kbeauty.tradewith.kr/install-ko) (टीप: हे मार्गदर्शक फक्त कोरियन भाषेत उपलब्ध आहे). अडचण येत आहे? [मला LinkedIn वर संदेश पाठवा](https://www.linkedin.com/in/hm-choi).
+2026-09-14 रोजी सशुल्क (paid) plan वर संपूर्ण प्रक्रिया सुरुवातीपासून शेवटपर्यंत पडताळली गेली: skill चे नाव न घेता ते आपोआप सुरू झाले, skill मध्येच web search आणि page fetch चालले, आणि sandbox मध्ये scoring scripts चालल्या. 2026-09-19 रोजी मोफत (free) plan वरही एका लहान request (3 companies) सह पडताळले: scoring scripts सह skill सुरुवातीपासून शेवटपर्यंत चालले आणि usage limit आली नाही. मोठ्या request वर मोफत plan ची मर्यादा येऊ शकते. कोरियन भाषेतील टप्प्याटप्प्याने मार्गदर्शक: [https://kbeauty.tradewith.kr/install-ko](https://kbeauty.tradewith.kr/install-ko) (टीप: हे मार्गदर्शक फक्त कोरियन भाषेत उपलब्ध आहे). अडचण येत आहे? [मला LinkedIn वर संदेश पाठवा](https://www.linkedin.com/in/hm-choi).
 
 ### Claude Code आणि Codex installer
 

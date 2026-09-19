@@ -276,7 +276,7 @@ v0.2.0 adds India, Indonesia and Türkiye. No scoring rule changed; a new test f
 2. In claude.ai, open Settings → Capabilities and make sure code execution is on. Then open Customize → Skills, choose Upload skill, drop in the ZIP and save.
 3. Turn on web search in a new chat and ask in plain language, for example "Find 5 K-Beauty distributors in the UAE that carry sunscreen." Five companies take about 10 to 15 minutes.
 
-Verified end to end on a paid plan on 2026-09-14: the skill was invoked without being named, ran web search and page fetches inside the skill, and executed the scoring scripts in the sandbox. Whether a free plan has enough usage for a full run has not been checked. Korean step-by-step guide: [https://kbeauty.tradewith.kr/install-ko](https://kbeauty.tradewith.kr/install-ko). Stuck? [Message me on LinkedIn](https://www.linkedin.com/in/hm-choi).
+Verified end to end on a paid plan on 2026-09-14: the skill was invoked without being named, ran web search and page fetches inside the skill, and executed the scoring scripts in the sandbox. Also verified on a free plan on 2026-09-19 with a small request (3 companies): the skill ran end to end, scoring scripts included, without hitting a usage limit. A larger request may still run into the free plan's limits. Korean step-by-step guide: [https://kbeauty.tradewith.kr/install-ko](https://kbeauty.tradewith.kr/install-ko). Stuck? [Message me on LinkedIn](https://www.linkedin.com/in/hm-choi).
 
 ### Claude Code and Codex installer
 
