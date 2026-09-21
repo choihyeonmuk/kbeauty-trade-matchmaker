@@ -507,7 +507,7 @@ python3 tests/run_tests.py -v    # One line per case, not just failures
 
 The runner uses only the standard library, finds fixtures relative to itself, passes `--as-of 2026-09-12` to every script, and compares output with the expected fixtures **byte for byte**. Before the fixture cases it checks the schemas themselves: that they parse, that every `$ref` resolves, that no unsupported keyword is used, that shared `$defs` agree across files, and that embedded versions match `scoring.config.json`.
 
-The `plugins` phase reads the repository-level manifests and builder, so the full count of 748 applies to a repository checkout; an installed copy reports two SKIPs (the `plugins` phase and one MCP case). The phase runs the release builder in a throwaway git repository, so uncommitted work does not affect the result.
+The `plugins` phase reads the repository-level manifests and builder, so the full count of 748 applies to a repository checkout; an installed copy reports three SKIPs (the `plugins` phase, one MCP case and the repository-root README check). The phase runs the release builder in a throwaway git repository, so uncommitted work does not affect the result.
 
 Scripts can also be run directly. JSON goes to `stdout` and every diagnostic to `stderr`, so pipes are safe.
 

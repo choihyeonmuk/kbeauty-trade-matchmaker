@@ -507,7 +507,7 @@ python3 tests/run_tests.py -v    # One line per case, not just failures
 
 Runner केवल standard library का उपयोग करता है, fixtures को अपनी location के सापेक्ष ढूँढ़ता है, हर script को `--as-of 2026-09-12` देता है, और output की तुलना expected fixtures से **byte for byte** करता है। Fixture cases से पहले यह schemas की ख़ुद जाँच करता है: कि वे parse होते हैं, हर `$ref` resolve होता है, कोई unsupported keyword उपयोग नहीं हुआ है, shared `$defs` सभी files में एक जैसे हैं, और embedded versions `scoring.config.json` से मेल खाते हैं।
 
-`plugins` phase repository-स्तर के manifests और builder को पढ़ता है, इसलिए 748 की पूरी गिनती repository checkout पर लागू होती है; installed copy दो SKIPs report करती है (`plugins` phase और एक MCP case)। यह phase release builder को एक अस्थायी git repository में चलाता है, इसलिए uncommitted काम नतीजे को प्रभावित नहीं करता।
+`plugins` phase repository-स्तर के manifests और builder को पढ़ता है, इसलिए 748 की पूरी गिनती repository checkout पर लागू होती है; installed copy तीन SKIPs report करती है (`plugins` phase, एक MCP case और repository root की README जाँच)। यह phase release builder को एक अस्थायी git repository में चलाता है, इसलिए uncommitted काम नतीजे को प्रभावित नहीं करता।
 
 Scripts को सीधे भी चलाया जा सकता है। JSON `stdout` पर जाता है और हर diagnostic `stderr` पर, इसलिए pipes सुरक्षित हैं।
 

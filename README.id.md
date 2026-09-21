@@ -507,7 +507,7 @@ python3 tests/run_tests.py -v    # One line per case, not just failures
 
 Runner hanya menggunakan standard library, menemukan fixture secara relatif terhadap lokasinya sendiri, meneruskan `--as-of 2026-09-12` ke setiap skrip, dan membandingkan output dengan fixture yang diharapkan **byte demi byte**. Sebelum kasus-kasus fixture, runner memeriksa skema itu sendiri: bahwa skema dapat di-parse, bahwa setiap `$ref` dapat di-resolve, bahwa tidak ada keyword yang tidak didukung, bahwa `$defs` bersama konsisten di seluruh file, dan bahwa versi yang tertanam sesuai dengan `scoring.config.json`.
 
-Fase `plugins` membaca manifest dan builder di tingkat repositori, sehingga jumlah penuh 748 berlaku untuk checkout repositori; salinan yang terinstal melaporkan dua SKIP (fase `plugins` dan satu kasus MCP). Fase ini menjalankan builder rilis di repositori git sekali pakai, sehingga pekerjaan yang belum di-commit tidak memengaruhi hasilnya.
+Fase `plugins` membaca manifest dan builder di tingkat repositori, sehingga jumlah penuh 748 berlaku untuk checkout repositori; salinan yang terinstal melaporkan tiga SKIP (fase `plugins`, satu kasus MCP, dan pemeriksaan README di akar repositori). Fase ini menjalankan builder rilis di repositori git sekali pakai, sehingga pekerjaan yang belum di-commit tidak memengaruhi hasilnya.
 
 Skrip juga dapat dijalankan secara langsung. JSON dikirim ke `stdout` dan setiap diagnostik ke `stderr`, sehingga penggunaan pipe aman.
 

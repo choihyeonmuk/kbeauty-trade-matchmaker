@@ -507,7 +507,7 @@ python3 tests/run_tests.py -v    # One line per case, not just failures
 
 Test çalıştırıcısı yalnızca standart kütüphaneyi kullanır, fixture'ları kendi konumuna göre bulur, her script'e `--as-of 2026-09-12` parametresini iletir ve çıktıyı beklenen fixture'larla **bayt bayt** karşılaştırır. Fixture vakalarından önce şemaların kendisini kontrol eder: ayrıştırılabildiklerini, her `$ref` referansının çözümlendiğini, desteklenmeyen bir anahtar sözcük kullanılmadığını, paylaşılan `$defs` tanımlarının dosyalar arasında tutarlı olduğunu ve gömülü sürümlerin `scoring.config.json` ile eşleştiğini.
 
-`plugins` aşaması repository düzeyindeki manifest'leri ve derleyiciyi okur; bu nedenle toplam 748 vaka sayısı bir repository checkout'u için geçerlidir. Kurulu bir kopya iki SKIP bildirir (`plugins` aşaması ve bir MCP vakası). Bu aşama sürüm derleyicisini geçici bir git repository'sinde çalıştırır; bu nedenle commit edilmemiş çalışmalar sonucu etkilemez.
+`plugins` aşaması repository düzeyindeki manifest'leri ve derleyiciyi okur; bu nedenle toplam 748 vaka sayısı bir repository checkout'u için geçerlidir. Kurulu bir kopya üç SKIP bildirir (`plugins` aşaması, bir MCP vakası ve repository kökündeki README denetimi). Bu aşama sürüm derleyicisini geçici bir git repository'sinde çalıştırır; bu nedenle commit edilmemiş çalışmalar sonucu etkilemez.
 
 Script'ler doğrudan da çalıştırılabilir. JSON `stdout`'a, tüm tanılama mesajları ise `stderr`'e gider; bu nedenle pipe kullanımı güvenlidir.
 
