@@ -93,7 +93,7 @@ _TOOL_NAME = re.compile(r"\A[A-Za-z0-9_.-]{1,128}\Z")
 # other script; the test suite asserts it equals validate_output.KINDS + ("auto",).
 VALIDATE_SCHEMAS = ("buyer", "seller", "rfq", "evidence", "match-result", "discovery-result",
                     "acceptance-report", "run-diff", "recheck-queue", "tradewith-bulk-buyers",
-                    "auto")
+                    "rfq-intake", "auto")
 
 _PATH = {"type": "string", "minLength": 1, "maxLength": 4096}
 _ENTITY = {"type": "string", "enum": ["buyer", "seller", "auto"],

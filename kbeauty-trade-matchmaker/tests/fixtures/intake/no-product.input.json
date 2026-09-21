@@ -1,0 +1,9 @@
+{
+  "schema_version": "0.1.0",
+  "rfq_id": "DRAFT-BLOCK-01",
+  "buyer_id": null,
+  "message": { "text": "We import Korean cosmetics into Europe. Send me your best offer.", "language": "en", "channel": "chat" },
+  "fields": {
+    "destination_region": { "value": "Europe", "quote": "into Europe" }
+  }
+}

@@ -10,23 +10,21 @@
 
 > कार्यप्रवाहाचे दृश्य स्वरूप: शोधा, पडताळा, जुळवा आणि अंतिम निर्णय माणसाकडेच ठेवा.
 
-> **स्थिती: v0.4.0.** हा pipeline काल्पनिक fixtures वरील 748 cases वर तपासला गेला आहे आणि live वेबवर एकदा चाचणी घेतली गेली आहे. गुणांकन पद्धत (scoring rubric) **प्रत्यक्ष व्यावसायिक परिणामांशी अद्याप पडताळलेली नाही**: गुण पुन्हा तसेच मिळवता येतात आणि त्यांचा मागोवा घेता येतो, पण ते भविष्याचा अचूक अंदाज देतात हे अजून सिद्ध झालेले नाही. v0.2.0 मध्ये ते मोजण्यासाठीची साधने जोडली गेली ([गुणांची पडताळणी](#गुणांची-पडताळणी)), पण label केलेला नमुना (labelled sample) अजून अस्तित्वात नाही. RFQ Matching आणि Outreach Draft हे live डेटावर अजून चालवलेले नाहीत. कोणत्याही गुणांवर विश्वास ठेवण्यापूर्वी [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) वाचा.
+> **स्थिती: v0.5.0.** हा pipeline काल्पनिक fixtures वरील 796 cases वर तपासला गेला आहे आणि live वेबवर एकदा चाचणी घेतली गेली आहे. गुणांकन पद्धत (scoring rubric) **प्रत्यक्ष व्यावसायिक परिणामांशी अद्याप पडताळलेली नाही**: गुण पुन्हा तसेच मिळवता येतात आणि त्यांचा मागोवा घेता येतो, पण ते भविष्याचा अचूक अंदाज देतात हे अजून सिद्ध झालेले नाही. v0.2.0 मध्ये ते मोजण्यासाठीची साधने जोडली गेली ([गुणांची पडताळणी](#गुणांची-पडताळणी)), पण label केलेला नमुना (labelled sample) अजून अस्तित्वात नाही. RFQ Matching आणि Outreach Draft हे live डेटावर अजून चालवलेले नाहीत. कोणत्याही गुणांवर विश्वास ठेवण्यापूर्वी [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) वाचा.
 
 ---
 
 ## नवीन काय आहे
 
-**v0.4.0 (2026-09-21).** Rubric आता `kbtm-score-0.2.0` आहे. Audit मधून आलेल्या आठ दुरुस्त्या समाविष्ट झाल्या असून त्यांपैकी एक एका golden fixture चे गुण बदलते; त्यामुळे `kbtm-score-0.1.0` अंतर्गत साठवलेले गुण नवीन runs शी तुलना करण्यापूर्वी पुन्हा मोजावेत.
+**v0.5.0 (2026-09-21).** RFQ intake: buyer च्या chat message पासून Mode 3 ज्याचे matching करू शकतो अशा RFQ पर्यंत. गुण बदलत नाहीत; rubric `kbtm-score-0.2.0` च राहतो.
 
-- **Draft validation.** `validate_output.py --schema outreach-draft --record <गुणांकित run>` Mode 4 चा मसुदा तपासतो: envelope आणि त्याचा क्रम, प्रत्येक personalization fact गुणांकित record मधील पान त्याच observed date सह उद्धृत करते का, target qualified आहे आणि channel त्याच कंपनीचा आहे का, खोटा opt-out किंवा render न झालेला token उरलेला नाही ना, आणि compliance flags अधिकारक्षेत्र व channel शी जुळतात का. तो व्यापार अटी किंवा शब्दरचना तपासत नाही; ते अजूनही एक व्यक्तीच पाहते.
-- **Compliance lookup.** `schemas/compliance.config.json` मध्ये मसुदे ज्याच्याशी पडताळले जातात ती अधिकारक्षेत्र × channel सारणी आहे; त्यात भारत, इंडोनेशिया आणि तुर्किये समाविष्ट आहेत.
-- **Evidence नियम.** `--invariants` आता EVI-01…06 चालवतो: source tier विरुद्ध source type, official domain, inferred evidence वरील confidence ची मर्यादा, evidence quality, confidence आणि stale कालावधी.
-- **गुण बदलू शकणाऱ्या audit दुरुस्त्या.** परस्पर conflict दोनदा नव्हे, एकदाच मोजला जातो. उद्धरण नसलेले प्रमाणपत्र किमान directory मधून उद्धृत केलेल्या प्रमाणपत्राइतकेच गुण कमी करते. MOQ एककांचे समानार्थी (`pcs`, `EA`, `개`) आता MOQ hard filter बंद करत नाहीत. कशाशीही map न होणारी श्रेणी विक्रेत्याला कधीही नाकारत नाही. `--config` आता confidence आणि evidence quality पर्यंत पोहोचतो. देशांची नावे alpha-2 मध्ये normalise होतात. नावाला जोडून लिहिलेले कोरियन legal forms (`주식회사한빛`) dedupe होतात.
-- **अवैध document कधीही `--output` वर लिहिले जात नाही.** ते शेजारी `*.invalid.json` म्हणून लिहिले जाते, त्यामुळे साखळीतील पुढची command ते उचलू शकत नाही. MCP server तीच file कळवतो आणि ज्या `output_path` ची ती file आधीच अस्तित्वात आहे ते नाकारतो.
-- **`NA` हा code आहे.** INV-02 आता `export_regions` मधील North America किंवा country field मधील Namibia नाकारत नाही.
-- Tests: 536 → 748 cases.
+- **`intake_rfq.py`.** Agent message वाचतो आणि प्रत्येक field सोबत ते ज्या शब्दांतून वाचले तो शब्दशः quote लिहितो. Message मध्ये नसलेला quote script नाकारते, तसेच स्पष्ट सांगितलेली संख्या तिच्या quote मधील संख्येशी जुळत नसेल तरही नाकारते (`50000` म्हणजे "5,000 pcs" नव्हे).
+- **अंदाज नाही, रोखून ठेवणे.** Region शब्द ("GCC") कधीही country code बनत नाही. Unit नसलेली संख्या ("5천") आणि currency नसलेली किंमत unknown म्हणून रोखून ठेवली जाते. Agent ने अनुमान केलेले मूल्य ("Dubai" → `AE`) स्वीकारले जाते आणि buyer ला परत दाखवून खात्री केली जाते.
+- **परत विचारायचे प्रश्न.** जे गहाळ किंवा संदिग्ध आहे ते ठरावीक क्रमातील यादी म्हणून, English आणि Korean मध्ये परत येते. Product category नसेल तर RFQ च तयार होत नाही.
+- **काय बाहेर येते.** `rfq.schema.json` विरुद्ध validate होणारा `draft`, `unscored` RFQ; प्रत्येक quote `extensions.intake` खाली जपला जातो. Readiness आकडा `score_match.py` चाच आहे, म्हणजे Mode 3 जो आकडा छापतो तोच. Report message ची प्रत करत नाही: तो फक्त त्याची लांबी, SHA-256 आणि quotes ठेवतो. Quote मधील व्यक्तीचे नाव ओळखता येत नाही; अभिवादन नव्हे तर गरज quote करणे हे agent चे काम आहे.
+- Tests: 748 → 796 cases.
 
-v0.3.0 मध्ये run diff, re-check queue, lead export, MCP tool server आणि plugins जोडले गेले. v0.2.0 मध्ये [गुण-पडताळणीची साधने](#गुणांची-पडताळणी) आणि भारत, इंडोनेशिया व तुर्किये साठी [market packs](#market-packs-बाजारपेठनिहाय-संच) जोडले गेले. प्रत्येक release च्या संपूर्ण नोंदी: [CHANGELOG.md](CHANGELOG.md) (फक्त इंग्रजीत उपलब्ध).
+v0.4.0 मध्ये rubric `kbtm-score-0.2.0` वर गेला (audit मधील आठ दुरुस्त्या, त्यांपैकी एक golden गुण बदलते) आणि draft validation, compliance lookup व EVI-01…06 evidence rules जोडले गेले. v0.3.0 मध्ये run diff, re-check queue, lead export, MCP tool server आणि plugins जोडले गेले. v0.2.0 मध्ये [गुण-पडताळणीची साधने](#गुणांची-पडताळणी) आणि भारत, इंडोनेशिया व तुर्किये साठी [market packs](#market-packs-बाजारपेठनिहाय-संच) जोडले गेले. प्रत्येक release च्या संपूर्ण नोंदी: [CHANGELOG.md](CHANGELOG.md) (फक्त इंग्रजीत उपलब्ध).
 
 ---
 
@@ -169,6 +167,7 @@ kbeauty-trade-matchmaker/
 │   ├── tradewith-bulk-buyers.schema.json  # TradeWith bulk-import body; no contact fields (v0.3.0)
 │   ├── outreach-draft.schema.json  # The Mode 4 draft envelope the validator checks (v0.4.0)
 │   ├── compliance.config.json    # Jurisdiction x channel lookup for the draft compliance block (v0.4.0)
+│   ├── rfq-intake.schema.json    # The intake report: RFQ plus the questions to ask back (v0.5.0)
 │   └── scoring.config.json       # Every weight, threshold and penalty lives in this one file
 ├── scripts/                      # Standard library only. No network, no credentials
 │   ├── _common.py                # Config, rounding, normalisation, tri-state helpers, schema validator
@@ -182,6 +181,7 @@ kbeauty-trade-matchmaker/
 │   ├── acceptance_report.py      # Review sheets + scored runs -> Human Acceptance Rate report (v0.2.0)
 │   ├── diff_runs.py              # Two scored runs -> what changed between them (v0.3.0)
 │   ├── stale_evidence.py         # Stored records -> evidence to re-read, most urgent first (v0.3.0)
+│   ├── intake_rfq.py             # A buyer's chat message -> RFQ + questions to ask back (v0.5.0)
 │   ├── export_leads.py           # Scored run -> CSV or TradeWith import file; never sends (v0.3.0)
 │   └── mcp_server.py             # Optional stdio MCP server over the scripts above (v0.3.0)
 ├── templates/
@@ -507,7 +507,7 @@ python3 tests/run_tests.py -v    # One line per case, not just failures
 
 Runner फक्त standard library वापरतो, fixtures स्वतःच्या स्थानाच्या सापेक्ष शोधतो, प्रत्येक script ला `--as-of 2026-09-12` देतो, आणि output ची अपेक्षित fixtures शी **byte-by-byte** तुलना करतो. Fixture cases च्या आधी तो schemas स्वतः तपासतो: ते parse होतात का, प्रत्येक `$ref` resolve होतो का, कोणताही असमर्थित keyword वापरलेला नाही ना, सामायिक `$defs` सर्व files मध्ये एकसारख्या आहेत का, आणि आत नमूद केलेल्या आवृत्त्या `scoring.config.json` शी जुळतात का.
 
-`plugins` phase repository-स्तरावरील manifests आणि builder वाचतो, त्यामुळे 748 ही पूर्ण संख्या repository checkout ला लागू होते; install केलेली प्रत तीन SKIPs दाखवते (`plugins` phase, एक MCP case आणि repository root मधील README तपासणी). हा phase release builder एका तात्पुरत्या (throwaway) git repository मध्ये चालवतो, त्यामुळे commit न केलेल्या कामाचा निकालावर परिणाम होत नाही.
+`plugins` phase repository-स्तरावरील manifests आणि builder वाचतो, त्यामुळे 796 ही पूर्ण संख्या repository checkout ला लागू होते; install केलेली प्रत तीन SKIPs दाखवते (`plugins` phase, एक MCP case आणि repository root मधील README तपासणी). हा phase release builder एका तात्पुरत्या (throwaway) git repository मध्ये चालवतो, त्यामुळे commit न केलेल्या कामाचा निकालावर परिणाम होत नाही.
 
 Scripts थेटही चालवता येतात. JSON `stdout` वर जातो आणि प्रत्येक diagnostic संदेश `stderr` वर, त्यामुळे pipes सुरक्षित आहेत.
 
@@ -571,7 +571,7 @@ Environment variables import च्या वेळी नव्हे तर ca
 
 | आवृत्ती | मूल्य | काय दर्शवते | कुठे असते |
 |---|---|---|---|
-| `skill_version` | `0.4.0` | Package: prompts, references, scripts, templates, tests | `SKILL.md` चा मुख्य मजकूर, `match-result.skill_version`, दोन्ही plugin manifests |
+| `skill_version` | `0.5.0` | Package: prompts, references, scripts, templates, tests | `SKILL.md` चा मुख्य मजकूर, `match-result.skill_version`, दोन्ही plugin manifests |
 | `schema_version` | `0.1.0` | रचनेचा contract: field names, enums, आवश्यक fields च्या याद्या | प्रत्येक document, `schemas/*.json` |
 | `score_version` | `kbtm-score-0.2.0` | Rubric: weights, निकष, संकेत, दंड, thresholds, hard filters | `scoring.config.json`, प्रत्येक गुणांकित document |
 

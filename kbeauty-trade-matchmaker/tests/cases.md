@@ -821,6 +821,32 @@ exit-1 rows of section 14) red. No scorer, schema, golden or version changed.
 | `review: R-16 the widened URL scan still passes …` | `hotel-20240101`, a registry id `0123456789` in a path, a `%20`-encoded BPOM number and `/tel-plans/2024` give no personal-data hit |
 | `review: R-17 the network scan flags …` | The shared scan helper flags `from urllib import request`, `__import__(…)`, `importlib`, a mail-protocol module and `subprocess` outside its allow-list (`scripts/mcp_server.py`, `tools/build_release.py`), and passes `urllib.parse` and comments |
 
+## 18. RFQ intake — `intake_rfq.py`
+
+`phase_rfq_intake` runs after the validator code-token cases. Fixtures live in `tests/fixtures/intake/`
+(`uae-sunscreen`, `ko-one-line`, `no-product`, `invented-moq`), goldens in
+`tests/fixtures/expected/intake.*.expected.json`, all as of 2026-09-21.
+
+| Case | What it asserts |
+|---|---|
+| `intake: <name> exits 0 and matches its golden` · `is byte-identical across two runs` | Three goldens, deterministic output |
+| `intake: <name> never echoes the buyer's message` | `message.text` does not occur in the report; only its length, SHA-256 and the bounded quotes do |
+| `intake: validate_output.py --schema auto routes <name> to rfq-intake` | The report validates under `--strict` and is detected by `report_kind` |
+| `intake: a price with no currency is held …` | "Target 2.5 per unit" → `target_price: "unknown"` plus `currency_unstated` |
+| `intake: a region word is noted, never expanded …` | "GCC" becomes a note; `AE`, inferred from "Dubai", gets a `confirm_inferred` question; no `region_countries` anywhere |
+| `intake: the emitted RFQ is a draft, unscored and carries its quotes` | `status: draft`, `score_version: unscored`, `evidence: []`, quotes under `extensions.intake` |
+| `intake: a number with no unit is held, not read as units` | "5천" → `quantity: "unknown"`, no `moq_unit`, first question `unit_unstated` |
+| `intake: Korean country, category and certification names normalise` | 인도네시아 → `ID`, 마스크팩 → `mask_sheet`, 할랄 → `HALAL` |
+| `intake: no product category means no RFQ …` | `rfq: null`, `ready_for_matching: false`, no `readiness`, first question blocking |
+| `intake: the emitted RFQ scores through score_match.py with the same readiness` | The RFQ runs through Mode 3 against `sellers.golden.json`; `extensions.rfq_readiness` equals the report's `readiness` |
+| `intake: a quote that is not in the message is refused …` | `invented-moq`: exit 1, nothing written, the field named |
+| `intake: a region word offered as the destination country is refused` · `a quote carrying a telephone number is refused (INV-31)` · `the agent cannot set status, scores or evidence` · `a missing --as-of is a usage error (exit 2)` | Refusals |
+| `intake: two different units …` · `an MOQ ceiling above the order quantity …` · `a deadline before --as-of …` · `a certification outside the vocabulary …` | `unit_mismatch`, `moq_exceeds_quantity`, `timeline_in_past`, `unmapped_certification` |
+| `intake: refuses …` (11 cases) | Review findings, each of which once exited 0: a region value not in its quote, a one-letter quote, a quote cut from inside a word, a 250-character quote, `50000` quoted as "5,000 pcs", NaN, 10^400, a unit outside the vocabulary, an empty `preferred_certifications`, a price range with min above max, a telephone as `buyer_id` |
+| `intake: unit 'unknown' / 'UNKNOWN' / '.' is unstated, never read as units` | `normalize_unit` maps these to `units` for the scorer; at intake they hold the quantity and ask `unit_unstated` |
+| `intake: an empty required_certifications is accepted and shown back …` · `an inferred number is not held to its quote's digits, and is confirmed` | The two deliberate exceptions, each with a `confirm_inferred` question |
+| `intake: no scoring path reads the intake tool or its document` | No scorer, normaliser or deduper mentions `intake_rfq` or `rfq-intake` |
+
 ## 11. Validator negatives, outreach drafts, Mode 1 → Mode 4
 
 | Case | What it asserts | Rule |

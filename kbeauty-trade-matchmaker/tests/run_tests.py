@@ -6702,6 +6702,7 @@ MANIFEST = [
     "schemas/recheck-queue.schema.json",
     "schemas/tradewith-bulk-buyers.schema.json",
     "schemas/outreach-draft.schema.json",
+    "schemas/rfq-intake.schema.json",
     "schemas/compliance.config.json",
     "scripts/_common.py",
     "scripts/normalize_company.py",
@@ -6715,6 +6716,7 @@ MANIFEST = [
     "scripts/diff_runs.py",
     "scripts/stale_evidence.py",
     "scripts/export_leads.py",
+    "scripts/intake_rfq.py",
     "scripts/mcp_server.py",
     "templates/buyer_outreach.md",
     "templates/seller_outreach.md",
@@ -7574,6 +7576,249 @@ def phase_validator_code_tokens(report, allow_missing):
                 report.fail("validator codes: %s" % label, (err or out)[:300])
                 continue
             report.check("validator codes: %s" % label, ("INV-02" in rules) == expect, sorted(rules))
+
+
+INTAKE_SCRIPTS = ["intake_rfq.py"]
+INTAKE_KIND = "rfq-intake"
+INTAKE_AS_OF = "2026-09-21"
+INTAKE_DIR = os.path.join(FIXTURES, "intake")
+
+
+def _intake_run(document, tmp, extra=None):
+    source = os.path.join(tmp, "intake.input.json")
+    with open(source, "w", encoding="utf-8") as fh:
+        json.dump(document, fh, ensure_ascii=False)
+    target = os.path.join(tmp, "intake.output.json")
+    if os.path.exists(target):
+        os.unlink(target)
+    args = ["--input", source, "--output", target, "--quiet"]
+    code, _out, err = run_script("intake_rfq.py", args + (extra if extra is not None
+                                                          else ["--as-of", INTAKE_AS_OF]))
+    report_doc = None
+    if os.path.isfile(target):
+        with open(target, encoding="utf-8") as fh:
+            report_doc = json.load(fh)
+    return code, err, report_doc
+
+
+def phase_rfq_intake(report, allow_missing):
+    """intake_rfq.py: a value is read from the buyer's own words or it stays unknown."""
+    absent = [n for n in INTAKE_SCRIPTS if not os.path.isfile(os.path.join(SCRIPT_DIR, n))]
+    if absent or missing_scripts():
+        note = "scripts absent: %s" % ", ".join(absent or missing_scripts())
+        (report.skip if allow_missing else report.fail)("intake: RFQ intake cases", note)
+        return
+
+    def load(name):
+        with open(os.path.join(INTAKE_DIR, name + ".input.json"), encoding="utf-8") as fh:
+            return json.load(fh)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        # Goldens, determinism and routing.
+        for name in ("uae-sunscreen", "ko-one-line", "no-product"):
+            source = os.path.join(INTAKE_DIR, name + ".input.json")
+            args = ["--input", source, "--as-of", INTAKE_AS_OF, "--pretty", "--quiet"]
+            code, out, err = run_script("intake_rfq.py", args)
+            _code2, out2, _err2 = run_script("intake_rfq.py", args)
+            with open(os.path.join(EXPECTED, "intake.%s.expected.json" % name), encoding="utf-8") as fh:
+                expected = fh.read()
+            report.check("intake: %s exits 0 and matches its golden" % name,
+                         code == 0 and out == expected, "exit %d %s" % (code, err.strip()[:300]))
+            report.check("intake: %s is byte-identical across two runs" % name, out == out2)
+            text = load(name)["message"]["text"]
+            report.check("intake: %s never echoes the buyer's message" % name, text not in out)
+            produced = os.path.join(tmp, name + ".json")
+            with open(produced, "w", encoding="utf-8") as fh:
+                fh.write(out)
+            vcode, vout, _verr = run_script("validate_output.py", [
+                "--input", produced, "--schema", "auto", "--invariants", "--strict", "--json"])
+            report.check("intake: validate_output.py --schema auto routes %s to %s" % (name, INTAKE_KIND),
+                         vcode == 0 and json.loads(vout).get("schema") == INTAKE_KIND, vout[:300])
+
+        uae = json.loads(_read_text(os.path.join(EXPECTED, "intake.uae-sunscreen.expected.json")))
+        reasons = [(q["reason"], q["field"]) for q in uae["questions"]]
+        report.check("intake: a price with no currency is held as unknown and asked about",
+                     uae["rfq"]["target_price"] == "unknown" and ("currency_unstated", "target_price") in reasons,
+                     reasons)
+        report.check("intake: a region word is noted, never expanded, and an inferred country is confirmed",
+                     uae["rfq"]["destination_country"] == "AE"
+                     and ("confirm_inferred", "destination_country") in reasons
+                     and "region_countries" not in json.dumps(uae)
+                     and any("GCC" in n and "not expanded" in n for n in uae["notes"]), reasons)
+        report.check("intake: the emitted RFQ is a draft, unscored and carries its quotes",
+                     uae["rfq"]["status"] == "draft" and uae["rfq"]["score_version"] == "unscored"
+                     and uae["rfq"]["qualification_score"] == 0 and uae["rfq"]["evidence"] == []
+                     and uae["rfq"]["extensions"]["intake"]["max_moq"]["quote"] == "MOQ must be 3000 pcs or lower")
+
+        ko = json.loads(_read_text(os.path.join(EXPECTED, "intake.ko-one-line.expected.json")))
+        report.check("intake: a number with no unit is held, not read as units",
+                     ko["rfq"]["quantity"] == "unknown" and "moq_unit" not in ko["rfq"]
+                     and ko["questions"][0]["reason"] == "unit_unstated", ko["questions"][:1])
+        report.check("intake: Korean country, category and certification names normalise",
+                     ko["rfq"]["destination_country"] == "ID" and ko["rfq"]["product_category"] == "mask_sheet"
+                     and ko["rfq"]["required_certifications"] == ["HALAL"])
+
+        blocked = json.loads(_read_text(os.path.join(EXPECTED, "intake.no-product.expected.json")))
+        report.check("intake: no product category means no RFQ, and the first question is blocking",
+                     blocked["rfq"] is None and blocked["ready_for_matching"] is False
+                     and "readiness" not in blocked and blocked["questions"][0]["blocking"] is True
+                     and blocked["questions"][0]["reason"] == "missing_required"
+                     and [q for q in blocked["questions"] if q["reason"] == "region_not_country"] != [])
+
+        # The readiness figure is the one Mode 3 prints, and the RFQ runs through Mode 3.
+        rfq_path = os.path.join(tmp, "uae.rfq.json")
+        with open(rfq_path, "w", encoding="utf-8") as fh:
+            json.dump(uae["rfq"], fh, ensure_ascii=False)
+        mcode, mout, merr = run_script("score_match.py", [
+            "--rfq", rfq_path, "--sellers", os.path.join(FIXTURES, "sellers.golden.json"),
+            "--as-of", INTAKE_AS_OF])
+        try:
+            match_block = json.loads(mout)["extensions"]["rfq_readiness"]
+        except (ValueError, KeyError):
+            match_block = None
+        report.check("intake: the emitted RFQ scores through score_match.py with the same readiness",
+                     mcode == 0 and match_block == uae["readiness"],
+                     "exit %d %s\n%s" % (mcode, merr.strip()[:300], match_block))
+
+        # Refusals: nothing is written.
+        code, err, doc = _intake_run(load("invented-moq"), tmp)
+        report.check("intake: a quote that is not in the message is refused (exit 1, nothing written)",
+                     code == 1 and doc is None and "fields.max_moq" in err, "exit %d %s" % (code, err[:300]))
+
+        def mutated(edit):
+            base = load("uae-sunscreen")
+            edit(base)
+            return _intake_run(base, tmp)
+
+        def region_as_country(d):
+            d["fields"]["destination_country"] = {"value": "GCC", "quote": "Shipping to the GCC"}
+        code, err, doc = mutated(region_as_country)
+        report.check("intake: a region word offered as the destination country is refused",
+                     code == 1 and doc is None and "never expanded" in err, "exit %d %s" % (code, err[:300]))
+
+        def contact_in_quote(d):
+            d["message"]["text"] += " Call +971 50 123 4567."
+            d["fields"]["product_description"]["quote"] = "Call +971 50 123 4567"
+        code, err, doc = mutated(contact_in_quote)
+        report.check("intake: a quote carrying a telephone number is refused (INV-31)",
+                     code == 1 and doc is None and "INV-31" in err, "exit %d %s" % (code, err[:300]))
+
+        def agent_sets_status(d):
+            d["fields"]["status"] = {"value": "qualified", "quote": "private label"}
+        code, err, doc = mutated(agent_sets_status)
+        report.check("intake: the agent cannot set status, scores or evidence",
+                     code == 1 and doc is None and "may not set" in err, "exit %d %s" % (code, err[:300]))
+
+        # Review findings of 2026-09-21: each of these once exited 0 with a report on disk.
+        def f(name, **entry):
+            return lambda d: d["fields"].__setitem__(name, entry)
+
+        def both(*edits):
+            return lambda d: [e(d) for e in edits]
+
+        def say(text):
+            return lambda d: d["message"].__setitem__("text", d["message"]["text"] + " " + text)
+
+        refusals = [
+            ("a region value that is not the word in its quote (and would carry a telephone into a note)",
+             f("destination_region", value="call me at +82 10 1234 5678", quote="Shipping to the GCC"),
+             "destination_region"),
+            ("a one-letter quote", f("commercial_model", value="oem_odm", quote="o"), "2..200"),
+            ("a quote cut out of the middle of a word",
+             f("product_category", value="toner", quote="ate lab"), "fields.product_category"),
+            ("a quote longer than a phrase",
+             both(say("x" * 250), f("product_description", value="sunscreen", quote="x" * 250)), "2..200"),
+            ("a stated number that is not the number in its quote",
+             f("quantity", value=50000, unit="pcs", quote="Around 5,000 pcs"), "not the number in its quote"),
+            ("a NaN amount", f("quantity", value=float("nan"), unit="pcs", quote="Around 5,000 pcs"),
+             "must be a number"),
+            ("an amount above the ceiling", f("quantity", value=10 ** 400, unit="pcs", quote="Around 5,000 pcs"),
+             "must be a number"),
+            ("a unit outside the vocabulary", f("quantity", value=5000, unit="\u0000x", quote="Around 5,000 pcs"),
+             "neither a unit"),
+            ("an empty list on a field where empty is not a statement",
+             f("preferred_certifications", value=[], quote="halal would be nice"), "leave the field out"),
+            ("a price range with min above max",
+             both(say("Budget 100 to 1 USD."),
+                  f("target_price", value={"min": 100, "max": 1, "currency": "USD"}, quote="100 to 1 USD")),
+             "min above max"),
+            ("a contact offered as buyer_id", lambda d: d.__setitem__("buyer_id", "+82 10 1234 5678"), "INV-31"),
+        ]
+        for label, edit, needle in refusals:
+            code, err, doc = mutated(edit)
+            report.check("intake: refuses %s" % label, code == 1 and doc is None and needle in err,
+                         "exit %d %s" % (code, err[:300]))
+
+        for unit in ("unknown", "UNKNOWN", "."):
+            code, err, doc = mutated(f("quantity", value=5000, unit=unit, quote="Around 5,000 pcs"))
+            report.check("intake: unit %r is unstated, never read as units" % unit,
+                         code == 0 and doc is not None and doc["rfq"]["quantity"] == "unknown"
+                         and any(q["reason"] == "unit_unstated" and q["field"] == "quantity"
+                                 for q in doc["questions"]), "exit %d %s" % (code, err[:300]))
+
+        code, err, doc = mutated(both(say("No certificates needed."),
+                                      f("required_certifications", value=[], quote="No certificates needed")))
+        report.check("intake: an empty required_certifications is accepted and shown back to the buyer",
+                     code == 0 and doc is not None and doc["rfq"]["required_certifications"] == []
+                     and any(q["reason"] == "confirm_inferred" and q["field"] == "required_certifications"
+                             for q in doc["questions"]), "exit %d %s" % (code, err[:300]))
+
+        code, err, doc = mutated(both(say("Lead time six weeks at most."),
+                                      f("max_lead_time_days", value=42, inferred=True, quote="six weeks at most")))
+        report.check("intake: an inferred number is not held to its quote's digits, and is confirmed",
+                     code == 0 and doc is not None and doc["rfq"]["max_lead_time_days"] == 42
+                     and any(q["reason"] == "confirm_inferred" and q["field"] == "max_lead_time_days"
+                             for q in doc["questions"]), "exit %d %s" % (code, err[:300]))
+
+        code, err, doc = _intake_run(load("uae-sunscreen"), tmp, extra=[])
+        report.check("intake: a missing --as-of is a usage error (exit 2)",
+                     code == 2 and doc is None and "--as-of" in err, "exit %d %s" % (code, err[:300]))
+
+        # Questions raised by contradictions.
+        def question_case(label, edit, reason, field, also=None):
+            code, err, doc = mutated(edit)
+            found = doc is not None and any(q["reason"] == reason and q["field"] == field
+                                            for q in doc["questions"])
+            report.check("intake: %s" % label, code == 0 and found and (also is None or also(doc)),
+                         "exit %d %s" % (code, err[:300]))
+
+        def unit_mismatch(d):
+            d["message"]["text"] += " Or 5,000 sets."
+            d["fields"]["quantity"] = {"value": 5000, "unit": "sets", "quote": "5,000 sets"}
+        question_case("two different units hold the quantity and ask which one", unit_mismatch,
+                      "unit_mismatch", "quantity",
+                      lambda doc: doc["rfq"]["quantity"] == "unknown" and doc["rfq"]["moq_unit"] == "units")
+
+        def moq_above(d):
+            d["message"]["text"] += " MOQ 9000 pcs."
+            d["fields"]["max_moq"] = {"value": 9000, "unit": "pcs", "quote": "MOQ 9000 pcs"}
+        question_case("an MOQ ceiling above the order quantity is asked about", moq_above,
+                      "moq_exceeds_quantity", "max_moq")
+
+        def past_deadline(d):
+            d["message"]["text"] += " Deliver by 2026-08-01."
+            d["fields"]["timeline"] = {"value": "2026-08-01", "quote": "by 2026-08-01"}
+        question_case("a deadline before --as-of is asked about, not silently kept", past_deadline,
+                      "timeline_in_past", "timeline")
+
+        def odd_certificate(d):
+            d["message"]["text"] += " Also need Dubai Municipality approval."
+            d["fields"]["required_certifications"] = {
+                "value": ["ISO 22716", "Dubai Municipality approval"],
+                "quote": ["Need ISO 22716", "Dubai Municipality approval"]}
+        question_case("a certification outside the vocabulary is kept and asked about", odd_certificate,
+                      "unmapped_certification", "required_certifications",
+                      lambda doc: doc["rfq"]["required_certifications"] == ["ISO22716", "DUBAI_MUNICIPALITY_APPROVAL"])
+
+    # Isolation: no scoring path reads the intake tool or its document.
+    hits = []
+    for name in ["score_buyer.py", "score_seller.py", "score_match.py", "normalize_company.py",
+                 "dedupe_companies.py"]:
+        text = _read_text(os.path.join(SCRIPT_DIR, name))
+        for token in ("intake_rfq", INTAKE_KIND):
+            if token in text:
+                hits.append("%s mentions %s" % (name, token))
+    report.check("intake: no scoring path reads the intake tool or its document", not hits, "\n".join(hits))
 
 
 def _adapter_write(path, document):
@@ -8744,6 +8989,7 @@ def main(argv=None):
     phase_mcp_server(report, args.allow_missing_scripts)
     phase_review_followups(report, args.allow_missing_scripts)
     phase_validator_code_tokens(report, args.allow_missing_scripts)
+    phase_rfq_intake(report, args.allow_missing_scripts)
     phase_audit_regressions(report, args.allow_missing_scripts)
     phase_validator_negatives(report, pipeline, args.allow_missing_scripts)
     phase_validator_positives(report, args.allow_missing_scripts)

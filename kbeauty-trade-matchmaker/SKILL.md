@@ -10,7 +10,7 @@ citable URL, score both sides with deterministic scripts, match a buying request
 outreach drafts that a human reviews before anything is sent.
 *Korean gloss: K뷰티 바이어·셀러를 근거 기반으로 발굴·검증·점수화·매칭하고, 사람이 검토할 아웃리치 초안까지만 만든다.*
 
-`skill_version 0.4.0` · `schema_version 0.1.0` · `score_version kbtm-score-0.2.0`. Runtime tool names live **only**
+`skill_version 0.5.0` · `schema_version 0.1.0` · `score_version kbtm-score-0.2.0`. Runtime tool names live **only**
 in `references/runtime-adapters.md`; this file names capabilities ("the runtime's web-search capability", "the
 runtime's internal-data connector") so the folder runs unchanged in every runtime. `install.sh` installs it;
 plugin packaging and the release archives are described in `references/runtime-adapters.md` §5.5.
@@ -128,6 +128,19 @@ python3 scripts/validate_output.py --input sellers.scored.json --schema discover
 - **Required:** one RFQ document (`schemas/rfq.schema.json`; load it through the internal-data connector or
   from a file) **and** seller candidates (internal list, Mode 2 output, or both merged). **Optional:** `top`
   (default 10, max 50), `threshold`, rerank and rationale inputs.
+- **When the request is a chat message, not an RFQ document:** read the message and write an `rfq-intake`
+  input (`references/data-contract.md` §9.7) — for each field you found, the value **and the verbatim
+  `quote`** it came from; mark `inferred: true` when you reasoned ("Dubai" → `AE`, "before December" → a
+  date). Put a region word in `destination_region`, never in `destination_country`; leave `unit` off a
+  number the buyer gave no unit for. Then run the intake script. It refuses any quote that is not in the
+  message (exit 1), holds unit-less numbers and currency-less prices, and returns the RFQ plus `questions[]`
+  (English and Korean) to ask back. `ready_for_matching: false` means there is no product category yet: ask
+  first, match later. Never answer a question on the buyer's behalf.
+
+```bash
+python3 scripts/intake_rfq.py --input intake.input.json --as-of 2026-09-21 --pretty --output intake.json
+```
+
 - **Steps:** project the RFQ onto the query surface → `hard_filter` → `weighted_score` → `semantic_rerank`
   (bounded; needs a rationale plus `evidence_ids`, cannot touch excluded sellers) → `unknown_handling`. Write
   the model's rerank and narrative passes to JSON files and hand them to the script; never edit the numbers.
@@ -287,6 +300,7 @@ the flags it exposes, no new behaviour. The flags left out, and client setup, ar
 | `scripts/diff_runs.py` | Asked what changed between two runs of the same search or RFQ: new / gone records, exclusions, score, rank, qualified and Missing changes (`schemas/run-diff.schema.json`) |
 | `scripts/export_leads.py`, `schemas/tradewith-bulk-buyers.schema.json` | Handing scored leads to a spreadsheet, a CRM or a TradeWith admin import (`references/data-contract.md` §9.6) |
 | `references/evidence-policy.md` | Deciding fact vs. inference vs. unknown, source tier, staleness, conflicting sources |
+| `scripts/intake_rfq.py` | A buyer's request arrives as free text and Mode 3 needs an RFQ (`schemas/rfq-intake.schema.json`; input shape and reason codes in `references/data-contract.md` §9.7) |
 | `scripts/stale_evidence.py` | Records are being re-used after time has passed, or a user asks what needs re-verifying (`schemas/recheck-queue.schema.json`; reason codes in `references/evidence-policy.md` §5.6) |
 | `references/outreach-guidelines.md` | Running Mode 4, or asked what a draft may and may not claim |
 | `references/compliance-notes.md` | Filling the compliance block, or asked about robots/ToS, data minimization, marketing rules |
@@ -295,7 +309,7 @@ the flags it exposes, no new behaviour. The flags left out, and client setup, ar
 | `references/runtime-adapters.md` | Binding a capability to this runtime's actual tool, or a capability is missing, or installing the package as a plugin |
 | `scripts/mcp_server.py` | The runtime calls the package scripts as tools rather than through a shell; client configuration is in `references/runtime-adapters.md` |
 | `schemas/*.json` | Binding shapes for `buyer`, `seller`, `rfq`, `evidence`, `match-result`, `discovery-result`, `outreach-draft`, every number in `scoring.config.json`, and the jurisdiction × channel lookup in `compliance.config.json` |
-| `scripts/*.py` | Running the pipeline (`scripts/_common.py` is the shared library every CLI script imports; the six pipeline scripts are listed above, the two calibration scripts, the run-diff script, the standalone re-check script `scripts/stale_evidence.py`, the export script and the optional tool server `scripts/mcp_server.py` below them) |
+| `scripts/*.py` | Running the pipeline (`scripts/_common.py` is the shared library every CLI script imports; the six pipeline scripts are listed above, the two calibration scripts, the run-diff script, the standalone re-check script `scripts/stale_evidence.py`, the RFQ intake script `scripts/intake_rfq.py`, the export script and the optional tool server `scripts/mcp_server.py` below them) |
 | `templates/buyer_outreach.md`, `templates/seller_outreach.md` | Rendering a draft; the seller template has RFQ-present and RFQ-absent variants |
 | `templates/legal_notices.md` | Appending the `Required legal notices` block to a draft: the per-jurisdiction x per-channel wording, copied verbatim, keyed `{{country_alpha2}}.{{channel_type}}` (R10.4.6) |
 | `adapters/tradewith_adapter.md`, `adapters/tradewith_adapter.py` | Reading an RFQ or internal sellers, or queueing leads / matches / drafts for review |

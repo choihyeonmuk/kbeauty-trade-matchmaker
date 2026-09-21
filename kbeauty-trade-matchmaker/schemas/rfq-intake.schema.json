@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tradewith.example/kbeauty-trade-matchmaker/v0.1.0/rfq-intake.schema.json",
+  "title": "RFQ Intake",
+  "description": "One intake report, as emitted by scripts/intake_rfq.py: the RFQ built from a buyer's free-text message, and the questions to ask back. It is an INTAKE document: it carries no score of its own, no scorer reads it, and producing one can never move score_version. The embedded `rfq` is validated against rfq.schema.json by the script before the report is written, so it is typed loosely here. See references/data-contract.md section 9.7 for the input shape and the reason codes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "report_kind",
+    "schema_version",
+    "skill_version",
+    "as_of",
+    "rfq_id",
+    "message",
+    "ready_for_matching",
+    "stated_fields",
+    "rfq",
+    "questions",
+    "notes"
+  ],
+  "properties": {
+    "report_kind": {
+      "type": "string",
+      "description": "Document discriminator, so validate_output.py --schema auto can route this document without guessing.",
+      "const": "rfq-intake"
+    },
+    "schema_version": {
+      "type": "string",
+      "description": "Version of this schema contract, e.g. \"0.1.0\".",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "skill_version": {
+      "type": "string",
+      "description": "Version of the skill package that produced this document.",
+      "maxLength": 64
+    },
+    "as_of": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "description": "The --as-of intake date. The clock is never read."
+    },
+    "rfq_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:#-]{0,127}$"
+    },
+    "message": {
+      "type": "object",
+      "description": "What is kept of the buyer's message. The text is not copied: a chat message names people and numbers (INV-31). Quotes of at most 200 characters appear in questions[] and under rfq.extensions.intake.",
+      "additionalProperties": false,
+      "required": ["language", "channel", "length", "sha256"],
+      "properties": {
+        "language": { "type": "string", "maxLength": 32 },
+        "channel": { "type": "string", "maxLength": 32 },
+        "length": { "type": "integer", "minimum": 1, "maximum": 8000 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "ready_for_matching": {
+      "type": "boolean",
+      "description": "False when a blocking question remains (no product category); `rfq` is then null."
+    },
+    "stated_fields": {
+      "type": "array",
+      "description": "The fields the buyer's own words supplied, in the script's field order.",
+      "items": { "type": "string", "maxLength": 80 },
+      "uniqueItems": true,
+      "maxItems": 20
+    },
+    "rfq": {
+      "description": "The rfq.schema.json document, status \"draft\" and score_version \"unscored\", or null when intake is blocked.",
+      "oneOf": [
+        { "type": "object" },
+        { "type": "null" }
+      ]
+    },
+    "readiness": {
+      "type": "object",
+      "description": "score_match.py's own readiness function applied to `rfq`, so this is the figure Mode 3 will print. Absent when `rfq` is null.",
+      "additionalProperties": false,
+      "required": ["qualification_score", "readiness_detail"],
+      "properties": {
+        "qualification_score": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "readiness_detail": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["filled", "total", "missing_fields"],
+          "properties": {
+            "filled": { "type": "integer", "minimum": 0, "maximum": 10 },
+            "total": { "type": "integer", "minimum": 1, "maximum": 10 },
+            "missing_fields": {
+              "type": "array",
+              "items": { "type": "string", "maxLength": 80 },
+              "uniqueItems": true,
+              "maxItems": 10
+            }
+          }
+        }
+      }
+    },
+    "questions": {
+      "type": "array",
+      "description": "What to ask the buyer, in the fixed reason order of scripts/intake_rfq.py REASON_ORDER.",
+      "maxItems": 60,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["question_id", "reason", "field", "blocking", "text_en", "text_ko"],
+        "properties": {
+          "question_id": { "type": "string", "pattern": "^Q-[0-9]{2}$" },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "missing_required",
+              "region_not_country",
+              "unit_unstated",
+              "unit_mismatch",
+              "moq_exceeds_quantity",
+              "currency_unstated",
+              "timeline_in_past",
+              "unmapped_category",
+              "unmapped_certification",
+              "confirm_inferred",
+              "missing"
+            ]
+          },
+          "field": { "type": "string", "maxLength": 80 },
+          "blocking": { "type": "boolean" },
+          "text_en": { "type": "string", "minLength": 1, "maxLength": 600 },
+          "text_ko": { "type": "string", "minLength": 1, "maxLength": 600 }
+        }
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string", "maxLength": 1000 },
+      "maxItems": 50
+    }
+  }
+}

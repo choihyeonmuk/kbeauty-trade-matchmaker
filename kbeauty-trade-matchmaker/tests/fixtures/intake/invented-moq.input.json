@@ -1,0 +1,12 @@
+{
+  "schema_version": "0.1.0",
+  "rfq_id": "DRAFT-BAD-01",
+  "buyer_id": null,
+  "message": { "text": "Need toner for Turkey, 2000 units.", "language": "en", "channel": "chat" },
+  "fields": {
+    "destination_country": { "value": "Turkey", "quote": "for Turkey" },
+    "product_category": { "value": "toner", "quote": "Need toner" },
+    "quantity": { "value": 2000, "unit": "units", "quote": "2000 units" },
+    "max_moq": { "value": 1000, "unit": "units", "quote": "MOQ under 1000" }
+  }
+}

@@ -32,7 +32,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PACKAGE_ROOT = os.path.dirname(SCRIPT_DIR)
 SCHEMA_DIR = os.path.join(PACKAGE_ROOT, "schemas")
 
-SKILL_VERSION = "0.4.0"
+SKILL_VERSION = "0.5.0"
 SCHEMA_VERSION = "0.1.0"
 UNKNOWN = "unknown"
 
@@ -887,6 +887,9 @@ SCHEMA_NAMES = (
     # import and no scorer reads it (references/data-contract.md section 9.4).
     "tradewith-bulk-buyers",
     "outreach-draft",
+    # An INTAKE document: scripts/intake_rfq.py emits it from a buyer's free-text message.
+    # It carries the RFQ and the questions to ask back, and no scorer reads it.
+    "rfq-intake",
 )
 
 _DATE_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
