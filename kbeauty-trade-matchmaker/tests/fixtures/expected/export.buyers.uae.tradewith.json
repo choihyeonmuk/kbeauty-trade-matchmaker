@@ -8,7 +8,7 @@
       "industry": "BEAUTY",
       "category": "distributor",
       "productsSummary": "skincare, sunscreen, cleanser, mask_sheet; Korean brands: Brand A, Brand B, Brand C, Brand D, Brand E, Brand F",
-      "originalSource": "kbeauty-trade-matchmaker | score_version=kbtm-score-0.1.0 | as_of=2026-09-12 | record_id=BUY-gulfglow-example | stale=false",
+      "originalSource": "kbeauty-trade-matchmaker | score_version=kbtm-score-0.2.0 | as_of=2026-09-12 | record_id=BUY-gulfglow-example | stale=false",
       "sourceUrl": "https://gulfglow.example/about"
     },
     {
@@ -19,7 +19,7 @@
       "industry": "BEAUTY",
       "category": "importer",
       "productsSummary": "skincare, serum, mask_sheet, sunscreen; Korean brands: Brand G, Brand H",
-      "originalSource": "kbeauty-trade-matchmaker | score_version=kbtm-score-0.1.0 | as_of=2026-09-12 | record_id=BUY-dunesourcing-example | stale=false",
+      "originalSource": "kbeauty-trade-matchmaker | score_version=kbtm-score-0.2.0 | as_of=2026-09-12 | record_id=BUY-dunesourcing-example | stale=false",
       "sourceUrl": "https://dunesourcing.example/about"
     },
     {
@@ -30,7 +30,7 @@
       "industry": "BEAUTY",
       "category": "distributor",
       "productsSummary": "skincare, sunscreen, mask_sheet, cushion; Korean brands: Brand X, Brand Y, Brand Z, Brand AA",
-      "originalSource": "kbeauty-trade-matchmaker | score_version=kbtm-score-0.1.0 | as_of=2026-09-12 | record_id=BUY-sakurabeautytrading-example | stale=false",
+      "originalSource": "kbeauty-trade-matchmaker | score_version=kbtm-score-0.2.0 | as_of=2026-09-12 | record_id=BUY-sakurabeautytrading-example | stale=false",
       "sourceUrl": "https://sakurabeautytrading.example/company",
       "social": "https://linkedin.example/company/sakura-beauty-trading"
     },
@@ -42,7 +42,7 @@
       "industry": "BEAUTY",
       "category": "wholesaler",
       "productsSummary": "sunscreen, suncare, after_sun, skincare; Korean brands: Brand N, Brand O, Brand P, Brand Q",
-      "originalSource": "kbeauty-trade-matchmaker | score_version=kbtm-score-0.1.0 | as_of=2026-09-12 | record_id=BUY-britsun-example | stale=false",
+      "originalSource": "kbeauty-trade-matchmaker | score_version=kbtm-score-0.2.0 | as_of=2026-09-12 | record_id=BUY-britsun-example | stale=false",
       "sourceUrl": "https://britsun.example/about"
     },
     {
@@ -53,7 +53,7 @@
       "industry": "BEAUTY",
       "category": "distributor",
       "productsSummary": "skincare, sunscreen, mask_sheet; Korean brands: Brand T, Brand U, Brand V",
-      "originalSource": "kbeauty-trade-matchmaker | score_version=kbtm-score-0.1.0 | as_of=2026-09-12 | record_id=BUY-pacificglowdist-example | stale=false",
+      "originalSource": "kbeauty-trade-matchmaker | score_version=kbtm-score-0.2.0 | as_of=2026-09-12 | record_id=BUY-pacificglowdist-example | stale=false",
       "sourceUrl": "https://pacificglowdist.example/about"
     },
     {
@@ -64,7 +64,7 @@
       "industry": "BEAUTY",
       "category": "distributor",
       "productsSummary": "skincare, sunscreen; Korean brands: Brand K, Brand L, Brand M",
-      "originalSource": "kbeauty-trade-matchmaker | score_version=kbtm-score-0.1.0 | as_of=2026-09-12 | record_id=BUY-luminaglow-example | stale=false",
+      "originalSource": "kbeauty-trade-matchmaker | score_version=kbtm-score-0.2.0 | as_of=2026-09-12 | record_id=BUY-luminaglow-example | stale=false",
       "sourceUrl": "https://luminaglow.example/about"
     },
     {
@@ -75,7 +75,7 @@
       "industry": "BEAUTY",
       "category": "distributor",
       "productsSummary": "skincare, sunscreen, serum; Korean brands: Brand AB, Brand AC, Brand AD",
-      "originalSource": "kbeauty-trade-matchmaker | score_version=kbtm-score-0.1.0 | as_of=2026-09-12 | record_id=BUY-lioncitybeauty-example | stale=false",
+      "originalSource": "kbeauty-trade-matchmaker | score_version=kbtm-score-0.2.0 | as_of=2026-09-12 | record_id=BUY-lioncitybeauty-example | stale=false",
       "sourceUrl": "https://lioncitybeauty.example/about"
     }
   ]

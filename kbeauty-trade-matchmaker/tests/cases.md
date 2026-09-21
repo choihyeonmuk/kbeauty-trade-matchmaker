@@ -22,7 +22,7 @@
 | Exit code | `0` when every case passes, `1` otherwise |
 | `--as-of` passed to every script | `2026-09-12` (BUILD-CONTRACT 13.1) |
 | Threshold used everywhere | `fixed 70` (`scoring.config.json thresholds`) |
-| `score_version` | `kbtm-score-0.1.0` |
+| `score_version` | `kbtm-score-0.2.0` |
 
 ---
 
@@ -684,7 +684,7 @@ re-scored at `--as-of 2026-09-12`.
 | `export: X15 …` | Under `--include-unqualified`, `BUY-luminaglow-example` and `BUY-www-luminaglow-example` are named in a `possible duplicate` WARNING; the default export warns of none |
 | `export: X16 --output writes the file and stdout stays empty` | The file equals the stdout export byte for byte |
 | `export: X18 …` (review follow-ups) | A qualified buyer with country `unknown` is skipped and counted (`country_unknown=1`) in `tradewith-json` and kept as `unknown` in the CSV; a `"` in a name is refused in `tradewith-csv`; a `partial: true` input exports with a `WARNING`; a LinkedIn `/in/` profile never becomes `social` and is withheld from the CSV too (`withheld 1 linkedin`); a `messenger` number `+971 4 555 0111` exports in the CSV, while an address in a `messenger` or `phone` channel is refused; a NaN `qualification_score` is refused with and without `--min-score`; a `company_type` outside the TradeWith enum is refused by the output schema even under `--no-validate`; an unknown domain gives `kbtm:id:<buyer_id>` and `stale: true` gives `stale=true` |
-| `export: X17 --version prints the standard version line` | `export_leads.py skill_version=… schema_version=0.1.0 score_version=kbtm-score-0.1.0` |
+| `export: X17 --version prints the standard version line` | `export_leads.py skill_version=… schema_version=0.1.0 score_version=kbtm-score-0.2.0` |
 
 `export_leads.py` also joins the non-UTF-8 input case of section 10, and
 `tradewith-bulk-buyers.schema.json` joins the schema self-check (parses, every `$ref` resolves,
@@ -780,7 +780,7 @@ and has no case of its own).
 | `mcp: M-31 a message above 16 MiB is -32600 …` | The oversized line is answered -32600 with id null and the next ping is answered |
 | `mcp: M-32 without --quiet each call logs one stderr line …` | Every stderr line starts `kbtm-mcp: `, no traceback, exit 0 |
 | `mcp: M-33 output_path inside the skill package is refused …` | With `--root` set to the package itself, `output_path: scripts/…` is refused and nothing is created |
-| `mcp: M-34 --version prints the standard version line` | `mcp_server.py skill_version=… schema_version=0.1.0 score_version=kbtm-score-0.1.0` |
+| `mcp: M-34 --version prints the standard version line` | `mcp_server.py skill_version=… schema_version=0.1.0 score_version=kbtm-score-0.2.0` |
 | `mcp: M-35 the server refuses to start without a safe --root …` | No `--root`, a missing directory, `/`, a parent of `HOME`, `HOME` itself, `--tool-timeout 0`, `--max-inline-bytes 10` (exit 2, exactly one `ERROR:` line, empty stdout, no traceback) and an unknown flag (argparse exit 2) |
 | `mcp: M-36 the marketplace entry's server command starts the server` | The `mcpServers` entry of `.claude-plugin/marketplace.json` has `command` `python3`; its `args` with `${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_PROJECT_DIR}` substituted name an existing file that answers `initialize` and `tools/list` with the eleven tools and exits 0. SKIP in an installed copy (no repository manifests) |
 | `mcp: M-37 a lone surrogate echoed in an id, method, tool name or error …` | A request id `"\ud800"`, method `"\ud800x"`, tool name `"\ud800"`, `schema: "\udc80"` and `as_of: "\ud800"` are each answered (the frame falls back to `\u` escapes), stdout stays pure JSON and the final ping is answered |

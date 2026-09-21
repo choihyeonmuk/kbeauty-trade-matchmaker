@@ -388,7 +388,7 @@ Annual import volume is nowhere published → it stays out of the record, the cr
 Summary
 - Query: United Arab Emirates / K-Beauty / sunscreen
 - Candidates found: 26 · Qualified (>=70): 9
-- As of: 2026-09-12 · Score version: kbtm-score-0.1.0
+- As of: 2026-09-12 · Score version: kbtm-score-0.2.0
 
 Top Candidates
 1. Gulf Radiance Trading LLC — 92/100 — HIGH

@@ -590,7 +590,7 @@
     },
     "score_version": {
       "type": "string",
-      "description": "Identifier of the scoring rubric that produced every number on this record, e.g. \"kbtm-score-0.1.0\" (scoring.config.json score_version). The literal \"unscored\" marks the raw discovery profile, in which qualification_score MUST be 0 and dimension_scores is absent (BUILD-CONTRACT.md 3.1, INV-23). A match-result document never carries \"unscored\".",
+      "description": "Identifier of the scoring rubric that produced every number on this record, e.g. \"kbtm-score-0.2.0\" (scoring.config.json score_version). The literal \"unscored\" marks the raw discovery profile, in which qualification_score MUST be 0 and dimension_scores is absent (BUILD-CONTRACT.md 3.1, INV-23). A match-result document never carries \"unscored\".",
       "maxLength": 64,
       "anyOf": [
         {

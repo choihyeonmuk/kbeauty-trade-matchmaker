@@ -11,22 +11,23 @@
 Claude Agent Skills와 OpenAI/Codex Skills 양쪽에서 **같은 폴더가 수정 없이** 동작한다.
 Python은 **표준 라이브러리만** 사용하며(3.9–3.14), 설치할 의존성이 없다.
 
-> **상태: v0.3.0.** 파이프라인은 가공 fixture 위에서 536개 케이스로 테스트되었고, 실제 웹을 대상으로 한 번 시험 운용되었다. 점수 루브릭은 **아직 실제 결과에 비추어 검증되지 않았다**: 점수는 재현 가능하고 추적 가능하지만, 예측력이 있는지는 아직 모른다. v0.2.0에서 이를 측정할 도구를 추가했지만([점수 검증하기](#점수-검증하기)), 라벨이 붙은 표본은 아직 없다. RFQ Matching과 Outreach Draft는 실데이터로 돌려 본 적이 없다. 점수를 믿기 전에 [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md)를 읽으라.
+> **상태: v0.4.0.** 파이프라인은 가공 fixture 위에서 748개 케이스로 테스트되었고, 실제 웹을 대상으로 한 번 시험 운용되었다. 점수 루브릭은 **아직 실제 결과에 비추어 검증되지 않았다**: 점수는 재현 가능하고 추적 가능하지만, 예측력이 있는지는 아직 모른다. v0.2.0에서 이를 측정할 도구를 추가했지만([점수 검증하기](#점수-검증하기)), 라벨이 붙은 표본은 아직 없다. RFQ Matching과 Outreach Draft는 실데이터로 돌려 본 적이 없다. 점수를 믿기 전에 [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md)를 읽으라.
 
 ---
 
 ## 무엇이 새로운가
 
-**v0.3.0 (2026-09-19).** 기존 점수는 하나도 바뀌지 않는다. 새로 추가된 것은 모두 점수 파이프라인 바깥에 있다.
+**v0.4.0 (2026-09-21).** 루브릭이 `kbtm-score-0.2.0`으로 올라간다. 감사에서 나온 수정 여덟 건이 들어갔고 그중 하나가 골든 fixture의 점수를 바꾼다. `kbtm-score-0.1.0`으로 저장된 점수는 새 실행과 비교하기 전에 다시 채점해야 한다.
 
-- **실행 비교(run diff).** `scripts/diff_runs.py`는 같은 검색이나 RFQ를 두 번 점수화한 실행을 비교해, 새로 나타난 회사와 사라진 회사, 바뀐 제외(exclusion), 그리고 점수·순위·qualified 플래그·confidence·Missing 줄의 변화를 나열한다. 서로 다른 루브릭 버전으로 채점된 실행은 거부하고, 연락처 정보는 옮겨 적지 않는다. [두 실행 비교하기](#두-실행-비교하기) 참고.
-- **재확인 대기열.** `scripts/stale_evidence.py`는 저장된 레코드와 근거 페이지 가운데 다시 읽어야 할 것을 급한 순서대로 나열한다. 아무것도 가져오지(fetch) 않고, 레코드나 점수도 바꾸지 않는다. [재확인 대기열](#재확인-대기열) 참고.
-- **lead 내보내기.** `scripts/export_leads.py`는 점수화된 실행을 스프레드시트/CRM용 CSV나 TradeWith 관리자 일괄 가져오기(bulk import) 파일로 쓴다. 파일을 쓰기만 한다. TradeWith 행에는 연락처 필드가 없고, 관리자가 검토하도록 tier C로 들어간다. [스프레드시트, CRM, TradeWith로 내보내기](#스프레드시트-crm-tradewith로-내보내기) 참고.
-- **MCP 도구로 쓰는 스크립트.** 선택 사항인 로컬 도구 서버(MCP, stdio)를 쓰면 에이전트가 스크립트 11개를 도구로 호출할 수 있다. 한 프로젝트 폴더 안에서만 읽고 쓰며, 파일을 덮어쓰지 않고, 아무것도 보내지 않는다. [스크립트를 MCP 도구로 쓰기](#스크립트를-mcp-도구로-쓰기) 참고.
-- **플러그인.** Claude Code는 이 저장소에서 스킬을 플러그인으로 설치할 수 있다. ChatGPT와 Codex용으로는 릴리스마다 스킬만 담은(skills-only) 플러그인 ZIP이 붙으며, 스킬이 ChatGPT 웹·모바일에 닿는 경로가 바로 이것이다. [플러그인으로 설치](#플러그인으로-설치) 참고.
-- 테스트: 252 → 536 케이스.
+- **초안 검증.** `validate_output.py --schema outreach-draft --record <채점된 실행>`이 Mode 4 초안을 검사한다: envelope과 그 순서, 모든 개인화 사실이 채점된 레코드의 페이지를 같은 관측 날짜로 인용하는지, 대상이 qualified이고 채널이 그 회사의 채널인지, 가짜 수신거부 문구나 렌더링되지 않은 토큰이 남아 있지 않은지, compliance 플래그가 관할과 채널에 맞는지. 거래 조건이나 문구는 판단하지 않는다. 그것은 여전히 사람이 검토한다.
+- **Compliance 조회표.** `schemas/compliance.config.json`이 초안을 대조하는 관할 × 채널 표를 담는다. 인도, 인도네시아, 튀르키예를 포함한다.
+- **Evidence 규칙.** `--invariants`가 이제 EVI-01…06을 실행한다: source tier와 source type의 일치, 공식 도메인, 추론된 evidence의 confidence 상한, evidence quality, confidence, stale 기간.
+- **점수를 움직일 수 있는 감사 수정.** 서로를 가리키는 충돌 쌍은 두 번이 아니라 한 번만 센다. 인용 없는 인증은 디렉터리로 인용된 인증 이상으로 감점된다. MOQ 단위 동의어(`pcs`, `EA`, `개`)가 더는 MOQ 하드 필터를 꺼 버리지 않는다. 어디에도 매핑되지 않는 카테고리는 셀러를 탈락시키지 않는다. `--config`가 confidence와 evidence quality에 반영된다. 국가명이 alpha-2로 정규화된다. 이름에 붙여 쓴 한국 법인 형태(`주식회사한빛`)가 dedupe된다.
+- **유효하지 않은 문서는 `--output`에 쓰이지 않는다.** 옆에 `*.invalid.json`으로 쓰이므로 이어지는 명령이 집어 갈 수 없다. MCP 서버는 그 파일을 보고하고, 그 파일이 이미 있는 `output_path`를 거부한다.
+- **`NA`는 코드다.** INV-02가 `export_regions`의 북미나 국가 필드의 나미비아를 더는 거부하지 않는다.
+- 테스트: 536 → 748 케이스.
 
-v0.2.0은 [점수 검증 도구](#점수-검증하기)와 인도·인도네시아·튀르키예 [시장 팩](#시장-팩)을 추가했다. 릴리스별 전체 변경 내역: [CHANGELOG.md](CHANGELOG.md) (변경 기록은 영어로만 제공된다).
+v0.3.0은 run diff, 재확인 큐, 리드 export, MCP tool 서버, 플러그인을 추가했다. v0.2.0은 [점수 검증 도구](#점수-검증하기)와 인도·인도네시아·튀르키예 [시장 팩](#시장-팩)을 추가했다. 릴리스별 전체 변경 내역: [CHANGELOG.md](CHANGELOG.md) (변경 기록은 영어로만 제공된다).
 
 ---
 
@@ -127,6 +128,8 @@ kbeauty-trade-matchmaker/
 │   ├── run-diff.schema.json      #   점수화된 두 실행의 비교 한 건 (v0.3.0)
 │   ├── recheck-queue.schema.json #   다시 읽어야 할 근거 (v0.3.0)
 │   ├── tradewith-bulk-buyers.schema.json  # TradeWith 일괄 가져오기 본문. 연락처 필드 없음 (v0.3.0)
+│   ├── outreach-draft.schema.json  # The Mode 4 draft envelope the validator checks (v0.4.0)
+│   ├── compliance.config.json    # Jurisdiction x channel lookup for the draft compliance block (v0.4.0)
 │   └── scoring.config.json       #   모든 가중치·임계값·페널티가 사는 단일 파일
 ├── scripts/                      # 표준 라이브러리만. 네트워크 없음, 자격증명 없음
 │   ├── _common.py                #   설정 로딩, 반올림, 정규화, tri-state 헬퍼, 의존성 없는 스키마 검증기
@@ -494,7 +497,7 @@ python3 tests/run_tests.py -v         # 실패만이 아니라 모든 케이스�
 
 fixture 케이스보다 먼저 도는 것이 **스키마 자체 검사**다: `schemas/*.json`이 파싱되는지, `$ref`가 자기 파일 안에서 풀리는지, 검증기가 지원하지 않는 키워드를 쓴 곳이 없는지, 공유 `$defs`가 파일 간에 구조적으로 일치하는지, 그리고 스키마에 박힌 `schema_version` / `score_version`이 `scoring.config.json`과 어긋나지 않는지를 본다. 그 다음 각 문서 종류의 golden fixture 하나씩을 `validate_output.py --strict --invariants`로 통과시킨다. 이 두 검사가 PRD 완료 조건 "스키마가 validator를 통과한다"의 기계 검증 형태다.
 
-`plugins` 단계는 저장소 수준의 매니페스트와 빌더를 읽으므로, 536개라는 전체 수는 저장소 체크아웃에서 돌릴 때의 값이다. 설치된 사본에서는 SKIP 두 개(`plugins` 단계와 MCP 케이스 하나)가 보고된다. 이 단계는 릴리스 빌더를 일회용 git 저장소에서 실행하므로, 커밋하지 않은 작업은 결과에 영향을 주지 않는다.
+`plugins` 단계는 저장소 수준의 매니페스트와 빌더를 읽으므로, 748개라는 전체 수는 저장소 체크아웃에서 돌릴 때의 값이다. 설치된 사본에서는 SKIP 두 개(`plugins` 단계와 MCP 케이스 하나)가 보고된다. 이 단계는 릴리스 빌더를 일회용 git 저장소에서 실행하므로, 커밋하지 않은 작업은 결과에 영향을 주지 않는다.
 
 개별 스크립트를 직접 돌려볼 수도 있다. `stdout`에는 JSON만, 진단은 전부 `stderr`로 나가므로 파이프가 안전하다.
 
@@ -587,15 +590,15 @@ PRD가 열어 둔 여섯 가지다. 각 항목은 **아직 사람이 결정할 �
 
 | 버전 | 현재 값 | 무엇을 설명하나 | 어디에 사는가 |
 |---|---|---|---|
-| `skill_version` | `0.3.0` | 패키지 자체 — 프롬프트, references, scripts, templates, tests | `SKILL.md` 본문, 이 README, `match-result.skill_version`, 두 플러그인 매니페스트 |
+| `skill_version` | `0.4.0` | 패키지 자체 — 프롬프트, references, scripts, templates, tests | `SKILL.md` 본문, 이 README, `match-result.skill_version`, 두 플러그인 매니페스트 |
 | `schema_version` | `0.1.0` | **모양** 계약 — 필드 이름, enum, required 목록 | 모든 문서, `schemas/*.json` |
-| `score_version` | `kbtm-score-0.1.0` | **루브릭** — 가중치, criterion, 신호, 페널티, 임계값, 하드 필터, evidence 함수 | `schemas/scoring.config.json`, 점수가 매겨진 모든 문서 |
+| `score_version` | `kbtm-score-0.2.0` | **루브릭** — 가중치, criterion, 신호, 페널티, 임계값, 하드 필터, evidence 함수 | `schemas/scoring.config.json`, 점수가 매겨진 모든 문서 |
 
 세 값을 확인하는 가장 빠른 방법:
 
 ```bash
 python3 scripts/validate_output.py --version
-# validate_output.py skill_version=0.3.0 schema_version=0.1.0 score_version=kbtm-score-0.1.0
+# validate_output.py skill_version=0.4.0 schema_version=0.1.0 score_version=kbtm-score-0.2.0
 ```
 
 루브릭이 바뀌면 저장된 점수는 **정의상 낡은 것**이 된다. 원본 레코드를 그대로 보관하기 때문에(evidence·쿼리 표면·`as_of`를 함께 저장한다) 웹을 다시 긁지 않고 재계산할 수 있다. 과거 결과를 **재현**하려면 원래의 `--as-of`를, 최신 상태로 **갱신**하려면 새 `--as-of`를 넘긴다. 서로 다른 `score_version`의 결과를 한 목록에서 비교하거나 순위를 매기는 것은 금지이며, `validate_output.py`가 이를 잡아낸다.

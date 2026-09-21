@@ -6,14 +6,14 @@ How a candidate turns into a defensible number, and what evidence earns what.
 | | |
 |---|---|
 | Applies to | `scripts/score_buyer.py`, `scripts/score_seller.py`, and the six match components of `scripts/score_match.py` |
-| `score_version` | `kbtm-score-0.1.0` |
+| `score_version` | `kbtm-score-0.2.0` |
 | `schema_version` | `0.1.0` |
 | Canonical `as_of` in every example | `2026-09-12` |
 | **Binding source of every number** | `schemas/scoring.config.json` |
 | Companion pages | `references/evidence-policy.md` (what may become evidence), `references/matching-rules.md` (hard filters, match score, rerank), `references/data-contract.md` (field shapes) |
 
 > **The config wins, always.** Every weight, point value, penalty and threshold printed below is a
-> copy of `schemas/scoring.config.json` at `score_version kbtm-score-0.1.0`, reproduced so an
+> copy of `schemas/scoring.config.json` at `score_version kbtm-score-0.2.0`, reproduced so an
 > operator can read the rubric without opening JSON. The scripts read the config at run time and
 > never a literal from this page. If this page and the config ever disagree, **the config is right
 > and this page is a bug**. Changing any number in the config requires a new `score_version`.

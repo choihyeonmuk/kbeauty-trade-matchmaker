@@ -10,7 +10,7 @@
       "name": "kbeauty-trade-matchmaker",
       "source": "./kbeauty-trade-matchmaker",
       "description": "K-Beauty buyer discovery, seller sourcing, RFQ matching and outreach drafts. Evidence-first, deterministic scoring, never sends.",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "author": {
         "name": "choihyeonmuk",
         "url": "https://github.com/choihyeonmuk"

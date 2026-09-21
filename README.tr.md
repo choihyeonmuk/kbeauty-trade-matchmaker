@@ -10,22 +10,23 @@ Aynı klasör **Claude Code** ve **OpenAI Codex** üzerinde hiçbir değişiklik
 
 > İş akışına genel bakış: keşfet, doğrula, eşleştir ve son incelemeyi insana bırak.
 
-> **Durum: v0.3.0.** Pipeline, kurgusal fixture'lar üzerinde 536 vakaya karşı test edilmiş ve canlı web üzerinde bir kez denenmiştir. Puanlama rubriği **henüz gerçek sonuçlara karşı doğrulanmamıştır**: puanlar tekrarlanabilir ve izlenebilirdir, ancak öngörü gücü henüz bilinmemektedir. v0.2.0 bunu ölçmeye yarayan araçları eklemiştir ([Puanları doğrulama](#puanları-doğrulama)), ancak henüz etiketlenmiş bir örneklem yoktur. RFQ Matching ve Outreach Draft modları canlı veri üzerinde çalıştırılmamıştır. Bir puana güvenmeden önce [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) dosyasını okuyun.
+> **Durum: v0.4.0.** Pipeline, kurgusal fixture'lar üzerinde 748 vakaya karşı test edilmiş ve canlı web üzerinde bir kez denenmiştir. Puanlama rubriği **henüz gerçek sonuçlara karşı doğrulanmamıştır**: puanlar tekrarlanabilir ve izlenebilirdir, ancak öngörü gücü henüz bilinmemektedir. v0.2.0 bunu ölçmeye yarayan araçları eklemiştir ([Puanları doğrulama](#puanları-doğrulama)), ancak henüz etiketlenmiş bir örneklem yoktur. RFQ Matching ve Outreach Draft modları canlı veri üzerinde çalıştırılmamıştır. Bir puana güvenmeden önce [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) dosyasını okuyun.
 
 ---
 
 ## Yenilikler
 
-**v0.3.0 (2026-09-19).** Mevcut hiçbir puan değişmez. Yeni olan her şey puanlama pipeline'ının dışında yer alır.
+**v0.4.0 (2026-09-21).** Rubrik `kbtm-score-0.2.0` sürümüne geçer. Sekiz denetim düzeltmesi eklendi ve bunlardan biri bir golden fixture'ın puanını değiştiriyor; bu nedenle `kbtm-score-0.1.0` altında saklanan puanlar yeni çalıştırmalarla karşılaştırılmadan önce yeniden puanlanmalıdır.
 
-- **Çalıştırma farkı.** `scripts/diff_runs.py` aynı arama veya RFQ'nun puanlanmış iki çalıştırmasını karşılaştırır; yeni eklenen ve kaybolan şirketleri, yeri değişen hariç tutmaları ve puan, sıra, qualified işareti, güven düzeyi ve Missing satırındaki değişiklikleri listeler. Farklı rubrik sürümleriyle puanlanmış çalıştırmaları reddeder ve hiçbir iletişim bilgisini kopyalamaz. Bkz. [İki çalıştırmayı karşılaştırma](#i̇ki-çalıştırmayı-karşılaştırma).
-- **Yeniden kontrol kuyruğu.** `scripts/stale_evidence.py` saklanan kayıtlardan ve kanıt sayfalarından hangilerinin yeniden okunması gerektiğini, en acil olandan başlayarak listeler. Hiçbir şey getirmez; hiçbir kaydı veya puanı değiştirmez. Bkz. [Yeniden kontrol kuyruğu](#yeniden-kontrol-kuyruğu).
-- **Lead dışa aktarma.** `scripts/export_leads.py` puanlanmış bir çalıştırmayı elektronik tablo/CRM için CSV olarak veya TradeWith yönetici toplu içe aktarma dosyası olarak yazar. Yalnızca bir dosya yazar. TradeWith satırları hiçbir iletişim alanı içermez ve bir yöneticinin incelemesi için C kademesi olarak içeri alınır. Bkz. [Elektronik tabloya, CRM'e veya TradeWith'e aktarma](#elektronik-tabloya-crme-veya-tradewithe-aktarma).
-- **MCP araçları olarak script'ler.** İsteğe bağlı yerel bir araç sunucusu (MCP, stdio), bir agent'ın on bir script'i araç olarak çağırmasını sağlar. Yalnızca tek bir proje klasörü içinde okur ve yazar, hiçbir dosyanın üzerine yazmaz ve hiçbir şey göndermez. Bkz. [Script'leri MCP araçları olarak kullanma](#scriptleri-mcp-araçları-olarak-kullanma).
-- **Plugin'ler.** Claude Code, skill'i bu repository'den bir plugin olarak kurabilir. ChatGPT ve Codex için her sürümle birlikte yalnızca skill içeren bir plugin ZIP'i yayımlanır; skill, web ve mobildeki ChatGPT'ye bu yolla ulaşır. Bkz. [Plugin olarak kurulum](#plugin-olarak-kurulum).
-- Testler: 252 → 536 vaka.
+- **Taslak doğrulama.** `validate_output.py --schema outreach-draft --record <puanlanmış çalıştırma>` bir Mode 4 taslağını denetler: envelope ve sırası, her kişiselleştirme bilgisinin puanlanmış kayıttaki bir sayfayı aynı gözlem tarihiyle göstermesi, hedefin qualified olması ve kanalın o şirketin kanallarından biri olması, sahte bir opt-out ya da işlenmemiş bir token kalmaması, compliance işaretlerinin ülke ve kanalla örtüşmesi. Ticari koşulları ya da ifadeleri değerlendirmez; bunları yine bir insan gözden geçirir.
+- **Compliance tablosu.** `schemas/compliance.config.json`, taslakların karşılaştırıldığı ülke × kanal tablosunu içerir; Hindistan, Endonezya ve Türkiye dahildir.
+- **Evidence kuralları.** `--invariants` artık EVI-01…06'yı çalıştırır: source tier ile source type uyumu, resmî alan adı, çıkarıma dayalı evidence için confidence üst sınırı, evidence quality, confidence ve stale süresi.
+- **Puanı değiştirebilen denetim düzeltmeleri.** Karşılıklı bir çelişki iki kez değil bir kez sayılır. Kaynak gösterilmeyen bir sertifika, en az dizinden alıntılanan kadar puan kaybettirir. MOQ birim eşanlamlıları (`pcs`, `EA`, `개`) artık MOQ hard filter'ını devre dışı bırakmaz. Hiçbir şeye eşlenmeyen bir kategori satıcıyı elemez. `--config` artık confidence ve evidence quality'ye ulaşır. Ülke adları alpha-2'ye normalize edilir. Ada bitişik yazılmış Kore şirket türleri (`주식회사한빛`) dedupe edilir.
+- **Geçersiz bir belge asla `--output`'a yazılmaz.** Yanına `*.invalid.json` olarak yazılır; zincirleme bir komut onu alamaz. MCP sunucusu bu dosyayı bildirir ve bu dosyası zaten var olan bir `output_path`'i reddeder.
+- **`NA` bir koddur.** INV-02 artık `export_regions` içindeki Kuzey Amerika'yı ya da bir ülke alanındaki Namibya'yı reddetmez.
+- Testler: 536 → 748 vaka.
 
-v0.2.0, [puan doğrulama araçlarını](#puanları-doğrulama) ve Hindistan, Endonezya ve Türkiye için [pazar paketlerini](#pazar-paketleri) eklemiştir. Her sürümün tam notları: [CHANGELOG.md](CHANGELOG.md) (değişiklik günlüğü yalnızca İngilizcedir).
+v0.3.0, run diff'i, yeniden kontrol kuyruğunu, lead export'u, MCP tool sunucusunu ve plugin'leri eklemiştir. v0.2.0, [puan doğrulama araçlarını](#puanları-doğrulama) ve Hindistan, Endonezya ve Türkiye için [pazar paketlerini](#pazar-paketleri) eklemiştir. Her sürümün tam notları: [CHANGELOG.md](CHANGELOG.md) (değişiklik günlüğü yalnızca İngilizcedir).
 
 ---
 
@@ -166,6 +167,8 @@ kbeauty-trade-matchmaker/
 │   ├── run-diff.schema.json      # One comparison of two scored runs (v0.3.0)
 │   ├── recheck-queue.schema.json # The evidence to re-read (v0.3.0)
 │   ├── tradewith-bulk-buyers.schema.json  # TradeWith bulk-import body; no contact fields (v0.3.0)
+│   ├── outreach-draft.schema.json  # The Mode 4 draft envelope the validator checks (v0.4.0)
+│   ├── compliance.config.json    # Jurisdiction x channel lookup for the draft compliance block (v0.4.0)
 │   └── scoring.config.json       # Every weight, threshold and penalty lives in this one file
 ├── scripts/                      # Standard library only. No network, no credentials
 │   ├── _common.py                # Config, rounding, normalisation, tri-state helpers, schema validator
@@ -504,7 +507,7 @@ python3 tests/run_tests.py -v    # One line per case, not just failures
 
 Test çalıştırıcısı yalnızca standart kütüphaneyi kullanır, fixture'ları kendi konumuna göre bulur, her script'e `--as-of 2026-09-12` parametresini iletir ve çıktıyı beklenen fixture'larla **bayt bayt** karşılaştırır. Fixture vakalarından önce şemaların kendisini kontrol eder: ayrıştırılabildiklerini, her `$ref` referansının çözümlendiğini, desteklenmeyen bir anahtar sözcük kullanılmadığını, paylaşılan `$defs` tanımlarının dosyalar arasında tutarlı olduğunu ve gömülü sürümlerin `scoring.config.json` ile eşleştiğini.
 
-`plugins` aşaması repository düzeyindeki manifest'leri ve derleyiciyi okur; bu nedenle toplam 536 vaka sayısı bir repository checkout'u için geçerlidir. Kurulu bir kopya iki SKIP bildirir (`plugins` aşaması ve bir MCP vakası). Bu aşama sürüm derleyicisini geçici bir git repository'sinde çalıştırır; bu nedenle commit edilmemiş çalışmalar sonucu etkilemez.
+`plugins` aşaması repository düzeyindeki manifest'leri ve derleyiciyi okur; bu nedenle toplam 748 vaka sayısı bir repository checkout'u için geçerlidir. Kurulu bir kopya iki SKIP bildirir (`plugins` aşaması ve bir MCP vakası). Bu aşama sürüm derleyicisini geçici bir git repository'sinde çalıştırır; bu nedenle commit edilmemiş çalışmalar sonucu etkilemez.
 
 Script'ler doğrudan da çalıştırılabilir. JSON `stdout`'a, tüm tanılama mesajları ise `stderr`'e gider; bu nedenle pipe kullanımı güvenlidir.
 
@@ -568,9 +571,9 @@ Altı soru hâlâ açıktır. Her birinin bu uygulamada bir varsayılanı vardı
 
 | Sürüm | Değer | Neyi tanımlar | Nerede bulunur |
 |---|---|---|---|
-| `skill_version` | `0.3.0` | Paket: prompt'lar, referanslar, script'ler, şablonlar, testler | `SKILL.md` gövdesi, `match-result.skill_version`, her iki plugin manifest'i |
+| `skill_version` | `0.4.0` | Paket: prompt'lar, referanslar, script'ler, şablonlar, testler | `SKILL.md` gövdesi, `match-result.skill_version`, her iki plugin manifest'i |
 | `schema_version` | `0.1.0` | Yapı sözleşmesi: alan adları, enum'lar, zorunlu alan listeleri | Her belge, `schemas/*.json` |
-| `score_version` | `kbtm-score-0.1.0` | Rubrik: ağırlıklar, kriterler, sinyaller, cezalar, eşikler, kesin filtreler | `scoring.config.json`, puanlanmış her belge |
+| `score_version` | `kbtm-score-0.2.0` | Rubrik: ağırlıklar, kriterler, sinyaller, cezalar, eşikler, kesin filtreler | `scoring.config.json`, puanlanmış her belge |
 
 ```bash
 python3 scripts/validate_output.py --version

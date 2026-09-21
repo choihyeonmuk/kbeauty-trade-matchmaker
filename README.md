@@ -10,22 +10,23 @@ The same folder runs unmodified in **Claude Code** and **OpenAI Codex**. Python 
 
 > A visual overview of the workflow: discover, verify, match, and keep a human in the loop.
 
-> **Status: v0.3.0.** The pipeline is tested against 536 cases on fictional fixtures and was trialled once against the live web. The scoring rubric is **not yet validated against real outcomes**: scores are reproducible and traceable, not yet known to be predictive. v0.2.0 added the tooling to measure that ([Validating the scores](#validating-the-scores)), but no labelled sample exists yet. RFQ Matching and Outreach Draft have not been run on live data. Read [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) before trusting a score.
+> **Status: v0.4.0.** The pipeline is tested against 748 cases on fictional fixtures and was trialled once against the live web. The scoring rubric is **not yet validated against real outcomes**: scores are reproducible and traceable, not yet known to be predictive. v0.2.0 added the tooling to measure that ([Validating the scores](#validating-the-scores)), but no labelled sample exists yet. RFQ Matching and Outreach Draft have not been run on live data. Read [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) before trusting a score.
 
 ---
 
 ## What's new
 
-**v0.3.0 (2026-09-19).** No existing score changes. Everything new sits outside the scoring pipeline.
+**v0.4.0 (2026-09-21).** The rubric moves to `kbtm-score-0.2.0`. Eight audit fixes landed and one of them changes a score a golden fixture had, so scores stored under `kbtm-score-0.1.0` should be re-scored before they are compared with new runs.
 
-- **Run diff.** `scripts/diff_runs.py` compares two scored runs of the same search or RFQ and lists new and gone companies, exclusions that moved, and score, rank, qualified-flag, confidence and Missing-line changes. It refuses runs scored with different rubric versions and copies no contact details. See [Comparing two runs](#comparing-two-runs).
-- **Re-check queue.** `scripts/stale_evidence.py` lists which stored records and evidence pages to re-read, most urgent first. It fetches nothing and changes no record or score. See [Re-check queue](#re-check-queue).
-- **Lead export.** `scripts/export_leads.py` writes a scored run as a spreadsheet/CRM CSV or as a TradeWith admin bulk-import file. It only writes a file. TradeWith rows carry no contact fields and land as tier C for an admin to review. See [Export to a spreadsheet, CRM or TradeWith](#export-to-a-spreadsheet-crm-or-tradewith).
-- **The scripts as MCP tools.** An optional local tool server (MCP, stdio) lets an agent call eleven scripts as tools. It reads and writes only inside one project folder, never overwrites a file and sends nothing. See [Use the scripts as MCP tools](#use-the-scripts-as-mcp-tools).
-- **Plugins.** Claude Code can install the skill as a plugin from this repository. ChatGPT and Codex get a skills-only plugin ZIP with each release, which is how the skill reaches ChatGPT on the web and mobile. See [Install as a plugin](#install-as-a-plugin).
-- Tests: 252 → 536 cases.
+- **Draft validation.** `validate_output.py --schema outreach-draft --record <scored run>` checks a Mode 4 draft: the envelope and its order, that every personalization fact cites a page on the scored record with the same observed date, that the target is qualified and the channel is one of its company channels, that no fake opt-out or unrendered token survives, and that the compliance flags match the jurisdiction and channel. It does not judge trade terms or wording. A person still reviews those.
+- **Compliance lookup.** `schemas/compliance.config.json` holds the jurisdiction × channel table drafts are checked against, including India, Indonesia and Türkiye.
+- **Evidence rules.** `--invariants` now runs EVI-01…06: source tier against source type, official domain, the confidence cap on inferred evidence, evidence quality, confidence, and stale age.
+- **Audit fixes that can move a score.** A reciprocal conflict counts once, not twice. An uncited certification costs at least what a directory-cited one does. MOQ unit synonyms (`pcs`, `EA`, `개`) no longer switch the MOQ hard filter off. A category that maps to nothing never rejects a seller. `--config` now reaches confidence and evidence quality. Country names normalise to alpha-2. Korean legal forms glued to a name (`주식회사한빛`) dedupe.
+- **An invalid document never lands on `--output`.** It is written beside it as `*.invalid.json`, so a chained command cannot pick it up. The MCP server reports that file and refuses an `output_path` whose sibling already exists.
+- **`NA` is a code.** INV-02 no longer rejects North America in `export_regions` or Namibia in a country field.
+- Tests: 536 → 748 cases.
 
-v0.2.0 added the [score-validation tooling](#validating-the-scores) and [market packs](#market-packs) for India, Indonesia and Türkiye. Full notes for every release: [CHANGELOG.md](CHANGELOG.md).
+v0.3.0 added run diff, the re-check queue, lead export, the MCP tool server and plugins. v0.2.0 added the [score-validation tooling](#validating-the-scores) and [market packs](#market-packs) for India, Indonesia and Türkiye. Full notes for every release: [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
@@ -166,6 +167,8 @@ kbeauty-trade-matchmaker/
 │   ├── run-diff.schema.json      # One comparison of two scored runs (v0.3.0)
 │   ├── recheck-queue.schema.json # The evidence to re-read (v0.3.0)
 │   ├── tradewith-bulk-buyers.schema.json  # TradeWith bulk-import body; no contact fields (v0.3.0)
+│   ├── outreach-draft.schema.json  # The Mode 4 draft envelope the validator checks (v0.4.0)
+│   ├── compliance.config.json    # Jurisdiction x channel lookup for the draft compliance block (v0.4.0)
 │   └── scoring.config.json       # Every weight, threshold and penalty lives in this one file
 ├── scripts/                      # Standard library only. No network, no credentials
 │   ├── _common.py                # Config, rounding, normalisation, tri-state helpers, schema validator
@@ -504,7 +507,7 @@ python3 tests/run_tests.py -v    # One line per case, not just failures
 
 The runner uses only the standard library, finds fixtures relative to itself, passes `--as-of 2026-09-12` to every script, and compares output with the expected fixtures **byte for byte**. Before the fixture cases it checks the schemas themselves: that they parse, that every `$ref` resolves, that no unsupported keyword is used, that shared `$defs` agree across files, and that embedded versions match `scoring.config.json`.
 
-The `plugins` phase reads the repository-level manifests and builder, so the full count of 536 applies to a repository checkout; an installed copy reports two SKIPs (the `plugins` phase and one MCP case). The phase runs the release builder in a throwaway git repository, so uncommitted work does not affect the result.
+The `plugins` phase reads the repository-level manifests and builder, so the full count of 748 applies to a repository checkout; an installed copy reports two SKIPs (the `plugins` phase and one MCP case). The phase runs the release builder in a throwaway git repository, so uncommitted work does not affect the result.
 
 Scripts can also be run directly. JSON goes to `stdout` and every diagnostic to `stderr`, so pipes are safe.
 
@@ -568,9 +571,9 @@ Six questions remain open. Each has a default in this implementation, and every 
 
 | Version | Value | Describes | Lives in |
 |---|---|---|---|
-| `skill_version` | `0.3.0` | The package: prompts, references, scripts, templates, tests | `SKILL.md` body, `match-result.skill_version`, both plugin manifests |
+| `skill_version` | `0.4.0` | The package: prompts, references, scripts, templates, tests | `SKILL.md` body, `match-result.skill_version`, both plugin manifests |
 | `schema_version` | `0.1.0` | The shape contract: field names, enums, required lists | Every document, `schemas/*.json` |
-| `score_version` | `kbtm-score-0.1.0` | The rubric: weights, criteria, signals, penalties, thresholds, hard filters | `scoring.config.json`, every scored document |
+| `score_version` | `kbtm-score-0.2.0` | The rubric: weights, criteria, signals, penalties, thresholds, hard filters | `scoring.config.json`, every scored document |
 
 ```bash
 python3 scripts/validate_output.py --version

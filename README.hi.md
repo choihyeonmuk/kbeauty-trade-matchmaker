@@ -10,22 +10,23 @@
 
 > Workflow की एक झलक: खोजें, verify करें, match करें, और अंतिम समीक्षा इंसान के हाथ में रखें।
 
-> **स्थिति: v0.3.0.** Pipeline को काल्पनिक fixtures पर 536 cases के साथ test किया गया है और live web पर एक बार trial किया गया है। Scoring rubric को **अभी तक वास्तविक नतीजों के आधार पर validate नहीं किया गया है**: scores reproducible और traceable हैं, पर अभी यह ज्ञात नहीं कि वे भविष्यवाणी करने में सक्षम हैं। v0.2.0 ने इसे मापने के लिए tooling जोड़ा ([Scores को validate करना](#scores-को-validate-करना)), पर अभी तक कोई labelled sample मौजूद नहीं है। RFQ Matching और Outreach Draft को live data पर नहीं चलाया गया है। किसी score पर भरोसा करने से पहले [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) पढ़ें।
+> **स्थिति: v0.4.0.** Pipeline को काल्पनिक fixtures पर 748 cases के साथ test किया गया है और live web पर एक बार trial किया गया है। Scoring rubric को **अभी तक वास्तविक नतीजों के आधार पर validate नहीं किया गया है**: scores reproducible और traceable हैं, पर अभी यह ज्ञात नहीं कि वे भविष्यवाणी करने में सक्षम हैं। v0.2.0 ने इसे मापने के लिए tooling जोड़ा ([Scores को validate करना](#scores-को-validate-करना)), पर अभी तक कोई labelled sample मौजूद नहीं है। RFQ Matching और Outreach Draft को live data पर नहीं चलाया गया है। किसी score पर भरोसा करने से पहले [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) पढ़ें।
 
 ---
 
 ## नया क्या है
 
-**v0.3.0 (2026-09-19).** किसी भी मौजूदा score में कोई बदलाव नहीं। सब कुछ नया scoring pipeline के बाहर है।
+**v0.4.0 (2026-09-21).** Rubric अब `kbtm-score-0.2.0` है। Audit से निकले आठ सुधार शामिल हुए हैं और उनमें से एक किसी golden fixture का score बदलता है, इसलिए `kbtm-score-0.1.0` के तहत संग्रहीत scores को नए runs से तुलना करने से पहले दोबारा score करना चाहिए।
 
-- **Run diff.** `scripts/diff_runs.py` एक ही search या RFQ के दो scored runs की तुलना करता है और नई तथा हट चुकी companies, बदले हुए exclusions, और score, rank, qualified-flag, confidence तथा Missing पंक्ति में हुए बदलावों की सूची देता है। अलग-अलग rubric versions से score किए गए runs को यह अस्वीकार कर देता है और कोई contact details copy नहीं करता। देखें [दो runs की तुलना](#दो-runs-की-तुलना)।
-- **Re-check queue.** `scripts/stale_evidence.py` बताता है कि कौन-से stored records और evidence pages दोबारा पढ़ने हैं, सबसे ज़रूरी पहले। यह कुछ भी fetch नहीं करता और किसी record या score को नहीं बदलता। देखें [Re-check queue](#re-check-queue)।
-- **Lead export.** `scripts/export_leads.py` किसी scored run को spreadsheet/CRM CSV के रूप में या TradeWith admin bulk-import file के रूप में लिखता है। यह केवल एक file लिखता है। TradeWith rows में कोई contact fields नहीं होते और वे tier C के रूप में आती हैं ताकि कोई admin उनकी review करे। देखें [Spreadsheet, CRM या TradeWith में export](#spreadsheet-crm-या-tradewith-में-export)।
-- **MCP tools के रूप में scripts.** एक वैकल्पिक local tool server (MCP, stdio) किसी agent को ग्यारह scripts को tools के रूप में call करने देता है। यह केवल एक project folder के भीतर पढ़ता और लिखता है, कभी किसी file को overwrite नहीं करता और कुछ भी नहीं भेजता। देखें [Scripts को MCP tools के रूप में उपयोग करें](#scripts-को-mcp-tools-के-रूप-में-उपयोग-करें)।
-- **Plugins.** Claude Code इस repository से skill को plugin के रूप में install कर सकता है। ChatGPT और Codex को हर release के साथ एक skills-only plugin ZIP मिलता है, और इसी तरह skill web और mobile पर ChatGPT तक पहुँचता है। देखें [Plugin के रूप में install करें](#plugin-के-रूप-में-install-करें)।
-- Tests: 252 → 536 cases.
+- **Draft validation.** `validate_output.py --schema outreach-draft --record <scored run>` एक Mode 4 draft की जाँच करता है: envelope और उसका क्रम, हर personalization fact scored record के किसी page को उसी observed date के साथ cite करता है या नहीं, target qualified है और channel उसी कंपनी का है या नहीं, कोई नकली opt-out या बिना render हुआ token तो नहीं बचा, और compliance flags jurisdiction व channel से मेल खाते हैं या नहीं। यह trade terms या शब्दों को नहीं परखता; उनकी समीक्षा अब भी एक व्यक्ति करता है।
+- **Compliance lookup.** `schemas/compliance.config.json` में वह jurisdiction × channel तालिका है जिससे drafts मिलाए जाते हैं; इसमें भारत, इंडोनेशिया और तुर्किये शामिल हैं।
+- **Evidence नियम.** `--invariants` अब EVI-01…06 चलाता है: source tier बनाम source type, official domain, inferred evidence पर confidence की सीमा, evidence quality, confidence और stale अवधि।
+- **Score बदल सकने वाले audit सुधार.** परस्पर conflict दो बार नहीं, एक बार गिना जाता है। बिना citation वाला certification कम से कम उतना ही घटाता है जितना directory से cite किया हुआ। MOQ unit के पर्याय (`pcs`, `EA`, `개`) अब MOQ hard filter को बंद नहीं करते। जो category किसी से map नहीं होती वह seller को कभी reject नहीं करती। `--config` अब confidence और evidence quality तक पहुँचता है। देशों के नाम alpha-2 में normalise होते हैं। नाम से जुड़े कोरियाई legal forms (`주식회사한빛`) dedupe होते हैं।
+- **अमान्य document कभी `--output` पर नहीं लिखा जाता.** वह बगल में `*.invalid.json` के रूप में लिखा जाता है, ताकि कोई chained command उसे न उठा ले। MCP server उसी file को report करता है और ऐसे `output_path` को अस्वीकार करता है जिसकी वह file पहले से मौजूद हो।
+- **`NA` एक code है.** INV-02 अब `export_regions` में North America या country field में Namibia को अस्वीकार नहीं करता।
+- Tests: 536 → 748 cases.
 
-v0.2.0 ने [score-validation tooling](#scores-को-validate-करना) और भारत, इंडोनेशिया तथा तुर्किये के लिए [market packs](#market-packs) जोड़े थे। हर release के पूरे notes: [CHANGELOG.md](CHANGELOG.md) (changelog केवल अंग्रेज़ी में है)।
+v0.3.0 ने run diff, re-check queue, lead export, MCP tool server और plugins जोड़े थे। v0.2.0 ने [score-validation tooling](#scores-को-validate-करना) और भारत, इंडोनेशिया तथा तुर्किये के लिए [market packs](#market-packs) जोड़े थे। हर release के पूरे notes: [CHANGELOG.md](CHANGELOG.md) (changelog केवल अंग्रेज़ी में है)।
 
 ---
 
@@ -166,6 +167,8 @@ kbeauty-trade-matchmaker/
 │   ├── run-diff.schema.json      # One comparison of two scored runs (v0.3.0)
 │   ├── recheck-queue.schema.json # The evidence to re-read (v0.3.0)
 │   ├── tradewith-bulk-buyers.schema.json  # TradeWith bulk-import body; no contact fields (v0.3.0)
+│   ├── outreach-draft.schema.json  # The Mode 4 draft envelope the validator checks (v0.4.0)
+│   ├── compliance.config.json    # Jurisdiction x channel lookup for the draft compliance block (v0.4.0)
 │   └── scoring.config.json       # Every weight, threshold and penalty lives in this one file
 ├── scripts/                      # Standard library only. No network, no credentials
 │   ├── _common.py                # Config, rounding, normalisation, tri-state helpers, schema validator
@@ -504,7 +507,7 @@ python3 tests/run_tests.py -v    # One line per case, not just failures
 
 Runner केवल standard library का उपयोग करता है, fixtures को अपनी location के सापेक्ष ढूँढ़ता है, हर script को `--as-of 2026-09-12` देता है, और output की तुलना expected fixtures से **byte for byte** करता है। Fixture cases से पहले यह schemas की ख़ुद जाँच करता है: कि वे parse होते हैं, हर `$ref` resolve होता है, कोई unsupported keyword उपयोग नहीं हुआ है, shared `$defs` सभी files में एक जैसे हैं, और embedded versions `scoring.config.json` से मेल खाते हैं।
 
-`plugins` phase repository-स्तर के manifests और builder को पढ़ता है, इसलिए 536 की पूरी गिनती repository checkout पर लागू होती है; installed copy दो SKIPs report करती है (`plugins` phase और एक MCP case)। यह phase release builder को एक अस्थायी git repository में चलाता है, इसलिए uncommitted काम नतीजे को प्रभावित नहीं करता।
+`plugins` phase repository-स्तर के manifests और builder को पढ़ता है, इसलिए 748 की पूरी गिनती repository checkout पर लागू होती है; installed copy दो SKIPs report करती है (`plugins` phase और एक MCP case)। यह phase release builder को एक अस्थायी git repository में चलाता है, इसलिए uncommitted काम नतीजे को प्रभावित नहीं करता।
 
 Scripts को सीधे भी चलाया जा सकता है। JSON `stdout` पर जाता है और हर diagnostic `stderr` पर, इसलिए pipes सुरक्षित हैं।
 
@@ -568,9 +571,9 @@ Environment variables import के समय नहीं, call के सम�
 
 | Version | Value | क्या दर्शाता है | कहाँ रहता है |
 |---|---|---|---|
-| `skill_version` | `0.3.0` | Package: prompts, references, scripts, templates, tests | `SKILL.md` body, `match-result.skill_version`, दोनों plugin manifests |
+| `skill_version` | `0.4.0` | Package: prompts, references, scripts, templates, tests | `SKILL.md` body, `match-result.skill_version`, दोनों plugin manifests |
 | `schema_version` | `0.1.0` | Shape contract: field names, enums, required lists | हर document, `schemas/*.json` |
-| `score_version` | `kbtm-score-0.1.0` | Rubric: weights, criteria, signals, penalties, thresholds, hard filters | `scoring.config.json`, हर scored document |
+| `score_version` | `kbtm-score-0.2.0` | Rubric: weights, criteria, signals, penalties, thresholds, hard filters | `scoring.config.json`, हर scored document |
 
 ```bash
 python3 scripts/validate_output.py --version

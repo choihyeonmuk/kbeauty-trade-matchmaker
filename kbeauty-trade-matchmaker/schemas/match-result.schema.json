@@ -210,7 +210,7 @@
     "score_version": {
       "$comment": "Deliberately NARROWER than the shared BUILD-CONTRACT 3.7 definition. The two-branch form (rubric id OR \"unscored\") is correct for buyer/seller/rfq documents; a match-result exists only in the scored profile (BUILD-CONTRACT 3.1, INV-23), so the \"unscored\" branch is omitted here and the schema rejects it instead of leaving it to an invariant check.",
       "type": "string",
-      "description": "Identifier of the scoring rubric that produced every number in this document, e.g. \"kbtm-score-0.1.0\" (scoring.config.json score_version). Stored with the result so scores can be recomputed after a rubric change (PRD 13.2). The literal \"unscored\" exists only for raw discovery records in buyer/seller/rfq documents and is INVALID here.",
+      "description": "Identifier of the scoring rubric that produced every number in this document, e.g. \"kbtm-score-0.2.0\" (scoring.config.json score_version). Stored with the result so scores can be recomputed after a rubric change (PRD 13.2). The literal \"unscored\" exists only for raw discovery records in buyer/seller/rfq documents and is INVALID here.",
       "maxLength": 64,
       "pattern": "^kbtm-score-[0-9]+\\.[0-9]+\\.[0-9]+$"
     },

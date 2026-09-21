@@ -3634,14 +3634,14 @@ def _diff_refusals(report, paths, b1, temp):
         return path
 
     version = copy.deepcopy(b1)
-    version["score_version"] = "kbtm-score-0.2.0"
+    version["score_version"] = "kbtm-score-0.9.9"
     for record in version["records"]:
-        record["score_version"] = "kbtm-score-0.2.0"
+        record["score_version"] = "kbtm-score-0.9.9"
     _diff_refusal(report, ["--before", paths["B1"], "--after", write(version, "kbtm-diff-v2-")],
                   "refusing to compare score_version",
                   "two runs scored with different score_versions")
     mixed = copy.deepcopy(b1)
-    mixed["records"][0]["score_version"] = "kbtm-score-0.2.0"
+    mixed["records"][0]["score_version"] = "kbtm-score-0.9.9"
     _diff_refusal(report, ["--before", paths["B1"], "--after", write(mixed, "kbtm-diff-mix-")],
                   "mixes score_version", "a run whose records disagree with its envelope")
     unscored = copy.deepcopy(b1)
@@ -4829,7 +4829,7 @@ def phase_export(report, allow_missing):
         report.check("export: X17 --version prints the standard version line",
                      code == 0 and re.match(
                          r"^export_leads\.py skill_version=\S+ schema_version=0\.1\.0 "
-                         r"score_version=kbtm-score-0\.1\.0\n$", out), "got %r" % out)
+                         r"score_version=kbtm-score-0\.2\.0\n$", out), "got %r" % out)
     finally:
         for path in temp:
             try:
@@ -5709,7 +5709,7 @@ def _mcp_cli_cases(report, root):
     code, out, err = _mcp_run([], _mcp_command(None, ["--version"]))
     report.check("mcp: M-34 --version prints the standard version line",
                  code == 0 and re.match(r"^mcp_server\.py skill_version=\S+ schema_version="
-                                        r"0\.1\.0 score_version=kbtm-score-0\.1\.0\n$", out),
+                                        r"0\.1\.0 score_version=kbtm-score-0\.2\.0\n$", out),
                  "exit %d %r" % (code, out))
     home = os.path.join(root, "home")
     os.mkdir(home)

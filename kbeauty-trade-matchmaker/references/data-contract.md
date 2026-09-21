@@ -9,7 +9,7 @@ changes.
 |---|---|
 | Audience | Anyone writing against these documents: the runtime agent, a TradeWith backend engineer, a reviewer |
 | `schema_version` | `0.1.0` |
-| `score_version` | `kbtm-score-0.1.0` |
+| `score_version` | `kbtm-score-0.2.0` |
 | Canonical `as_of` in every example | `2026-09-12` |
 | **Binding source of document shape** | `schemas/buyer.schema.json`, `seller.schema.json`, `rfq.schema.json`, `evidence.schema.json`, `match-result.schema.json`, `discovery-result.schema.json`, `acceptance-report.schema.json` |
 | **Binding source of every number** | `schemas/scoring.config.json` |
@@ -1018,7 +1018,7 @@ re-run with new evidence.
 | `skill_version` | the `SKILL.md` body (the frontmatter carries only `name` + `description`), `README.md`, `match-result.skill_version` | the **package** as shipped (prompts, references, scripts, templates, tests) |
 
 All three are semver `MAJOR.MINOR.PATCH`; `score_version` is additionally prefixed
-(`kbtm-score-0.1.0`).
+(`kbtm-score-0.2.0`).
 
 ### 11.2 Bump rules
 

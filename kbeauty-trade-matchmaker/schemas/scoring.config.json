@@ -3,7 +3,7 @@
   "title": "K-Beauty Trade Matchmaker scoring configuration",
   "description": "The single place every tunable scoring number lives. score_buyer.py, score_seller.py, score_match.py and validate_output.py READ this file and MUST NOT hardcode any weight, point value, threshold or penalty. This is data, not a JSON Schema. PRD 6.3 (qualification rubrics), 6.4 (matching engine), 14 (determinism, versioning), Open Question 3 (threshold mode). Korean gloss: 모든 점수 상수의 단일 출처.",
   "schema_version": "0.1.0",
-  "score_version": "kbtm-score-0.1.0",
+  "score_version": "kbtm-score-0.2.0",
   "as_of_default": "2026-09-12",
   "config_notes": [
     "COMPUTATION ORDER for a buyer or seller dimension: (1) evaluate each criterion; (2) a criterion whose deciding inputs are ALL unknown takes unknown points instead of its signal points; (3) a criterion marked inapplicable for this query is dropped from BOTH the numerator and the denominator; (4) dimension_raw = 100 * sum(earned_points) / sum(applicable max_points); (5) dimension_score = clamp(round_half_up(dimension_raw) + sum(fired adjustments), 0, 100).",
@@ -1002,7 +1002,7 @@
     "note": "PRD 12.1 renders confidence as a word (HIGH/MEDIUM/LOW) while the stored value stays numeric."
   },
   "calibration": {
-    "note": "Numbers used ONLY by scripts/make_review_sheet.py and scripts/acceptance_report.py, which MEASURE the rubric against operator labels. Nothing in this block can change a score: no scorer reads it, so score_version stays kbtm-score-0.1.0 and schema_version stays 0.1.0 when a value here moves. INV-29 still binds - the two calibration scripts hardcode none of these numbers. Read references/calibration-notes.md section 7 before changing one.",
+    "note": "Numbers used ONLY by scripts/make_review_sheet.py and scripts/acceptance_report.py, which MEASURE the rubric against operator labels. Nothing in this block can change a score: no scorer reads it, so score_version stays kbtm-score-0.2.0 and schema_version stays 0.1.0 when a value here moves. INV-29 still binds - the two calibration scripts hardcode none of these numbers. Read references/calibration-notes.md section 7 before changing one.",
     "min_sample": 30,
     "min_sample_note": "The smallest accept+reject population (`unsure` excluded) from which a Human Acceptance Rate may be quoted as evidence for a weight or threshold decision. Below it the report sets summary.insufficient_sample true and says in notes[] that it cannot justify a change. It is a reporting guard, not a statistical claim: references/calibration-notes.md section 7 states the sample composition rules (>= 2 countries, >= 2 categories, target 100-200 reviewed records) that the number alone cannot express.",
     "score_bands": [

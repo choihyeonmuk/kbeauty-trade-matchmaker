@@ -10,7 +10,7 @@ citable URL, score both sides with deterministic scripts, match a buying request
 outreach drafts that a human reviews before anything is sent.
 *Korean gloss: K뷰티 바이어·셀러를 근거 기반으로 발굴·검증·점수화·매칭하고, 사람이 검토할 아웃리치 초안까지만 만든다.*
 
-`skill_version 0.3.0` · `schema_version 0.1.0` · `score_version kbtm-score-0.1.0`. Runtime tool names live **only**
+`skill_version 0.4.0` · `schema_version 0.1.0` · `score_version kbtm-score-0.2.0`. Runtime tool names live **only**
 in `references/runtime-adapters.md`; this file names capabilities ("the runtime's web-search capability", "the
 runtime's internal-data connector") so the folder runs unchanged in every runtime. `install.sh` installs it;
 plugin packaging and the release archives are described in `references/runtime-adapters.md` §5.5.
