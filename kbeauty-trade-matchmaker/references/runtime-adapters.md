@@ -111,7 +111,7 @@ returning nothing, because it looks exactly like a successful run and a salesper
 |---|---|---|
 | **No web search / fetch** | State plainly that no web research tool is available in this runtime, so buyer/seller discovery cannot run. Offer the paths that still work: score a list of candidates the operator supplies, run RFQ matching against internal sellers from the adapter, or draft outreach from already-evidenced records. Return **zero** discovered candidates. | Produce company names, domains, MOQs, certifications or contact URLs from memory. Cite a URL that was not fetched in this run. |
 | **Fetch works, search does not** | Ask the operator for seed URLs or a domain list, then verify those. Say that coverage is seed-limited. | Guess additional domains by pattern. |
-| **Search works, fetch does not** | Report candidates as **unverified leads only**, with `status: "DISCOVERED"`, every material claim `"unknown"`, and a note that no page could be read. Expect low scores — that is the honest result. | Treat a search snippet as evidence for MOQ, certifications, export markets or buyer intent. |
+| **Search works, fetch does not** | Report candidates as **leads only**, with every material claim `"unknown"` and a note that no page could be read. Do not expect low scores: with no evidenced material claim the scorers apply the DISC-06 evidence bar and move each record to `excluded[]` as `no evidenced material claim (no source could be opened)` — or `(evidence covers no material claim)` when snippet-only items were recorded — so the run ranks zero candidates. That is the honest result. | Treat a search snippet as evidence for MOQ, certifications, export markets or buyer intent. |
 | **No internal-data access** (no adapter data dir, no API) | Say that TradeWith internal data is unavailable; run discovery and qualification only. RFQ matching requires an RFQ. | Fabricate an RFQ, or assume a buyer's requirements. |
 | **Cannot execute `scripts/*.py`** | Say that deterministic scoring is unavailable in this runtime. Produce evidence-backed records **without** scores, and mark the output clearly as unscored. | Estimate a `qualification_score` or a `match_score` by hand. |
 | **A host refuses this retrieval method** (HTTP 403 / 429 / a bot filter / a TLS handshake or certificate-name failure), while `robots.txt` permits the path | The host answered — this is a **transport refusal, not an absent page and not stale content**. Retrying the *same* URL with a different non-bypassing method (a plain page fetch instead of the reader tool, or `http://` when the certificate does not cover the host) is permitted and is **not** an access-control bypass. Record which method finally read the page in `evidence.retrieval_method` and name the failure in `notes[]`. If no permitted method works, the facts stay `"unknown"` and the candidate carries the reason. | Set `stale: true` or `operational_status: "unreachable"` for a transport refusal — `stale` is a claim about CONTENT age and `unreachable` means DNS itself failed. Solve a CAPTCHA, sign in, spoof an identity to defeat a bot filter, or ignore `robots.txt`. |
@@ -210,7 +210,7 @@ precedence order:
 - Nothing needs to be allow-listed inside `SKILL.md` — it carries exactly `name` and `description`
   and no runtime-specific keys, precisely so the same file parses in every runtime (§5.0).
 - **Skills do not sync across surfaces.** Claude Code (filesystem), claude.ai (zip upload under
-  Settings → Features) and the Skills API (`/v1/skills`, referenced by `skill_id`, requires the code
+  Customize → Skills) and the Skills API (`/v1/skills`, referenced by `skill_id`, requires the code
   execution tool) are three separate uploads of the same folder.
 - Runtime environment differs by surface: Claude Code has full network access and local package
   installs; the API surface has **no** network access and no runtime package installation; on
@@ -279,7 +279,7 @@ enabled = false
 **Which ChatGPT surfaces see a bare folder.** A standalone skill folder is available in the ChatGPT
 **desktop app**, **Codex CLI** and the **IDE extension**. To reach Chat and Work on ChatGPT **web and
 mobile**, the skill must be packaged as a **plugin** that bundles it. This package ships as a
-standalone folder; plugin packaging is out of scope for v0.1.0.
+standalone folder; plugin packaging is out of scope for v0.1.1.
 
 > **Uncertain — a human should confirm (checked 2026-09-13).** The ChatGPT *workspace* upload and
 > enable procedure could not be verified: <https://help.openai.com/en/articles/20001066> ("Skills in

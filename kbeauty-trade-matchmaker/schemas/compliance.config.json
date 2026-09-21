@@ -1,0 +1,92 @@
+{
+  "$id": "https://schemas.tradewith.example/kbeauty-trade-matchmaker/v0.1.0/compliance.config.json",
+  "title": "Outreach compliance lookup (jurisdiction x channel)",
+  "description": "The machine half of references/compliance-notes.md section 4.1 / 4.2 / 7 and templates/legal_notices.md sections 1-2, read by scripts/validate_output.py --schema outreach-draft. It records WHICH question applies and which notice block a draft must carry; it never concludes that sending is lawful. When this file and those pages disagree, fix both in the same change: tests/run_tests.py asserts that notice_blocks agrees with the key index of templates/legal_notices.md. Not legal advice.",
+  "compiled": "2026-09-12",
+  "schema_version": "0.1.0",
+  "review_values": ["required", "not_required", "unknown"],
+  "ad_label_values": ["yes", "no", "unknown"],
+  "channel_types": [
+    "partnership_form",
+    "wholesale_form",
+    "form",
+    "contact_page",
+    "corporate_email",
+    "phone",
+    "linkedin",
+    "messenger",
+    "other"
+  ],
+  "jurisdiction_groups": {
+    "EU_EEA": ["AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE", "IS", "LI", "NO"],
+    "GCC": ["AE", "SA", "KW", "QA", "BH", "OM"]
+  },
+  "jurisdictions": {
+    "KR": {
+      "row": "Korea (KR)",
+      "direct_marketing_review": "required",
+      "corporate_email_ad_label_required": "yes"
+    },
+    "EU_EEA": {
+      "row": "EU / EEA",
+      "direct_marketing_review": "required",
+      "corporate_email_ad_label_required": "yes"
+    },
+    "GB": {
+      "row": "United Kingdom (UK)",
+      "direct_marketing_review": "required",
+      "corporate_email_ad_label_required": "yes"
+    },
+    "GCC": {
+      "row": "UAE and GCC (AE, SA, KW, QA, BH, OM)",
+      "direct_marketing_review": "required",
+      "corporate_email_ad_label_required": "unknown"
+    },
+    "US": {
+      "row": "United States (US)",
+      "direct_marketing_review": "required",
+      "corporate_email_ad_label_required": "yes"
+    },
+    "SG": {
+      "row": "Singapore (SG)",
+      "direct_marketing_review": "required",
+      "corporate_email_ad_label_required": "yes"
+    },
+    "JP": {
+      "row": "Japan (JP)",
+      "direct_marketing_review": "required",
+      "corporate_email_ad_label_required": "yes"
+    }
+  },
+  "default": {
+    "row": "Anywhere else / unresolved",
+    "direct_marketing_review": "unknown",
+    "ad_label_required": "unknown"
+  },
+  "resolution_note": "Advertising label / opt-out required resolves in this order (compliance-notes.md section 7: country row AND channel). (1) A notice block exists for the key {{country_alpha2}}.{{channel_type}}, directly or through notice_block_channel_family: its status maps through notice_block_status_to_ad_label. (2) No block, channel corporate_email: the jurisdiction row's corporate_email_ad_label_required. (3) Anything else, or an unlisted country: unknown. The draft's flag must equal the resolved value; not_required / no are reserved for a human who cleared the case and are never produced here.",
+  "notice_block_status_to_ad_label": {
+    "required": "yes",
+    "unknown": "unknown"
+  },
+  "notice_block_channel_family": {
+    "partnership_form": ["partnership_form", "wholesale_form", "form", "contact_page"]
+  },
+  "notice_blocks": {
+    "KR.corporate_email": {"status": "required", "subject_prefix": "(광고)"},
+    "KR.partnership_form": {"status": "unknown"},
+    "GB.corporate_email": {"status": "required"},
+    "GB.partnership_form": {"status": "unknown"},
+    "US.corporate_email": {"status": "required"},
+    "US.partnership_form": {"status": "unknown"},
+    "JP.corporate_email": {"status": "required"},
+    "SG.corporate_email": {"status": "required"},
+    "AE.corporate_email": {"status": "unknown"},
+    "AE.partnership_form": {"status": "unknown"},
+    "DE.corporate_email": {"status": "unknown"},
+    "FR.corporate_email": {"status": "required"},
+    "IT.corporate_email": {"status": "unknown"}
+  },
+  "subject_prefix_note": "subject_prefix is the literal the block itself mandates at the start of the Subject line (KR.corporate_email: \"제목 맨 앞에 (광고) 표시\", 정보통신망법 section 50). No other block states a subject-position marker, so none carries one.",
+  "fallback_line": "- No notice block on file for {{country_name}} / {{channel_type}} — obtain wording before sending",
+  "not_required_line": "- Not required for this jurisdiction and channel"
+}

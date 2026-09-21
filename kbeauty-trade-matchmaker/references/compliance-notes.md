@@ -62,7 +62,7 @@ Korean gloss: robots.txt·이용약관·로그인·페이월·CAPTCHA를 우회�
 - Login-walled content (including most of LinkedIn beyond a public company page) is out of reach.
   Cite only what is publicly visible.
 - Before leaning on any directory as a recurring source, someone must read its terms of use once and
-  record the outcome. PRD 21 Open Question 5 leaves this process undecided at v0.1.0 — until it is
+  record the outcome. PRD 21 Open Question 5 leaves this process undecided at v0.1.1 — until it is
   decided, treat an unreviewed directory as tier 4 and prefer the company's own site.
 
 ### 2.3 Archives and caches
@@ -191,7 +191,7 @@ installed package; every point value is in `schemas/scoring.config.json`, which 
 | **S-CP3** Destination-market registration | the `seller.regulatory_registrations` entry whose `market` equals the destination country | This is where CPNP, SCPN, MoHAP, NMPA and ASEAN notifications actually score. `registered` > `in_progress` > not registered. **Absent array = unknown; present-and-empty = checked, none found.** |
 | **S-CP4** Baseline quality certification | `ISO22716` / `CGMP` first, then the other quality schemes | A Korean manufacturer with no named GMP scheme is a real gap, not a formality. |
 | Adjustment: `certifications_verified_official` | `seller.certifications_verified == true` | Only an official, exhaustive certification page earns this. |
-| Adjustment: `certification_claim_unverified` | any token whose **best** evidence is tier 4 or 5 | A directory checkbox is admissible evidence and still costs the seller points. |
+| Adjustment: `certification_claim_unverified` | any held token whose **best** evidence is tier 4 or 5, or that **no** evidence item supports at all | A directory checkbox is admissible evidence and still costs the seller points; an uncited token costs the same. |
 
 And in the hard filter: **`HF-04` (required certifications) only applies when
 `certifications_verified == true`.** An unverified certification list never causes a rejection — the
@@ -273,6 +273,11 @@ Compliance checks
 | `Advertising label / opt-out required` | From §4.1's row for that country **and** §4.2's channel. `unknown` whenever either half is unresolved — which then triggers the `Required legal notices` block under R10.4.6. |
 | `Personal data used` | Always the literal `none (company-level channel only)`. If that line cannot be written truthfully, there is no draft (§3). |
 | `Claims verified against evidence` | `yes` only when every specific sentence traces to an `evidence_id` with a URL; otherwise `blocked`, and the untraceable sentences are removed before re-rendering. |
+
+`schemas/compliance.config.json` is the machine copy of §4.1, §4.2 and the `templates/legal_notices.md`
+key index. `validate_output.py --schema outreach-draft` resolves both flags and the notice block from it
+(`DRAFT-08`, `R10.4.6`, `DRAFT-11`; `references/output-format.md` §10.4.1), so a change to this page or to
+`legal_notices.md` changes that file in the same edit — the test suite fails when the two disagree.
 
 ---
 

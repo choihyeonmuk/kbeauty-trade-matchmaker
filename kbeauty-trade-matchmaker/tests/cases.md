@@ -384,3 +384,24 @@ the post-audit pass, each of which had been demonstrated to be bypassable.
 a document whose candidates cannot render their INV-19 lines. Before it, stripping `website`,
 `contact_channels`, `missing`, `company_type` and `oem_odm` off every record left a document that
 passed `--strict --invariants` at exit 0 — the shipping gate `SKILL.md` self-check #1 names.
+
+---
+
+## 11. Validator negatives, outreach drafts, Mode 1 → Mode 4
+
+| Case | What it asserts | Rule |
+|---|---|---|
+| `validator negative: control …` | The unmutated bases (scored `BUY-gulfglow-example`, its raw golden record, the RFQ #134 match result) pass `--strict`, so a failure below is caused by the mutation | — |
+| `validator negative: <rule> <fixture>` | Each `tests/fixtures/invalid/*.json` applies one mutation (`set` / `delete` / `swap` / `set_each`) to a base and must exit **1** with that rule id reported. `evi-06.stale-age` must also exit **0** without `--strict` | INV-01, -02, -04, -05, -06, -22, -30, -37, EVI-01…EVI-06, VAL-01 |
+| `validator negative: every targeted rule has a failing fixture` | No targeted rule is left without a fixture | — |
+| `outreach draft: good <draft> passes --strict …` | `tests/fixtures/drafts/` holds one buyer EN, buyer KO, seller KO (KR `corporate_email`, `(광고)`) and seller EN (RFQ #134, KR `contact_page`) draft; each passes with and without `--record` | output-format 10.4 |
+| `outreach draft: <rule> <label>` | A table in `run_tests.py` edits a good draft once per rule and asserts exit **1** plus the rule id; two `PASS` rows prove the gates are not bans (a demand claim citing an open RFQ with status and date; a channel with no block and the literal fallback line). Personal-data and later-state strings live in the table, never in `tests/fixtures/` | DRAFT-01…DRAFT-12, INV-09, INV-31, INV-34, R10.4.6 |
+| `outreach draft: compliance.config.json notice_blocks agree with legal_notices.md` | Same keys, same `status`, every block body parsed | R10.4.6 |
+| `outreach draft: validate_outreach_draft() …` | The importable function accepts a clean adapter JSON draft, reports `DRAFT-05` for an `evidence_id` on another URL and `DRAFT-01` for a JSON draft with no `draft_markdown` | DRAFT-01, DRAFT-05 |
+| `e2e: Mode 1 score_buyer -> Mode 4 …` | `score_buyer.py` over the golden buyers writes a scored envelope; the Gulf Glow draft validates against its qualified record, and the same draft aimed at a non-qualified record is refused with `DRAFT-09` | SKILL.md Mode 4 prerequisite |
+| `readiness: … score_match._rfq_readiness agrees` / `extensions.rfq_readiness … agrees` | The real readiness function and the block `score_match.py` writes under `extensions` match `rfq.readiness.expected.json`; a missing block fails | SCORING-CONTRACT 2.9 |
+| `package: README.md exists at the repository root` | Reported as **SKIP** when the suite runs inside an installed copy (`.kbtm-install-manifest` present, or no `.git` beside the package) | BUILD-CONTRACT 2.2 note |
+
+Fixture corrections made with these rules: `BUY-palefade-example` and `SEL-areumfactory-example` (in
+`sellers.golden.json` and both match envelopes) were `VERIFIED` while every evidence item was `stale:
+true`; they are now `DISCOVERED` (INV-37). `status` is not read by any scorer, so no score moved.

@@ -280,22 +280,24 @@ kbtm_install() {
 }
 
 kbtm_verify() {
-    kbtm_vf_runner="$KBTM_SOURCE_DIR/tests/run_tests.py"
-    if [ ! -f "$kbtm_vf_runner" ]; then
-        kbtm_err "--verify asked for, but the test runner is missing: $kbtm_vf_runner"
-        return 1
-    fi
+    # Test the INSTALLED copy, not the source tree: a --copy install can differ from its source
+    # (pruned files, a partial cp), and that difference is exactly what --verify must catch.
+    kbtm_vf_runner="$KBTM_TARGET/tests/run_tests.py"
     if ! command -v python3 >/dev/null 2>&1; then
         kbtm_err '--verify needs python3 on PATH (3.9 or newer, stdlib only).'
         return 1
     fi
     if [ "$KBTM_DRY_RUN" -eq 1 ]; then
-        printf '  would run: python3 %s\n' "$kbtm_vf_runner"
+        printf '  would run: (cd %s && python3 tests/run_tests.py)\n' "$KBTM_TARGET"
         return 0
     fi
+    if [ ! -f "$kbtm_vf_runner" ]; then
+        kbtm_err "--verify asked for, but the installed copy has no test runner: $kbtm_vf_runner"
+        return 1
+    fi
     kbtm_info ''
-    kbtm_info "Verifying: python3 $kbtm_vf_runner"
-    if python3 "$kbtm_vf_runner"; then
+    kbtm_info "Verifying the installed copy: (cd $KBTM_TARGET && python3 tests/run_tests.py)"
+    if (CDPATH='' cd -- "$KBTM_TARGET" && PYTHONDONTWRITEBYTECODE=1 python3 tests/run_tests.py); then
         kbtm_info 'Verification passed.'
         return 0
     fi
@@ -401,13 +403,51 @@ kbtm_main() {
     return 0
 }
 
-# Only run when executed as a script. Sourcing this file defines the functions and stops there.
-KBTM_SCRIPT_PATH=${0:-install.sh}
-case "${KBTM_SCRIPT_PATH##*/}" in
-    install.sh)
-        if [ "${KBTM_NO_MAIN:-0}" != '1' ]; then
-            kbtm_main "$@"
-            exit $?
+# True when this file is being sourced (`. install.sh` / `source install.sh`) rather than run.
+# A renamed copy, `sh -s < install.sh` and `cat install.sh | sh -s` all run main. bash and zsh
+# are detected exactly. Other POSIX shells (dash, ksh) have no portable probe, so there:
+#   - an interactive shell is sourcing;
+#   - a shell reading its script from stdin (`s` in $-: `sh -s`, `cat install.sh | sh`) runs main;
+#   - when $0 is a readable file, main runs only if that file is this installer (it defines
+#     kbtm_is_sourced), so a direct or renamed run works and a wrapper script that sources this
+#     file does not install;
+#   - otherwise ($0 is the shell itself, as in `dash -c '. ./install.sh'`) it is sourcing.
+# Where the probe cannot tell, the safer answer is "sourced": main does not run. KBTM_NO_MAIN=1
+# forces that answer in every shell. ksh sets $0 to a dot-script's own path, so `ksh -c
+# '. ./install.sh'` looks like a direct run: under ksh, set KBTM_NO_MAIN=1 before sourcing.
+kbtm_is_sourced() {
+    [ "${KBTM_NO_MAIN:-0}" = '1' ] && return 0
+    if [ -n "${BASH_VERSION:-}" ]; then
+        # eval keeps the array syntax away from shells that cannot parse it.
+        eval '[ "${BASH_SOURCE[1]:-$0}" != "$0" ]'
+        return
+    fi
+    if [ -n "${ZSH_VERSION:-}" ]; then
+        case "${ZSH_EVAL_CONTEXT:-}" in
+            *:file*) return 0 ;;
+        esac
+        return 1
+    fi
+    case "$-" in
+        *i*) return 0 ;;
+        *s*) return 1 ;;
+    esac
+    if [ -f "${0:-}" ] && [ -r "$0" ]; then
+        if grep -q '^kbtm_is_sourced() {$' "$0" 2>/dev/null; then
+            return 1
         fi
-        ;;
-esac
+        return 0
+    fi
+    return 0
+}
+
+if ! kbtm_is_sourced; then
+    if [ -f "${0:-}" ]; then
+        KBTM_SCRIPT_PATH=$0
+    else
+        # Piped (`sh -s`): no script file exists, so the package is the current directory.
+        KBTM_SCRIPT_PATH="$(pwd -P)/install.sh"
+    fi
+    kbtm_main "$@"
+    exit $?
+fi

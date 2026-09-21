@@ -5,7 +5,7 @@
 | File | `templates/seller_outreach.md` |
 | Side | `Seller` — a Korean manufacturer, OEM/ODM, brand or exporting distributor |
 | Envelope | `references/output-format.md` 10.4, reproduced literally (capitalization, punctuation, order) |
-| Package | `kbeauty-trade-matchmaker` · `skill_version 0.1.0` |
+| Package | `kbeauty-trade-matchmaker` · `skill_version 0.1.1` |
 | Korean gloss | 한국 셀러 대상 아웃리치 **초안** 템플릿. 초안 생성까지가 범위이며 자동 발송은 금지된다. |
 
 **Header note (BUILD-CONTRACT.md 1.4).** The 10.4 envelope is reproduced line for line. This template adds exactly two things the envelope permits but does not print: the `Required legal notices` heading mandated by R10.4.6, and the three-line INV-09 trailer. It adds no other line and removes none.
@@ -33,7 +33,7 @@ Korean gloss: 아래 항목은 예외 없이 적용된다.
 3. Fill every `{{token}}`. A token you cannot fill from evidence deletes its sentence — it never becomes a guess or a hedge.
 4. Each personalizing clause carries one `[[ev: EV-nnn]]` marker. Every marker becomes one `Personalization facts` line, and **no marker may survive into the rendered body**.
 5. Set `Language`. Korean recipients get a Korean body; the envelope labels stay English (R10.4.5). A translated body carries the same markers, the same facts and the same review.
-6. Fill `Compliance checks`. For a Korean recipient the jurisdiction is `KR` and the notice key is `KR.{{channel_type}}`; leave the flags `unknown` until `references/compliance-notes.md` and `templates/legal_notices.md` resolve them.
+6. Fill `Compliance checks` from `references/compliance-notes.md` §4.1 and `templates/legal_notices.md`. For a Korean recipient the jurisdiction is `KR` and the notice key is `KR.{{channel_type}}`. On `corporate_email` the Korea row already resolves both flags — `direct-marketing review: required` and `Advertising label / opt-out required: yes` (the `KR.corporate_email` block is `status: required`). A flag stays `unknown` only where those pages leave it unresolved, e.g. `KR.partnership_form`.
 7. Keep the body at or under 180 words. The capability block in section 4 is a list, not prose.
 8. Hand the draft to a human. Nothing here advances the state machine past `READY_FOR_REVIEW` (INV-09, INV-37).
 
@@ -202,7 +202,7 @@ Body skeleton (Korean):
 
 해외 바이어는 MOQ, 인증, 수출 가능 국가, 리드타임을 기준으로 후보를 좁힙니다. 위 항목이 unknown으로 남아 있으면 비교 대상에서 빠지기 쉽습니다.
 {{cta_sentence}}
-회신이 필요 없으시면 이 메일은 무시하셔도 됩니다. 추가 연락은 드리지 않습니다.
+관심이 없으시면 "관심 없음"이라고 회신해 주십시오. 이후로는 연락드리지 않겠습니다.
 
 감사합니다.
 ```
@@ -210,6 +210,12 @@ Body skeleton (Korean):
 CTA options (choose one; all are submissions, not signups):
 - KO `수출용 라인카드 또는 위 항목이 채워진 회신을 보내주시면 프로필에 반영하겠습니다.`
 - EN `Reply with your export line card, or with the fields above filled in, and we will record it.`
+
+Exit sentence (`{{exit_sentence}}`) — a close the recipient can act on, never "ignore this mail":
+- KO `관심이 없으시면 "관심 없음"이라고 회신해 주십시오. 이후로는 연락드리지 않겠습니다.`
+- EN `If this is not relevant, reply "no" and we will not contact you again.`
+
+"무시하셔도 됩니다" / "ignore this email" is not an opt-out (`references/outreach-guidelines.md` §7.4), and a flat "추가 연락은 드리지 않습니다" would contradict the S-V4 follow-up. The jurisdiction's own 수신거부 wording still comes only from the `Required legal notices` block (section 6).
 
 Forbidden here: any sentence that a buyer, an order, a quantity or a market opportunity is waiting; any urgency built from scarcity, deadlines or "지금이 적기" wording.
 
@@ -314,7 +320,7 @@ Body
 
 해외 바이어는 MOQ, 인증, 수출 가능 국가, 리드타임을 기준으로 후보를 좁힙니다. 위 항목이 unknown으로 남아 있으면 비교 대상에서 빠지기 쉽습니다.
 수출용 라인카드 또는 위 항목이 채워진 회신을 보내주시면 프로필에 반영하겠습니다. 별도 비용이나 독점 계약은 없습니다.
-회신이 필요 없으시면 이 메일은 무시하셔도 됩니다. 추가 연락은 드리지 않습니다.
+관심이 없으시면 "관심 없음"이라고 회신해 주십시오. 이후로는 연락드리지 않겠습니다.
 
 감사합니다.
 TradeWith — K-Beauty 소싱 데스크
@@ -328,8 +334,8 @@ Personalization facts
 - Contact page publishes the role address export@hanbitcos.example — [https://www.hanbitcos.example/en/contact] (observed 2026-09-12)
 
 Compliance checks
-- Jurisdiction: Korea, Republic of — direct-marketing review: unknown
-- Advertising label / opt-out required: unknown
+- Jurisdiction: Korea, Republic of — direct-marketing review: required
+- Advertising label / opt-out required: yes
 - Personal data used: none (company-level channel only)
 - Claims verified against evidence: yes
 

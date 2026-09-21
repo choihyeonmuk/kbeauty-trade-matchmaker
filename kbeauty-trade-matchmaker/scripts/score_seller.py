@@ -34,9 +34,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import sys
-import unicodedata
 from decimal import Decimal
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -45,10 +43,10 @@ import _common  # noqa: E402
 
 ENTITY = "seller"
 
-# SCORING-CONTRACT 8 reconciliation ledger item 7: S-PF1 is inapplicable in a
-# discovery run that names no category, rather than firing category_no_match.
-# Applied only when the config criterion carries no inapplicable_when of its own.
-INTERIM_INAPPLICABLE_WHEN = {"S-PF1": ["query.product_categories_absent"]}
+# Criteria whose `inapplicable_when` list is not yet carried by the config. Empty:
+# S-PF1's query.product_categories_absent (ledger item 7) now lives in
+# scoring.config.json, where score_match.py reads it as well.
+INTERIM_INAPPLICABLE_WHEN = {}
 
 # Certification groups behind S-CP4 (vocabulary facts, BUILD-CONTRACT 8.6;
 # the points they earn live in the config).
@@ -146,12 +144,8 @@ def _fmt_value(value):
 
 
 def _normalise_unit(unit):
-    """NFKC + casefold + strip whitespace and periods (SCORING-CONTRACT 2.3)."""
-    if unit is None or _common.is_unknown(unit):
-        return "units"
-    text = unicodedata.normalize("NFKC", str(unit))
-    text = re.sub(r"[\s.]+", "", text)
-    return text.casefold() or "units"
+    """SCORING-CONTRACT 2.3 unit normalisation plus the shared unit-synonym table."""
+    return _common.normalize_unit(unit)
 
 
 def _cmp_max(value):
@@ -261,23 +255,12 @@ class _Ctx(object):
 
 
 def _normalised_categories(raw, notes):
-    """None = unknown; [] = verified empty; list = known (BUILD-CONTRACT 8.5)."""
-    if not isinstance(raw, list):
-        return None
-    normalised = []
-    for slug in raw:
-        token = _common.normalize_category(slug) if isinstance(slug, str) else None
-        if token is None:
-            notes.append(
-                "category token %r is a vertical marker, not a category; dropped before "
-                "scoring (BUILD-CONTRACT 8.5)" % (slug,)
-            )
-            continue
-        if token not in normalised:
-            normalised.append(token)
-    if raw and not normalised:
-        return None
-    return normalised
+    """None = unknown; [] = verified empty; list = known (BUILD-CONTRACT 8.5).
+
+    Vertical markers and slugs outside the vocabulary are dropped with a note, so an
+    unmapped term never becomes a verified mismatch or an HF-01 reject (INV-07).
+    """
+    return _common.normalize_category_list(raw, notes, "seller")
 
 
 def _moq_cmp(record, query, notes):
@@ -357,7 +340,7 @@ def _query_categories(query):
     out = []
     for slug in _as_list(query.get("product_categories")) or []:
         token = _common.normalize_category(slug) if isinstance(slug, str) else None
-        if token is not None and token not in out:
+        if _common.is_known_category(token) and token not in out:
             out.append(token)
     return out
 
@@ -765,7 +748,9 @@ def _certification_claim_unverified(ctx):
         return False
     items = _evidence_with(ctx, "certifications")
     if not items:
-        return False
+        # Held tokens that no evidence item cites are no more credible than tokens a
+        # directory carries; without this, a tier-4 citation cost -10 and none cost nothing.
+        return True
     for token in ctx.certifications:
         supporting = []
         for item in items:
@@ -774,7 +759,7 @@ def _certification_claim_unverified(ctx):
             if not tokens or token in tokens:
                 supporting.append(item)
         best = _best_evidence(supporting, ctx.as_of, ctx.config)
-        if best is not None and best.get("source_tier") in (4, 5):
+        if best is None or best.get("source_tier") in (4, 5):
             return True
     return False
 
@@ -970,34 +955,8 @@ def _material_claim_fields(config):
     return list(config["evidence"]["material_claims"][ENTITY])
 
 
-def _unresolved_conflicts(ctx):
-    resolved_fields = set()
-    for conflict in ctx.record.get("conflicts") or []:
-        if isinstance(conflict, dict) and isinstance(conflict.get("field"), str):
-            resolved_fields.add(conflict["field"])
-    count = 0
-    for item in _evidence_items(ctx.record):
-        links = item.get("conflicts_with")
-        if isinstance(links, list) and links and item.get("claim") not in resolved_fields:
-            count += 1
-    return count
-
-
 def _confidence(ctx, evidence_quality_score):
-    config = ctx.config
-    conf = config["confidence"]
-    coverage = conf["coverage_factor"]
-    unknown_claims = sum(
-        1 for claim in _material_claim_fields(config) if _common.is_unknown(ctx.record.get(claim))
-    )
-    factor = _dec(coverage["base"]) + _dec(coverage["per_unknown_material_claim"]) * Decimal(unknown_claims)
-    factor = max(_dec(coverage["floor"]), factor)
-    stale = _dec(conf["stale_multiplier"]) if ctx.record.get("stale") is True else Decimal(1)
-    conflicts = _dec(conf["unresolved_conflict_multiplier"]) if _unresolved_conflicts(ctx) else Decimal(1)
-    value = _dec(evidence_quality_score) / Decimal(100) * factor * stale * conflicts
-    rounded = _dec(_common.round_half_up(value, 2))
-    rounded = max(_dec(conf["min"]), min(Decimal(1), rounded))
-    return float(rounded)
+    return _common.record_confidence(ctx.record, ENTITY, evidence_quality_score, ctx.config)
 
 
 def _pair_skipped_rules(ctx, penalties, skipped_rules):
@@ -1042,7 +1001,9 @@ def _score_record(record, config, as_of, query, cond, schema, skipped_rules):
 
     for dimension_key in config["seller"]["dimensions"]:
         if config["seller"]["dimensions"][dimension_key].get("computed_by") == "evidence_quality_function":
-            score = _clamp_int(int(_common.evidence_quality(record, _material_claim_fields(config), as_of)), 0, 100)
+            score = _clamp_int(
+                int(_common.evidence_quality(record, _material_claim_fields(config), as_of, config=config)), 0, 100
+            )
             info = {"raw_score": float(score), "adjustments": []}
         else:
             result, dimension_details, dimension_penalties, signals = _score_dimension(ctx, dimension_key)
@@ -1297,7 +1258,10 @@ def _condition_flags(query, config):
         if field is None:
             continue
         value = query.get(field)
-        if isinstance(value, (list, tuple)):
+        if key == "query.product_categories_absent":
+            # Absent means no IN-VOCABULARY category: ["k_beauty"] names none (scoring-03).
+            flags[key] = not _query_categories(query)
+        elif isinstance(value, (list, tuple)):
             flags[key] = len(value) == 0
         else:
             flags[key] = _common.is_unknown(value)
@@ -1453,7 +1417,7 @@ def _run(args, config):
     if not query and isinstance(envelope_query, dict):
         query = envelope_query
     as_of = args.as_of or envelope_as_of
-    as_of = _common.resolve_as_of(records, as_of)
+    as_of = _common.resolve_as_of(records, as_of, config)
 
     schema = None
     try:
@@ -1465,6 +1429,7 @@ def _run(args, config):
     cond = _condition_flags(query, config)
 
     notes, excluded, scored_records = [], [], []
+    _common.normalize_category_list(_as_list(query.get("product_categories")), notes, "query")
     partial = False
     candidates_found = len(records)
 
@@ -1613,10 +1578,13 @@ def _run(args, config):
             errors.extend(_common.validate(envelope, envelope_schema))
 
     payload = returned if args.records_only else envelope
+    # Validation already ran above: an invalid document never lands on the requested
+    # --output path, where a chained command would pick it up (dry-run-09).
+    target = _common.invalid_output_path(args.output) if (errors and args.output) else args.output
     handle = None
-    if args.output:
+    if target:
         try:
-            handle = open(args.output, "w", encoding="utf-8")
+            handle = open(target, "w", encoding="utf-8")
         except OSError as exc:
             return _common.die("cannot write --output: %s" % (exc,), 2)
     try:
@@ -1630,6 +1598,8 @@ def _run(args, config):
         _common.die("output failed validation (%d problems)" % (len(errors),), 1)
         for message in errors[:100]:
             _common.eprint("  " + message)
+        if args.output:
+            _common.eprint("  invalid document written to %s, not %s" % (target, args.output))
         return 1
 
     _common.eprint(

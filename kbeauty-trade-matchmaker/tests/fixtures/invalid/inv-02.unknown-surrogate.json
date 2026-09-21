@@ -1,0 +1,15 @@
+{
+  "rule": "INV-02",
+  "description": "N/A stands in for unknown.",
+  "base": "buyers_uae:BUY-gulfglow-example",
+  "schema": "buyer",
+  "mutations": [
+    {
+      "op": "set",
+      "path": [
+        "company_type"
+      ],
+      "value": "N/A"
+    }
+  ]
+}

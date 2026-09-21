@@ -2886,7 +2886,7 @@
       "canonical_domain": "areumfactory.example",
       "country": "KR",
       "company_type": "manufacturer",
-      "status": "VERIFIED",
+      "status": "DISCOVERED",
       "qualification_score": 0,
       "confidence": 0,
       "evidence": [

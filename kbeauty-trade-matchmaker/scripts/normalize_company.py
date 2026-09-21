@@ -41,7 +41,6 @@ import _common  # noqa: E402
 #: neither field and the pass is a no-op for it.
 _UNIT_SIBLINGS = (("moq", "moq_unit"), ("buyer_moq", "buyer_moq_unit"))
 
-_ALPHA2_RE = re.compile(r"^[A-Za-z]{2}$")
 _WEBSITE_RE = re.compile(r"^https?://[^\s]+$")
 _DEFAULT_PORTS = {"http": "80", "https": "443"}
 _HOST_RE = re.compile(r"^[^\s/:@?#]+$")
@@ -149,17 +148,12 @@ def _is_plausible_host(host):
 
 
 def _normalize_country(value):
-    """Return the alpha-2 code, the literal "unknown", or None when unconvertible."""
-    if value is None:
-        return None
-    if not isinstance(value, str):
-        return None
-    text = unicodedata.normalize("NFKC", value).strip()
-    if _common.is_unknown(text):
-        return _common.UNKNOWN
-    if _ALPHA2_RE.match(text):
-        return text.upper()
-    return None
+    """Return the alpha-2 code, the literal "unknown", or None when unconvertible.
+
+    Country names and aliases ("United Kingdom", "UK", "영국") resolve through the static
+    ISO-3166 table in _common (BUILD-CONTRACT 8.7); only a value no row matches is None.
+    """
+    return _common.normalize_country(value)
 
 
 def _add_note(notes, text):
@@ -258,6 +252,21 @@ def normalize_record(record, entity="auto"):
             )
             out["country"] = _common.UNKNOWN
         else:
+            raw_country = out.get("country")
+            if (
+                country != _common.UNKNOWN
+                and isinstance(raw_country, str)
+                and raw_country.strip().upper() != country
+            ):
+                _add_note(
+                    notes,
+                    'country "%s" normalised to the ISO-3166-1 alpha-2 code %s (BUILD-CONTRACT 8.7)'
+                    % (raw_country.strip(), country),
+                )
+                # buyer.schema.json carries country_name for display; keep the name that
+                # was given rather than discarding it (seller.schema.json has no such field).
+                if kind == "buyer" and "country_name" not in out and len(raw_country.strip()) > 2:
+                    out["country_name"] = raw_country.strip()[:100]
             out["country"] = country
 
     # --- unit precedence (R3.3.1) ------------------------------------------

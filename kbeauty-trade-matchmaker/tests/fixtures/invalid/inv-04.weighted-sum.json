@@ -1,0 +1,15 @@
+{
+  "rule": "INV-04",
+  "description": "qualification_score no longer equals the weighted sum of dimension_scores.",
+  "base": "buyers_uae:BUY-gulfglow-example",
+  "schema": "buyer",
+  "mutations": [
+    {
+      "op": "set",
+      "path": [
+        "qualification_score"
+      ],
+      "value": 12
+    }
+  ]
+}

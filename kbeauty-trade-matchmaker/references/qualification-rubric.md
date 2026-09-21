@@ -736,9 +736,12 @@ can never be scored by two different rubrics. Combination rule: identical to the
 | `category_adjacent_match` | **24** | `adjacent` |
 | `category_no_match` | **0** | `none` |
 
-> In **discovery with no category filter**, S-PF1 is treated as **inapplicable** rather than firing
-> `category_no_match` (0) — a seller must not be punished for a filter the operator never set. This
-> is a v0.1.0 open item; matching always carries a category, so it cannot arise there.
+> When the query or RFQ names **no in-vocabulary category**, S-PF1 is **inapplicable**
+> (`inapplicable_when: query.product_categories_absent` in `scoring.config.json`, read by both
+> `score_seller.py` and `score_match.py`) rather than firing `category_no_match` (0) — a seller must
+> not be punished for a filter the operator never set. An RFQ whose only category is a vertical marker
+> (`k_beauty`) counts as absent. A seller slug outside the 8.5 vocabulary is dropped with a note; a
+> list that keeps none is **unknown** (S-PF1 18, HF-01 skipped), never a verified mismatch.
 
 #### S-PF2 — "Form / formulation match" · max 25 · `max` · inapplicable when `query.product_forms_absent`
 
@@ -884,7 +887,7 @@ S-CM1 → 18 when `M != "either"` and the mapped flag **and** the other two are 
 - **`{"max": 5000}`** ("up to N") → normalises to `{"min": 0, "max": 5000}`.
 - **`{"min": 1000}`** ("from N", open upper bound) → **unknown**, with a note. It is never turned into `{"min":1000,"max":1000}`, into `+inf`, or into the ceiling.
 - **Unknown / absent** → S-OP1 takes **17**, HF-03 is **skipped** (never a rejection), `"seller.moq"` enters `missing[]`, and one `unknown_penalty_applied[]` entry is emitted.
-- **Unit mismatch** (`moq_unit: "kg"` against a query in `units`) → the comparison cannot be made: S-OP1 is **unknown** (17), HF-03 is skipped, **and** `moq_unit_mismatch` (−10) fires. An absent unit means `"units"`.
+- **Unit mismatch** (`moq_unit: "kg"` against a query in `units`) → the comparison cannot be made: S-OP1 is **unknown** (17), HF-03 is skipped, **and** `moq_unit_mismatch` (−10) fires. An absent unit means `"units"`. Units are compared after `_common.UNIT_SYNONYMS`, so `pcs`, `pieces`, `EA`, `개` and `unit` all equal `units` and are **not** a mismatch; only a different basis (`kg`, `sets`) is.
 - **"MOQ negotiable" with no number is not a MOQ.** `moq` stays unknown; only `moq_negotiable_statement` (+5) fires.
 - **Unit precedence:** when both `moq_unit` and `moq.unit` are present, **`moq_unit` wins** and a note naming both is recorded.
 
@@ -1025,7 +1028,7 @@ status is `"unknown"`.
 | Adjustment | Delta | Fires when |
 |---|---|---|
 | `certifications_verified_official` | **+5** | `certifications_verified is true` — the list was read from an official, **exhaustive** certification page |
-| `certification_claim_unverified` | **−10** | At least one **held** token whose **best** supporting evidence sits at `source_tier` 4 or 5 |
+| `certification_claim_unverified` | **−10** | At least one **held** token whose **best** supporting evidence sits at `source_tier` 4 or 5, **or** that **no** evidence item supports at all (an uncited claim is no more credible than a directory-cited one) |
 
 `certification_claim_unverified` prices the **source**, not the list. It is deliberately **not** keyed
 to `certifications_verified is not true`, and that decision is recorded rather than left open:
@@ -1240,7 +1243,7 @@ records can never inflate the independent-source count.
 | `official_bonus` | **+10** | At least one item with `is_official == true` **and** `source_tier == 1` |
 | `multi_source_bonus` | `min(15, max(0, 7 * (domain_count − 1)))` | The first domain earns nothing |
 | `stale_penalty` | **−25** | `record.stale == true`, **or** `covered` is non-empty and every covered claim's best item is older than `stale_threshold_days = 730`. Applied **once**, never per item |
-| `conflict_penalty` | **−10 per unresolved conflict**, total floored at **−20** | An evidence item carries a non-empty `conflicts_with` for which the record holds **no** `conflicts[]` entry naming that field |
+| `conflict_penalty` | **−10 per unresolved conflict**, total floored at **−20** | An evidence item carries a non-empty `conflicts_with` for which the record holds **no** `conflicts[]` entry naming that field. Counted once per **unordered pair** of evidence ids: two items cross-linked to each other are one conflict |
 | `inferred_penalty` | **−8** | At least one material claim whose **only** supporting evidence carries `inferred: true` |
 
 A conflict that *is* recorded in `conflicts[]` is a **resolved** conflict and costs nothing — the

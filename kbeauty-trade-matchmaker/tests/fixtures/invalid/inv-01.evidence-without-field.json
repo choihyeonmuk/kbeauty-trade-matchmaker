@@ -1,0 +1,14 @@
+{
+  "rule": "INV-01",
+  "description": "EV-004 asserts wholesale_signal true but the record field is gone.",
+  "base": "buyers_uae:BUY-gulfglow-example",
+  "schema": "buyer",
+  "mutations": [
+    {
+      "op": "delete",
+      "path": [
+        "wholesale_signal"
+      ]
+    }
+  ]
+}

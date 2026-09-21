@@ -1,0 +1,21 @@
+{
+  "rule": "INV-22",
+  "description": "A rationale item cites an evidence id absent from evidence_index.",
+  "base": "match_134",
+  "schema": "match-result",
+  "mutations": [
+    {
+      "op": "set",
+      "path": [
+        "results",
+        0,
+        "rationale",
+        0,
+        "evidence_ids"
+      ],
+      "value": [
+        "EV-NOPE"
+      ]
+    }
+  ]
+}

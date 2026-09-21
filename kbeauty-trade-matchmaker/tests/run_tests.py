@@ -1019,12 +1019,27 @@ def phase_pipeline(report, pipeline, allow_missing):
                             % (filled, want["qualification_score"]))
         report.check("readiness: %s scores %d/100" % (name, want["qualification_score"]),
                      not problems, "\n".join(problems))
+        # The formula above is a copy; score_match.py's own _rfq_readiness and the block it
+        # writes to extensions.rfq_readiness are the real output, so both are checked and a
+        # missing block is a failure (it used to be looked up under rfq_constraints, where
+        # score_match never writes it, so this cross-check never ran).
+        sys.path.insert(0, SCRIPT_DIR)
+        sys.dont_write_bytecode = True
+        import score_match  # noqa: E402
+        real_score, real_detail = score_match._rfq_readiness(rfq)
+        report.check("readiness: %s score_match._rfq_readiness agrees with expected" % name,
+                     real_score == want["qualification_score"]
+                     and real_detail["filled"] == want["readiness_detail"]["filled"]
+                     and real_detail["missing_fields"] == want["readiness_detail"]["missing_fields"],
+                     "got %r %r" % (real_score, real_detail))
         result = pipeline.match_134 if name == "rfq.134.json" else pipeline.match_nomatch
-        emitted = (result or {}).get("rfq_constraints") or {}
-        if "qualification_score" in emitted or "readiness_detail" in emitted:
-            report.check("readiness: %s block echoed by score_match.py agrees" % name,
-                         emitted.get("qualification_score") == want["qualification_score"],
-                         "got %r" % emitted.get("qualification_score"))
+        emitted = ((result or {}).get("extensions") or {}).get("rfq_readiness")
+        report.check("readiness: %s extensions.rfq_readiness written by score_match.py agrees"
+                     % name,
+                     isinstance(emitted, dict)
+                     and emitted.get("qualification_score") == want["qualification_score"]
+                     and emitted.get("readiness_detail") == real_detail,
+                     "extensions.rfq_readiness = %r" % (emitted,))
 
     # --- validate_output.py (BUILD-CONTRACT 13.1) -----------------------------
     with tempfile.TemporaryDirectory() as tmp:
@@ -1320,11 +1335,14 @@ def phase_cases(report, pipeline, allow_missing):
         if not rec:
             problems.append("BUY-kantoimport-example is absent")
         else:
-            if (rec.get("dimension_scores") or {}).get("evidence_quality") != 64:
-                problems.append("evidence_quality = %r, expected 64 (conflict_penalty -10)"
+            # EV-002 and EV-003 are cross-linked to each other: ONE unresolved conflict,
+            # counted per unordered id pair (-10), not once per item (-20).
+            if (rec.get("dimension_scores") or {}).get("evidence_quality") != 74:
+                problems.append("evidence_quality = %r, expected 74 (one reciprocal conflict, "
+                                "conflict_penalty -10)"
                                 % (rec.get("dimension_scores") or {}).get("evidence_quality"))
-            if rec.get("confidence") != 0.41:
-                problems.append("confidence = %r, expected 0.41 (0.64 x 0.75 x 0.85)"
+            if rec.get("confidence") != 0.47:
+                problems.append("confidence = %r, expected 0.47 (0.74 x 0.75 x 0.85)"
                                 % rec.get("confidence"))
         report.check(case, not problems, "\n".join(problems))
 
@@ -2437,6 +2455,469 @@ def phase_field_regressions(report, allow_missing):
     report.check("field regression: FR-08 every rendered label has a fixed Korean mapping and "
                  "the map forbids mixing languages", not problems, "\n".join(problems[:10]))
 
+
+# ---------------------------------------------------------------------------
+# 4c. audit regressions - verified findings of the scoring-track audit
+#
+# Each case reproduces an audit finding against the pre-fix code: --config not
+# reaching confidence / evidence quality, MOQ unit synonyms switching HF-03 off,
+# unmapped or marker-only categories zeroing product fit, country names falling to
+# unknown, an invalid document written to --output, the uncited-certification
+# incentive, reciprocal conflicts priced twice and glued Korean legal forms.
+# ---------------------------------------------------------------------------
+AUDIT_CASES = ("AR-01 --config reaches confidence and evidence quality",
+               "AR-02 MOQ unit synonyms keep HF-03 on",
+               "AR-03 unmapped or marker-only categories never reject",
+               "AR-04 country names normalise to alpha-2",
+               "AR-05 an invalid document never lands on --output",
+               "AR-06 an uncited certification costs at least a tier-4 one",
+               "AR-07 a reciprocal conflict is one conflict",
+               "AR-08 glued Korean legal forms and spacing dedupe")
+
+
+def _json_copy(document):
+    return json.loads(json.dumps(document, ensure_ascii=False))
+
+
+def _run_json(script, args):
+    code, out, err = run_script(script, args)
+    try:
+        return code, json.loads(out), err
+    except ValueError:
+        return code, None, err
+
+
+def _match_seller_outcome(doc, seller_id):
+    """("result" | "excluded" | None, entry) for one seller of a match-result document."""
+    for item in (doc or {}).get("results") or []:
+        if item.get("seller_id") == seller_id:
+            return "result", item
+    for item in (doc or {}).get("excluded") or []:
+        if item.get("seller_id") == seller_id:
+            return "excluded", item
+    return None, None
+
+
+def _score_match_envelope(envelope, extra=None):
+    path = _write_temp_json(envelope, "kbtm-ar-match-")
+    try:
+        return _run_json("score_match.py", ["--input", path, "--as-of", AS_OF] + list(extra or []))
+    finally:
+        os.unlink(path)
+
+
+def phase_audit_regressions(report, allow_missing):
+    scripts_present = all(
+        os.path.isfile(os.path.join(SCRIPT_DIR, name)) for name in PIPELINE_SCRIPTS
+    )
+    if not scripts_present:
+        for name in AUDIT_CASES:
+            (report.skip if allow_missing else report.fail)("audit regression: %s" % name,
+                                                            "scripts/ not present")
+        return
+
+    sys.path.insert(0, SCRIPT_DIR)
+    sys.dont_write_bytecode = True
+    import _common  # noqa: F811
+    import dedupe_companies  # noqa: E402
+
+    config = read_json(os.path.join(SCHEMA_DIR, "scoring.config.json"))
+    match_input = read_json(os.path.join(FIXTURES, "match-134.input.json"))
+    seller0 = match_input["records"][0]
+    seller0_id = seller0["seller_id"]
+    seller_query = os.path.join(FIXTURES, "query-seller-sunscreen-oem.json")
+
+    # -- AR-01 (scoring-06, scoring-07) --------------------------------------
+    # score_match.py typed the confidence constants in, and no scorer passed the config
+    # to _common.evidence_quality, so --config changed neither value.
+    problems = []
+    ev_config = _json_copy(config)
+    ev_config["evidence"]["official_bonus"] = 0
+    ev_config["evidence"]["components"]["coverage"]["weight"] = 0
+    conf_config = _json_copy(config)
+    conf_config["confidence"]["coverage_factor"]["base"] = 0.5
+    conf_config["confidence"]["min"] = 0.01
+    ev_path = _write_temp_json(ev_config, "kbtm-ar-evcfg-")
+    conf_path = _write_temp_json(conf_config, "kbtm-ar-confcfg-")
+    try:
+        runs = (
+            ("score_buyer.py", ["--input", os.path.join(FIXTURES, "buyers.golden.json"),
+                                "--query", os.path.join(FIXTURES, "query-buyer-uk-sunscreen.json"),
+                                "--as-of", AS_OF], "records", "buyer_id", "dimension_scores"),
+            ("score_seller.py", ["--input", os.path.join(FIXTURES, "sellers.golden.json"),
+                                 "--query", seller_query, "--as-of", AS_OF],
+             "records", "seller_id", "dimension_scores"),
+            ("score_match.py", ["--input", os.path.join(FIXTURES, "match-134.input.json"),
+                                "--as-of", AS_OF], "results", "seller_id", "component_scores"),
+        )
+        for script, base_args, list_key, id_key, score_key in runs:
+            observed = {}
+            for label, extra in (("default", []), ("evidence", ["--config", ev_path]),
+                                 ("confidence", ["--config", conf_path])):
+                code, doc, err = _run_json(script, base_args + extra)
+                if doc is None:
+                    problems.append("%s --config %s: no JSON (exit %d) %s"
+                                    % (script, label, code, err.strip()[:200]))
+                    break
+                observed[label] = dict(
+                    (item.get(id_key), ((item.get(score_key) or {}).get("evidence_quality"),
+                                        item.get("confidence")))
+                    for item in doc.get(list_key) or [])
+            if len(observed) != 3:
+                continue
+            shared = set(observed["default"]) & set(observed["evidence"]) & set(observed["confidence"])
+            if not shared:
+                problems.append("%s: no record is returned under all three configs" % script)
+                continue
+            if all(observed["default"][i][0] == observed["evidence"][i][0] for i in shared):
+                problems.append("%s: evidence.official_bonus / coverage weight in --config left "
+                                "every evidence_quality unchanged" % script)
+            if all(observed["default"][i][1] == observed["confidence"][i][1] for i in shared):
+                problems.append("%s: confidence.coverage_factor.base in --config left every "
+                                "confidence unchanged" % script)
+            if any(observed["default"][i][0] != observed["confidence"][i][0] for i in shared):
+                problems.append("%s: a confidence-only config change moved evidence_quality" % script)
+            if script == "score_match.py":
+                by_id = dict((s.get("seller_id"), s) for s in match_input["records"])
+                for ident in sorted(shared):
+                    eq, conf = observed["default"][ident]
+                    want = _common.record_confidence(by_id[ident], "seller", eq, _common.load_config())
+                    if conf != want:
+                        problems.append("%s: match confidence %r differs from the shared "
+                                        "_common.record_confidence %r" % (ident, conf, want))
+    finally:
+        os.unlink(ev_path)
+        os.unlink(conf_path)
+    report.check("audit regression: %s" % AUDIT_CASES[0], not problems, "\n".join(problems[:10]))
+
+    # -- AR-02 (scoring-01, scoring-12) --------------------------------------
+    # 'pcs' / 'EA' / '개' / 'unit' against a query in 'units' was a unit mismatch, so
+    # HF-03 was skipped and a confirmed MOQ of 50,000 stayed qualified under a 3,000 max.
+    problems = []
+    for unit in ("pcs", "PCS", "pieces", "piece", "EA", "ea", "E.A.", "개", "unit", "units"):
+        if _common.normalize_unit(unit) != "units":
+            problems.append("normalize_unit(%r) = %r, expected 'units'"
+                            % (unit, _common.normalize_unit(unit)))
+    if _common.normalize_unit(None) != "units":
+        problems.append("an absent unit must mean 'units'")
+    for other in ("kg", "sets"):
+        if _common.normalize_unit(other) == "units":
+            problems.append("normalize_unit(%r) folded a different basis into 'units'" % other)
+    for unit in ("pcs", "EA", "개", "unit", "pieces"):
+        envelope = _json_copy(match_input)
+        envelope["records"][0]["moq"] = 50000
+        envelope["records"][0]["moq_unit"] = unit
+        code, doc, err = _score_match_envelope(envelope)
+        where, entry = _match_seller_outcome(doc, seller0_id)
+        rules = [f.get("rule_id") for f in (entry or {}).get("failed_rules") or []]
+        if where != "excluded" or "HF-03" not in rules:
+            problems.append("score_match moq 50000 %r vs max 3000 units: %s %s, expected "
+                            "excluded by HF-03" % (unit, where, rules))
+        path = _write_temp_json({"records": [envelope["records"][0]]}, "kbtm-ar-seller-")
+        try:
+            code, doc, err = _run_json("score_seller.py", ["--input", path, "--query", seller_query,
+                                                           "--as-of", AS_OF])
+        finally:
+            os.unlink(path)
+        excluded = (doc or {}).get("excluded") or []
+        rules = [f.get("rule_id") for e in excluded for f in e.get("failed_rules") or []]
+        if "HF-03" not in rules:
+            problems.append("score_seller moq 50000 %r vs max 3000 units: not excluded by HF-03 "
+                            "(excluded rules %s)" % (unit, rules))
+    envelope = _json_copy(match_input)
+    envelope["records"][0]["moq"] = 50000
+    envelope["records"][0]["moq_unit"] = "kg"
+    code, doc, err = _score_match_envelope(envelope)
+    where, entry = _match_seller_outcome(doc, seller0_id)
+    rules = [f.get("rule_id") for f in (entry or {}).get("failed_rules") or []]
+    if "HF-03" in rules:
+        problems.append("a kg MOQ against a units ceiling was compared as a number")
+    if where == "result" and "HF-03" not in entry["hard_filter"]["rules_skipped_unknown"]:
+        problems.append("a kg MOQ against units did not skip HF-03 as unknown")
+    report.check("audit regression: %s" % AUDIT_CASES[1], not problems, "\n".join(problems[:10]))
+
+    # -- AR-03 (scoring-03, scoring-04) --------------------------------------
+    # score_match had no S-PF1 inapplicable guard, so an RFQ category of 'k_beauty' gave
+    # every seller product_fit 0; an unmapped seller slug was a verified HF-01 reject.
+    problems = []
+    cases = read_json(os.path.join(FIXTURES, "normalize.cases.json"))
+    for case in cases["normalize_category"]:
+        got = _common.normalize_category(case["input"])
+        if got != case["expected"]:
+            problems.append("normalize_category(%r) = %r, expected %r"
+                            % (case["input"], got, case["expected"]))
+        if _common.is_known_category(got) != case["in_vocabulary"]:
+            problems.append("is_known_category(%r) = %r, expected %r"
+                            % (got, _common.is_known_category(got), case["in_vocabulary"]))
+    envelope = _json_copy(match_input)
+    envelope["rfq"]["product_category"] = "k_beauty"
+    envelope["rfq"]["product_categories_extra"] = []
+    code, doc, err = _score_match_envelope(envelope)
+    if doc is None:
+        problems.append("score_match with rfq category k_beauty: no JSON (exit %d)" % code)
+    else:
+        if not doc.get("results") or (doc.get("summary") or {}).get("qualified_count", 0) == 0:
+            problems.append("rfq category k_beauty: nobody qualified (summary %r)" % doc.get("summary"))
+        for item in doc.get("results") or []:
+            states = [d.get("state") for d in item.get("component_details") or []
+                      if d.get("criterion_id") == "S-PF1"]
+            if states != ["inapplicable"]:
+                problems.append("%s: S-PF1 state %r, expected inapplicable" % (item["seller_id"], states))
+            if any("category_no_match_verified" in note for note in item.get("notes") or []):
+                problems.append("%s: category_no_match_verified fired with no requested category"
+                                % item["seller_id"])
+        for item in doc.get("excluded") or []:
+            if any(f.get("rule_id") == "HF-01" for f in item.get("failed_rules") or []):
+                problems.append("%s: HF-01 rejected with no requested category" % item["seller_id"])
+    for categories, want_state in ((["선크림"], "scored"), (["sunscreen_spf50"], "scored"),
+                                   (["totally_unmapped_term"], "unknown")):
+        envelope = _json_copy(match_input)
+        envelope["records"][0]["product_categories"] = categories
+        code, doc, err = _score_match_envelope(envelope)
+        where, entry = _match_seller_outcome(doc, seller0_id)
+        rules = [f.get("rule_id") for f in (entry or {}).get("failed_rules") or []]
+        if "HF-01" in rules:
+            problems.append("seller categories %r: rejected by HF-01" % (categories,))
+        if where == "result":
+            states = [d.get("state") for d in entry.get("component_details") or []
+                      if d.get("criterion_id") == "S-PF1"]
+            if states != [want_state]:
+                problems.append("seller categories %r: S-PF1 state %r, expected %r"
+                                % (categories, states, want_state))
+            if want_state == "unknown" and "HF-01" not in entry["hard_filter"]["rules_skipped_unknown"]:
+                problems.append("an unmapped-only category list did not skip HF-01 as unknown")
+        elif where is None:
+            problems.append("seller categories %r: seller absent from the document" % (categories,))
+    with open(seller_query, encoding="utf-8") as fh:
+        query = json.load(fh)
+    query["product_categories"] = ["k_beauty"]
+    query_path = _write_temp_json(query, "kbtm-ar-query-")
+    try:
+        code, doc, err = _run_json("score_seller.py", [
+            "--input", os.path.join(FIXTURES, "sellers.golden.json"), "--query", query_path,
+            "--as-of", AS_OF])
+    finally:
+        os.unlink(query_path)
+    for record in (doc or {}).get("records") or []:
+        states = [d.get("state") for d in record.get("dimension_details") or []
+                  if d.get("criterion_id") == "S-PF1"]
+        if states != ["inapplicable"]:
+            problems.append("score_seller query k_beauty: %s S-PF1 state %r"
+                            % (record.get("seller_id"), states))
+            break
+    if doc is None or not doc.get("records"):
+        problems.append("score_seller query k_beauty returned no records (exit %d)" % code)
+    report.check("audit regression: %s" % AUDIT_CASES[2], not problems, "\n".join(problems[:10]))
+
+    # -- AR-04 (dry-run-08) --------------------------------------------------
+    # "United Kingdom" fell to unknown in normalize_company.py and B-MR1 lost its points.
+    problems = []
+    for case in cases["normalize_country"]:
+        got = _common.normalize_country(case["input"])
+        if got != case["expected"]:
+            problems.append("normalize_country(%r) = %r, expected %r"
+                            % (case["input"], got, case["expected"]))
+    named = {}
+    for key, code_value in _common.COUNTRY_ALIASES.items():
+        if key != code_value.lower():
+            named.setdefault(code_value, key)
+    referenced = set()
+    for members in _common.EXPORT_REGION_COUNTRIES.values():
+        referenced.update(members)
+
+    def walk(node):
+        if isinstance(node, dict):
+            code_value, name_value = node.get("country"), node.get("country_name")
+            if isinstance(code_value, str) and re.match(r"^[A-Z]{2}$", code_value):
+                referenced.add(code_value)
+                if isinstance(name_value, str) and _common.normalize_country(name_value) != code_value:
+                    problems.append("country_name %r does not normalise to its own country %s"
+                                    % (name_value, code_value))
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value)
+
+    for path in sorted(glob.glob(os.path.join(FIXTURES, "*.json"))):
+        walk(read_json(path))
+    for code_value in sorted(referenced):
+        if code_value not in named:
+            problems.append("country %s is referenced by the package but has no name row" % code_value)
+    if len(_common.ISO_3166_ALPHA2) != 249:
+        problems.append("ISO_3166_ALPHA2 holds %d codes, expected the 249 assigned ones"
+                        % len(_common.ISO_3166_ALPHA2))
+    strays = sorted(set(_common.COUNTRY_ALIASES.values()) - _common.ISO_3166_ALPHA2)
+    if strays:
+        problems.append("country name rows map to non-ISO codes: %s" % ", ".join(strays))
+    for raw, want in (("United Kingdom", "GB"), ("영국", "GB"), ("Atlantis", "unknown"),
+                      ("XX", "unknown"), ("Georgia", "unknown")):
+        record = {"buyer_id": "BUY-country-example", "company_name": "Country Example",
+                  "website": "https://country.example/", "country": raw}
+        path = _write_temp_json(record, "kbtm-ar-country-")
+        try:
+            code, doc, err = _run_json("normalize_company.py", ["--input", path, "--entity", "buyer"])
+        finally:
+            os.unlink(path)
+        if not isinstance(doc, dict) or doc.get("country") != want:
+            problems.append("normalize_company.py country %r -> %r, expected %s"
+                            % (raw, (doc or {}).get("country"), want))
+        elif want != "unknown" and len(raw) > 2 and doc.get("country_name") != raw:
+            problems.append("normalize_company.py dropped the given country name %r" % raw)
+    report.check("audit regression: %s" % AUDIT_CASES[3], not problems, "\n".join(problems[:10]))
+
+    # -- AR-05 (dry-run-09) --------------------------------------------------
+    # score_buyer / score_seller wrote --output before the validation result was used.
+    problems = []
+    with tempfile.TemporaryDirectory() as tmp:
+        bad_schemas = os.path.join(tmp, "schemas")
+        os.mkdir(bad_schemas)
+        for name in os.listdir(SCHEMA_DIR):
+            if not name.endswith(".json"):
+                continue
+            document = read_json(os.path.join(SCHEMA_DIR, name))
+            if name in ("discovery-result.schema.json", "match-result.schema.json"):
+                document["required"] = list(document.get("required") or []) + ["__never_present__"]
+            with open(os.path.join(bad_schemas, name), "w", encoding="utf-8") as fh:
+                json.dump(document, fh, ensure_ascii=False)
+        runs = (
+            ("score_buyer.py", ["--input", os.path.join(FIXTURES, "buyers.golden.json"),
+                                "--query", os.path.join(FIXTURES, "query-buyer-uk-sunscreen.json")]),
+            ("score_seller.py", ["--input", os.path.join(FIXTURES, "sellers.golden.json"),
+                                 "--query", seller_query]),
+            ("score_match.py", ["--input", os.path.join(FIXTURES, "match-134.input.json")]),
+        )
+        for script, base_args in runs:
+            stem = script.replace(".py", "")
+            target = os.path.join(tmp, stem + ".json")
+            invalid = os.path.join(tmp, stem + ".invalid.json")
+            code, _out, _err = run_script(script, base_args + [
+                "--as-of", AS_OF, "--schema-dir", bad_schemas, "--output", target])
+            if code == 0:
+                problems.append("%s: exit 0 although self-validation failed" % script)
+            if os.path.exists(target):
+                problems.append("%s: the invalid document was written to --output" % script)
+            if not os.path.exists(invalid):
+                problems.append("%s: no %s.invalid.json kept for inspection" % (script, stem))
+            good = os.path.join(tmp, stem + ".ok.json")
+            code, _out, err = run_script(script, base_args + ["--as-of", AS_OF, "--output", good])
+            if code != 0 or not os.path.exists(good):
+                problems.append("%s: a valid run did not write --output (exit %d) %s"
+                                % (script, code, err.strip()[:200]))
+            if os.path.exists(os.path.join(tmp, stem + ".ok.invalid.json")):
+                problems.append("%s: a valid run wrote an .invalid.json file" % script)
+    report.check("audit regression: %s" % AUDIT_CASES[4], not problems, "\n".join(problems[:10]))
+
+    # -- AR-06 (scoring-05) --------------------------------------------------
+    # A held certification with no evidence cost nothing, while the same token cited on a
+    # tier-4 directory cost -10, so leaving the claim uncited scored higher.
+    problems = []
+    variants = {}
+    for label in ("uncited", "tier4"):
+        envelope = _json_copy(match_input)
+        seller = envelope["records"][0]
+        seller["certifications_verified"] = "unknown"
+        seller["evidence"] = [e for e in seller["evidence"] if e.get("claim") != "certifications"]
+        if label == "tier4":
+            seller["evidence"].append({
+                "schema_version": "0.1.0", "evidence_id": "EV-190", "claim": "certifications",
+                "value": list(seller["certifications"]),
+                "source_url": "https://directory.example/hanbitcos",
+                "source_domain": "directory.example", "source_type": "third_party_directory",
+                "source_tier": 4, "is_official": False, "observed_at": "2026-09-10T09:00:00Z",
+                "source_date": "2026-08-01", "confidence": 0.6,
+                "quote_or_summary": "Directory listing: ISO22716, CGMP, ISO9001.",
+                "retrieval_method": "page_fetch",
+            })
+        code, doc, err = _score_match_envelope(envelope)
+        where, entry = _match_seller_outcome(doc, seller0_id)
+        if where != "result":
+            problems.append("%s: seller not scored (%s)" % (label, where))
+            continue
+        variants[label] = entry
+        path = _write_temp_json({"records": [seller]}, "kbtm-ar-cert-")
+        try:
+            code, sdoc, err = _run_json("score_seller.py", ["--input", path, "--query", seller_query,
+                                                            "--as-of", AS_OF])
+        finally:
+            os.unlink(path)
+        records = (sdoc or {}).get("records") or []
+        adjustments = []
+        if records:
+            dims = ((records[0].get("extensions") or {}).get("score_breakdown") or {}).get("dimensions") or {}
+            adjustments = [a.get("key") for a in (dims.get("compliance_readiness") or {}).get("adjustments") or []]
+        if "certification_claim_unverified" not in adjustments:
+            problems.append("score_seller %s: certification_claim_unverified did not fire (%s)"
+                            % (label, adjustments))
+    if len(variants) == 2:
+        uncited = variants["uncited"]["component_scores"]["compliance_fit"]
+        tier4 = variants["tier4"]["component_scores"]["compliance_fit"]
+        if uncited > tier4:
+            problems.append("compliance_fit uncited %d > tier-4 cited %d" % (uncited, tier4))
+        if not any("certification_claim_unverified" in note for note in variants["uncited"].get("notes") or []):
+            problems.append("score_match: certification_claim_unverified did not fire on an uncited token")
+    report.check("audit regression: %s" % AUDIT_CASES[5], not problems, "\n".join(problems[:10]))
+
+    # -- AR-07 (scoring-08) --------------------------------------------------
+    # evidence_quality counted items, so one cross-linked pair cost -20 instead of -10.
+    problems = []
+    base = _json_copy(seller0)
+    items = [e for e in base["evidence"] if e.get("claim") == "product_categories"]
+    if len(items) < 2:
+        problems.append("fixture seller no longer carries two product_categories items")
+    else:
+        first, second = items[0]["evidence_id"], items[1]["evidence_id"]
+        claims = config["evidence"]["material_claims"]["seller"]
+        cfg = _common.load_config()
+
+        def variant(links):
+            record = _json_copy(base)
+            for item in record["evidence"]:
+                if item["evidence_id"] in links:
+                    item["conflicts_with"] = links[item["evidence_id"]]
+            return record
+
+        none = variant({})
+        one_sided = variant({first: [second]})
+        reciprocal = variant({first: [second], second: [first]})
+        counts = [_common.unresolved_conflict_count(r) for r in (none, one_sided, reciprocal)]
+        if counts != [0, 1, 1]:
+            problems.append("unresolved_conflict_count none/one-sided/reciprocal = %r, expected "
+                            "[0, 1, 1]" % counts)
+        eq_one = _common.evidence_quality(one_sided, claims, AS_OF, cfg)
+        eq_rec = _common.evidence_quality(reciprocal, claims, AS_OF, cfg)
+        if eq_one != eq_rec:
+            problems.append("evidence_quality one-sided %d != reciprocal %d" % (eq_one, eq_rec))
+        if (_common.record_confidence(one_sided, "seller", eq_one, cfg)
+                != _common.record_confidence(reciprocal, "seller", eq_rec, cfg)):
+            problems.append("confidence differs between a one-sided and a reciprocal link")
+        two_pairs = variant({first: [second, "EV-101"], second: [first]})
+        if _common.unresolved_conflict_count(two_pairs) != 2:
+            problems.append("two distinct conflicting pairs were not counted as two")
+    report.check("audit regression: %s" % AUDIT_CASES[6], not problems, "\n".join(problems[:10]))
+
+    # -- AR-08 (scoring-10) --------------------------------------------------
+    # '주식회사한빛코스메틱' kept its glued legal form, and '한빛 코스메틱' / '한빛코스메틱'
+    # were two different dedupe keys.
+    problems = []
+    spellings = ("주식회사한빛코스메틱", "(주)한빛코스메틱", "한빛코스메틱 주식회사", "㈜한빛 코스메틱")
+    keys = set(_common.name_match_key(_common.normalize_company_name(n)) for n in spellings)
+    if keys != {"한빛코스메틱"}:
+        problems.append("Korean spellings gave dedupe keys %r, expected one" % sorted(keys))
+    if _common.name_match_key("abc beauty") == _common.name_match_key("abcbeauty"):
+        problems.append("a Latin-script name lost its word boundary in the dedupe key")
+    records = [
+        {"normalized_name": _common.normalize_company_name("주식회사 한빛 코스메틱"),
+         "country": "KR", "canonical_domain": "hanbitcos.example"},
+        {"normalized_name": _common.normalize_company_name("한빛코스메틱"),
+         "country": "KR", "canonical_domain": "unknown"},
+    ]
+    groups, _keys, _blocked = dedupe_companies.build_components(records, ["SEL-a", "SEL-b"], True)
+    if not any(sorted(members) == [0, 1] for members in groups.values()):
+        problems.append("dedupe key 2 did not merge '주식회사 한빛 코스메틱' with '한빛코스메틱' "
+                        "(groups %r)" % groups)
+    report.check("audit regression: %s" % AUDIT_CASES[7], not problems, "\n".join(problems[:10]))
+
 def phase_safety(report):
     hits = []
     for path in package_files():
@@ -2579,6 +3060,8 @@ MANIFEST = [
     "schemas/match-result.schema.json",
     "schemas/scoring.config.json",
     "schemas/discovery-result.schema.json",
+    "schemas/outreach-draft.schema.json",
+    "schemas/compliance.config.json",
     "scripts/_common.py",
     "scripts/normalize_company.py",
     "scripts/dedupe_companies.py",
@@ -2627,9 +3110,16 @@ def phase_package(report):
     absent = [rel for rel in MANIFEST if not os.path.exists(os.path.join(PKG_ROOT, rel))]
     report.check("package: every BUILD-CONTRACT 2.2 shipped file exists", not absent,
                  "absent: %s" % ", ".join(absent))
-    repo_readme = os.path.join(os.path.dirname(PKG_ROOT), "README.md")
-    report.check("package: README.md exists at the repository root (BUILD-CONTRACT 2.2 note)",
-                 os.path.isfile(repo_readme), "not found: %s" % repo_readme)
+    repo_root = os.path.dirname(PKG_ROOT)
+    repo_readme = os.path.join(repo_root, "README.md")
+    readme_case = "package: README.md exists at the repository root (BUILD-CONTRACT 2.2 note)"
+    # install.sh --copy ships the package folder only, so an installed copy has no repository
+    # root around it. Report that as a SKIP, never as a silent pass.
+    if os.path.exists(os.path.join(PKG_ROOT, ".kbtm-install-manifest")) \
+            or not os.path.exists(os.path.join(repo_root, ".git")):
+        report.skip(readme_case, "not running inside the git repository (installed copy)")
+    else:
+        report.check(readme_case, os.path.isfile(repo_readme), "not found: %s" % repo_readme)
 
     skill_path = os.path.join(PKG_ROOT, "SKILL.md")
     if not os.path.isfile(skill_path):
@@ -2742,7 +3232,25 @@ def phase_package(report):
 # ---------------------------------------------------------------------------
 # 7. adapter guards: INV-10 / INV-25 dispatch keys, INV-34 live demand
 # ---------------------------------------------------------------------------
-def phase_adapter_guards(report):
+def _adapter_write(path, document):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(document, fh, ensure_ascii=False)
+
+
+# BUILD-CONTRACT.md 9.1 skill-performed edges, written out here rather than read from the
+# adapter, so an edit to the adapter's table is a test failure and not a new expectation.
+ADAPTER_EXPECTED_EDGES = {
+    "DISCOVERED": {"VERIFIED", "CLOSED"},
+    "VERIFIED": {"QUALIFIED", "DISCOVERED", "CLOSED"},
+    "QUALIFIED": {"MATCH_CANDIDATE", "READY_FOR_REVIEW", "VERIFIED", "CLOSED"},
+    "MATCH_CANDIDATE": {"READY_FOR_REVIEW", "QUALIFIED", "CLOSED"},
+    "READY_FOR_REVIEW": {"QUALIFIED", "MATCH_CANDIDATE", "CLOSED"},
+    "CLOSED": set(),
+}
+
+
+def phase_adapter_guards(report, pipeline, allow_missing):
     adapter_path = os.path.join(PKG_ROOT, "adapters", "tradewith_adapter.py")
     if not os.path.isfile(adapter_path):
         report.skip("adapter: dispatch/credential guard", "adapters/ not present")
@@ -2754,81 +3262,1112 @@ def phase_adapter_guards(report):
     except Exception as exc:  # pragma: no cover - defensive
         report.fail("adapter: module imports", str(exc))
         return
+    if missing_scripts() or not (pipeline.buyers_uae and pipeline.match_134):
+        (report.skip if allow_missing else report.fail)("adapter: guards",
+                                                        "pipeline output unavailable")
+        return
+    vo = tw._import_validator()
+    if not report.check("adapter: loads scripts/validate_output.py by path for the draft gate",
+                        vo is not None, "_import_validator() returned None"):
+        return
 
-    def base_draft():
-        return {"entity_id": "BUY-example-com", "side": "Buyer",
-                "channel_type": "corporate_email", "channel_value": "info@example.example",
-                "language": "English", "subject": "Sourcing enquiry",
-                "body": "We work with GCC distributors sourcing Korean sun care."}
+    buyers = pipeline.buyers_uae.get("records") or []
+    qualified = index_by(buyers, "buyer_id").get("BUY-gulfglow-example")
+    not_qualified = next((r for r in buyers if r.get("qualified") is False), None)
+    unscored = index_by(read_json(os.path.join(FIXTURES, "buyers.golden.json"))["records"],
+                        "buyer_id").get("BUY-gulfglow-example")
+    rfq_134 = read_json(os.path.join(FIXTURES, "rfq.134.json"))
+    hanbit = next((row for row in pipeline.match_134.get("results") or []
+                   if "Hanbit" in str(row.get("seller_name"))), None)
+    if not (qualified and qualified.get("qualified") is True and not_qualified and unscored
+            and hanbit and (hanbit.get("hard_filter") or {}).get("passed") is True):
+        report.fail("adapter: guard fixtures", "buyers_uae lacks a qualified / non-qualified pair "
+                    "or match_134 lacks a passing Hanbit candidate")
+        return
 
-    def refused(draft):
+    def json_draft(text, **fields):
+        parsed, _ = vo.parse_outreach_draft(text)
+        draft = dict((key, parsed.get(key)) for key in ("side", "channel_type", "channel_value",
+                                                        "language", "subject"))
+        draft.update(body="(rendered in draft_markdown)", draft_markdown=text)
+        draft.update(fields)
+        return draft
+
+    def buyer_draft(**fields):
+        return json_draft(_draft_text(_DRAFT_B), entity_id="BUY-gulfglow-example", **fields)
+
+    def seller_draft(text=None, **fields):
+        base = {"entity_id": hanbit["seller_id"], "rfq_id": "134", "rfq_status": "matching",
+                "rfq_as_of": AS_OF}
+        base.update(fields)
+        return json_draft(text or _draft_text(_DRAFT_SE), **base)
+
+    def refusal(draft, adapter=None, as_of=AS_OF):
+        """The refusal text with every listed error, or None when the draft is accepted."""
         try:
-            tw._normalize_draft(draft, 0)
-        except tw.DataError:
-            return True
-        return False
+            tw._normalize_draft(draft, 0, adapter=adapter, as_of=as_of)
+        except tw.DataError as exc:
+            return "\n".join([str(exc)] + [str(item) for item in getattr(exc, "errors", [])])
+        return None
 
-    # A clean draft must still go through, or the guards are just breaking the adapter.
-    ok = True
+    def expect_refused(name, draft, marker, adapter=None, as_of=AS_OF):
+        message = refusal(draft, adapter, as_of)
+        report.check(name, message is not None and marker in message,
+                     "accepted" if message is None
+                     else "refused, but not by %r:\n%s" % (marker, message[:700]))
+
+    def expect_accepted(name, draft, adapter=None, as_of=AS_OF):
+        message = refusal(draft, adapter, as_of)
+        report.check(name, message is None, str(message)[:700])
+
+    # -- drafts: dispatch keys, fixed flags, the validate_outreach_draft gate ---------------
     try:
-        stored = tw._normalize_draft(base_draft(), 0)
-        ok = (stored["status"] == "READY_FOR_REVIEW" and stored["auto_send"] is False
-              and stored["manual_approval_required"] is True)
+        stored = tw._normalize_draft(buyer_draft(), 0)
+        report.check("adapter: a good fixture draft is accepted with the review flags filled in",
+                     stored["status"] == "READY_FOR_REVIEW" and stored["auto_send"] is False
+                     and stored["manual_approval_required"] is True, repr(stored)[:300])
     except tw.DataError as exc:
-        ok = False
-        report.fail("adapter: a clean draft is still accepted", str(exc))
-    if ok:
-        report.ok("adapter: a clean draft is still accepted")
+        report.fail("adapter: a good fixture draft is accepted with the review flags filled in",
+                    "\n".join([str(exc)] + [str(e) for e in getattr(exc, "errors", [])]))
 
-    nested = base_draft()
+    nested = buyer_draft()
     nested["delivery"] = {"transport": "smtp", "recipients": ["ops@example.example"],
                           "schedule_at": "2026-10-01"}
     nested["auth_block"] = {"token": "placeholder-value", "password": "placeholder-value"}
-    report.check("adapter: INV-10/INV-25 a NESTED dispatch or credential block is refused",
-                 refused(nested),
-                 "a draft carrying delivery.{transport,recipients,schedule_at} and "
-                 "auth_block.{token,password} was accepted and stored verbatim")
-
+    expect_refused("adapter: INV-10/INV-25 a NESTED dispatch or credential block is refused",
+                   nested, "dispatch or credential")
     leaks = []
     for key in ("to", "reply_to", "envelope_from", "mail_from", "smtp_host", "smtp_port",
                 "send", "send_at", "queue_for_send", "webhook_url", "sendgrid_key",
                 "api_token", "access_key", "bearer", "cookie", "recipients", "transport",
                 "token", "password"):
-        draft = base_draft()
-        draft[key] = "value"
-        if not refused(draft):
+        message = refusal(buyer_draft(**{key: "value"}))
+        if message is None or "dispatch or credential" not in message:
             leaks.append(key)
     report.check("adapter: INV-25 every dispatch/credential key name is refused at top level",
-                 not leaks, "accepted: %s" % ", ".join(leaks))
+                 not leaks, "not refused as a dispatch key: %s" % ", ".join(leaks))
+    expect_refused("adapter: INV-09 auto_send true is refused, never silently corrected",
+                   buyer_draft(auto_send=True), "auto_send must be")
 
-    # INV-34 / R10.4.3 first clause, both languages.
-    demand_en = base_draft()
-    demand_en["subject"] = "Buyer waiting for your sunscreen"
-    demand_en["body"] = ("We have a buyer currently looking for your sunscreen. "
-                         "Limited slots, closing soon.")
-    demand_ko = base_draft()
-    demand_ko["language"] = "Korean"
-    demand_ko["body"] = "\ud604\uc7ac \uadc0\uc0ac \uc81c\ud488\uc744 \ucc3e\ub294 \ubc14\uc774\uc5b4\uac00 \uc788\uc2b5\ub2c8\ub2e4."
-    report.check("adapter: T05/INV-34 an uncited live-demand claim is refused (EN)",
-                 refused(demand_en), "the draft was accepted with no rfq_id")
-    report.check("adapter: T05/INV-34 an uncited live-demand claim is refused (KO)",
-                 refused(demand_ko), "the draft was accepted with no rfq_id")
+    bare = buyer_draft()
+    del bare["draft_markdown"]
+    expect_refused("adapter: a JSON draft without draft_markdown is not queued (DRAFT-01)", bare,
+                   "DRAFT-01")
+    cases = dict((case[0], case) for case in DRAFT_CASES)
+    for label in ("zero personalization facts", "KR corporate email subject without (광고)",
+                  "KR required notice block absent", "notice block not verbatim",
+                  "unfilled {{token}}", "surviving [[ev:]] marker", "EN fake opt-out",
+                  "free-mail sender address", "body over the 150-word buyer limit (strict)"):
+        _, base, edits, _, rule = cases[label]
+        text = _draft_text(base)
+        for old, new in edits:
+            text = text.replace(old, new, 1)
+        entity = "BUY-gulfglow-example" if base.startswith("buyer") else "SEL-hanbitcos-example"
+        if rule == "DRAFT-12":
+            quiet = tw.get_adapter(backend="file", data_dir=os.path.join(FIXTURES, "no-adapter-data"),
+                                   as_of=AS_OF, quiet=True)  # read-only lookups; nothing is written
+            expect_accepted("adapter: a warning-only issue (DRAFT-12 body length) does not block "
+                            "the queue", json_draft(text, entity_id=entity), quiet)
+        else:
+            expect_refused("adapter: READY_FOR_REVIEW refused for a draft with %s (%s)"
+                           % (label, rule), json_draft(text, entity_id=entity), rule)
 
-    cited = base_draft()
-    cited["rfq_id"] = "RFQ-134"
-    cited["rfq_status"] = "matching"
-    cited["rfq_as_of"] = AS_OF
-    cited["body"] = ("RFQ #134 - status: matching, as of %s - a buyer is currently looking for "
-                     "private-label sunscreen into the UAE." % AS_OF)
-    report.check("adapter: INV-34 a demand claim citing an open RFQ with its status and date "
-                 "is allowed", not refused(cited),
-                 "a correctly cited demand claim was refused; the check is over-tight")
+    # -- INV-34: rephrased demand, in the JSON body and in the rendered body -----------------
+    for phrase in ("A distributor asked us specifically about your brand.",
+                   "Our client is interested in your sun care line.",
+                   "A distributor in Dubai is actively looking for your sunscreen.",
+                   "We have buyers for your sunscreen.",
+                   "Only 3 production slots left this quarter.",
+                   "해당 바이어가 관심이 있습니다.",
+                   "귀사 제품에 대한 문의가 왔습니다.",
+                   "바이어가 대기 중입니다.",
+                   "곧 마감됩니다."):
+        expect_refused("adapter: T05/INV-34 JSON body %r is refused without an RFQ" % phrase,
+                       buyer_draft(body=phrase), "live-demand claim")
+    rendered = _draft_text(_DRAFT_B).replace(
+        "Your brand-partnership page states",
+        "A distributor asked us specifically about your brand. Your brand-partnership page states", 1)
+    expect_refused("adapter: T05/INV-34 a rephrased claim in the rendered body is refused",
+                   json_draft(rendered, entity_id="BUY-gulfglow-example"), "live-demand claim")
+    for phrase in ("We are currently looking for UAE distributors.",
+                   "Our customers have asked for SPF data sheets.",
+                   "관심이 있는 카테고리를 알려 주시면 기록해 두겠습니다.",
+                   "혹시 관심이 있다면 회신 부탁드립니다.",
+                   "저희는 UAE 유통 파트너를 찾고 있습니다.",
+                   "회신 대기 중인 문의는 없습니다."):
+        expect_accepted("adapter: INV-34 honest wording %r is accepted (no third party wants the "
+                        "recipient)" % phrase, buyer_draft(body=phrase))
+    _, _, rule4_edits, _, _ = cases["buyer rule-4 dated sourcing sentence with a dated fact line"]
+    rule4_text = _draft_text(_DRAFT_B)
+    for old, new in rule4_edits:
+        rule4_text = rule4_text.replace(old, new, 1)
+    expect_accepted("adapter: INV-34 a dated 'you are actively looking' sentence backed by a dated "
+                    "fact line is accepted without an RFQ",
+                    json_draft(rule4_text, entity_id="BUY-gulfglow-example"))
 
-    half_cited = dict(cited)
-    half_cited["body"] = "A buyer is currently looking for private-label sunscreen into the UAE."
-    report.check("adapter: R10.4.3 a cited RFQ whose status and date are not stated in the "
-                 "draft is refused", refused(half_cited),
-                 "the draft never prints the RFQ status or as_of date but was accepted")
+    # _import_validator leaves sys.modules["_common"] and sys.path as it found them.
+    probe = "\n".join([
+        "import json, sys",
+        "sys.dont_write_bytecode = True",
+        "sys.path.insert(0, %r)" % os.path.join(PKG_ROOT, "adapters"),
+        "import tradewith_adapter as tw",
+        "path_before, common_before = list(sys.path), sys.modules.get('_common')",
+        "result = {'loaded': tw._import_validator() is not None,",
+        "          'nothing_held_common_and_nothing_does_now': common_before is None and '_common' not in sys.modules,",
+        "          'sys_path_unchanged': sys.path == path_before}",
+        "sentinel = type(sys)('_common')",
+        "sys.modules['_common'] = sentinel",
+        "tw._VALIDATOR_CACHE.clear()",
+        "result['reloaded'] = tw._import_validator() is not None",
+        "result['unrelated_common_restored'] = sys.modules.get('_common') is sentinel",
+        "result['sys_path_unchanged_again'] = sys.path == path_before",
+        "print(json.dumps(result))",
+    ])
+    proc = subprocess.run([sys.executable, "-c", probe], stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE, universal_newlines=True)
+    try:
+        result = json.loads(proc.stdout)
+    except ValueError:
+        result = {"stdout": proc.stdout[:200], "stderr": proc.stderr[:400]}
+    report.check("adapter: _import_validator restores sys.modules['_common'] (removed when nothing "
+                 "held it, the unrelated module otherwise) and sys.path",
+                 bool(result) and all(value is True for value in result.values()), repr(result))
+
+    with tempfile.TemporaryDirectory() as tmp:
+        def file_adapter(rfq=None, match=None, leads=()):
+            root = tempfile.mkdtemp(dir=tmp)
+            if rfq is not None:
+                _adapter_write(os.path.join(root, "rfqs", "%s.json" % rfq["rfq_id"]), rfq)
+            if match is not None:
+                _adapter_write(os.path.join(root, "matches", "%s.json" % match["match_run_id"]),
+                               match)
+            for lead in leads:
+                _adapter_write(os.path.join(root, "leads", "%s.json" % lead["buyer_id"]), lead)
+            return tw.get_adapter(backend="file", data_dir=root, as_of=AS_OF, quiet=True), root
+
+        # -- INV-34: the RFQ is read, not believed ------------------------------------------
+        adapter, _ = file_adapter(rfq=rfq_134, match=pipeline.match_134)
+        expect_accepted("adapter: INV-34 an RFQ draft is accepted when get_rfq finds it open and "
+                        "current and the seller passed the stored match run", seller_draft(), adapter)
+        expect_accepted("adapter: INV-34 the same RFQ draft passes with no adapter (form and age "
+                        "checks only)", seller_draft())
+        # The RFQ age is measured against an as_of somebody chose, never as_of_default.
+        expect_refused("adapter: INV-34 an RFQ draft with no explicit as_of (and no adapter) is "
+                       "refused", seller_draft(), "no explicit as_of", as_of=None)
+        _, rfq_root = file_adapter(rfq=rfq_134, match=pipeline.match_134)
+        implicit = tw.get_adapter(backend="file", data_dir=rfq_root, quiet=True)
+        expect_refused("adapter: INV-34 an adapter built without as_of refuses an RFQ draft instead "
+                       "of checking freshness against as_of_default",
+                       seller_draft(), "no explicit as_of", implicit, as_of=None)
+        expect_refused("adapter: INV-34 rfq_as_of alone (no RFQ text) still needs an explicit as_of",
+                       buyer_draft(rfq_as_of=AS_OF), "no explicit as_of", as_of=None)
+        expect_accepted("adapter: a draft that cites no RFQ needs no explicit as_of", buyer_draft(),
+                        implicit, as_of=None)
+        stale_text = _draft_text(_DRAFT_SE).replace("as of %s" % AS_OF, "as of 2019-01-01")
+        expect_refused("adapter: INV-34 caller-supplied rfq_status matching with rfq_as_of "
+                       "2019-01-01 is refused as stale", seller_draft(stale_text,
+                                                                     rfq_as_of="2019-01-01"),
+                       "stale demand")
+        future_text = _draft_text(_DRAFT_SE).replace("as of %s" % AS_OF, "as of 2026-10-01")
+        expect_refused("adapter: INV-34 an rfq_as_of after the run's as_of is refused",
+                       seller_draft(future_text, rfq_as_of="2026-10-01"), "after the run's as_of")
+        old = _json_copy(rfq_134)
+        old["as_of"] = "2019-01-01"
+        adapter, _ = file_adapter(rfq=old)
+        expect_refused("adapter: INV-34 a stored RFQ as of 2019-01-01 is refused as stale",
+                       seller_draft(stale_text, rfq_as_of="2019-01-01"), "stale demand", adapter)
+        for status, marker in (("closed", "is 'closed' in TradeWith"),
+                               ("qualified", "but RFQ 134 is 'qualified'")):
+            doc = _json_copy(rfq_134)
+            doc["status"] = status
+            adapter, _ = file_adapter(rfq=doc)
+            expect_refused("adapter: INV-34 draft says matching but get_rfq returns %s" % status,
+                           seller_draft(), marker, adapter)
+        adapter, _ = file_adapter()
+        expect_refused("adapter: INV-34 a cited RFQ that get_rfq cannot read is refused",
+                       seller_draft(), "could not be read", adapter)
+        expect_refused("adapter: INV-34 text citing RFQ #134 with no rfq_id / status / as_of "
+                       "fields is refused", seller_draft(rfq_id=None, rfq_status=None,
+                                                         rfq_as_of=None), "no rfq_id is cited")
+        stated = "status matching as of %s" % AS_OF
+        for label, text, fields, marker in (
+                ("never states the status", _draft_text(_DRAFT_SE).replace(stated, "as of " + AS_OF),
+                 {}, "never states the RFQ status"),
+                ("never states the as-of date", _draft_text(_DRAFT_SE).replace(stated, "status matching"),
+                 {}, "never states the RFQ date"),
+                ("also states a closed status", _draft_text(_DRAFT_SE).replace(
+                    stated, stated + " (earlier status closed)"), {}, "which is not open"),
+                ("cites RFQ #134 under rfq_id 135", None, {"rfq_id": "135"}, "but rfq_id is"),
+                ("carries and states rfq_status closed", _draft_text(_DRAFT_SE).replace(
+                    stated, "status closed as of " + AS_OF), {"rfq_status": "closed"},
+                 "rfq_status 'closed' is not one of")):
+            expect_refused("adapter: INV-34 an RFQ draft that %s is refused" % label,
+                           seller_draft(text, **fields), marker)
+        moved = _json_copy(rfq_134)
+        moved["as_of"] = "2026-09-01"
+        adapter, _ = file_adapter(rfq=moved)
+        expect_refused("adapter: INV-34 rfq_as_of that differs from the stored RFQ's as_of is refused",
+                       seller_draft(), "RFQ 134 is as of 2026-09-01", adapter)
+        failed = _json_copy(pipeline.match_134)
+        for row in failed["results"]:
+            if row.get("seller_id") == hanbit["seller_id"]:
+                row["hard_filter"]["passed"] = False
+        adapter, _ = file_adapter(rfq=rfq_134, match=failed)
+        expect_refused("adapter: INV-34 a seller that failed the stored match run's hard filter "
+                       "is refused", seller_draft(), "hard filter of match run", adapter)
+        excluded = _json_copy(pipeline.match_134)
+        excluded["results"] = [row for row in excluded["results"]
+                               if row.get("seller_id") != hanbit["seller_id"]]
+        excluded["excluded"] = list(excluded.get("excluded") or []) + [
+            {"seller_id": hanbit["seller_id"], "seller_name": hanbit.get("seller_name")}]
+        adapter, _ = file_adapter(rfq=rfq_134, match=excluded)
+        expect_refused("adapter: INV-34 a seller in the stored match run's excluded[] is refused",
+                       seller_draft(), "is excluded from match run", adapter)
+
+        # -- the stored lead is the validator's record -------------------------------------
+        adapter, _ = file_adapter(leads=[qualified])
+        expect_accepted("adapter: a buyer draft is accepted against its stored scored, qualified "
+                        "lead", buyer_draft(), adapter)
+        adapter, _ = file_adapter(leads=[unscored])
+        expect_refused("adapter: DRAFT-09 a buyer draft whose stored lead is unscored is refused",
+                       buyer_draft(), "DRAFT-09", adapter)
+        rule4_draft = json_draft(rule4_text, entity_id="BUY-gulfglow-example")
+        adapter, _ = file_adapter(leads=[qualified])
+        expect_refused("adapter: INV-34 a rule-4 sentence is refused when the stored lead has no "
+                       "sourcing_signals item on the fact's URL", rule4_draft, "live-demand claim",
+                       adapter)
+        signalled = _json_copy(qualified)
+        signalled["evidence"].append(dict(
+            [item for item in qualified["evidence"] if item.get("claim") == "sourcing_intent"][0],
+            evidence_id="EV-010", claim="sourcing_signals", value="open_call_for_suppliers"))
+        adapter, _ = file_adapter(leads=[signalled])
+        expect_accepted("adapter: INV-34 a rule-4 sentence is accepted against a stored lead whose "
+                        "dated sourcing_signals item backs the fact", rule4_draft, adapter)
+
+        # -- PRD 11.1 bulk guardrail -------------------------------------------------------
+        adapter, root = file_adapter()
+        try:
+            adapter.post_outreach_drafts([buyer_draft() for _ in range(21)])
+            message = None
+        except tw.DataError as exc:
+            message = str(exc)
+        report.check("adapter: PRD 11.1 21 drafts in one call are refused and nothing is queued",
+                     message is not None and "bulk guardrail" in message
+                     and not os.path.isdir(os.path.join(root, "outreach-drafts")), str(message))
+        try:
+            rows = adapter.post_outreach_drafts([buyer_draft(draft_id="OD-cap-%02d" % n)
+                                                 for n in range(20)])
+            ok, detail = len(rows) == 20, repr(rows[:2])
+        except tw.DataError as exc:
+            ok, detail = False, str(exc)
+        report.check("adapter: PRD 11.1 exactly 20 drafts (the cap) are queued", ok, detail)
+
+        # -- state machine -----------------------------------------------------------------
+        def patch(lead, target):
+            adapter, root = file_adapter(leads=[lead])
+            path = os.path.join(root, "leads", "%s.json" % lead["buyer_id"])
+            before = read_json(path)
+            try:
+                adapter.patch_lead_status(lead["buyer_id"], target)
+                return None, read_json(path) == before
+            except tw.DataError as exc:
+                return ("\n".join([str(exc)] + [str(e) for e in getattr(exc, "errors", [])]),
+                        read_json(path) == before)
+
+        wrong_accepted, wrong_refused = [], []
+        for current, edges in sorted(ADAPTER_EXPECTED_EDGES.items()):
+            for target in sorted(ADAPTER_EXPECTED_EDGES):
+                lead = _json_copy(qualified)
+                lead["status"] = current
+                message, unchanged = patch(lead, target)
+                if current == target or target in edges:
+                    if message is not None:
+                        wrong_refused.append("%s -> %s: %s" % (current, target, message[:200]))
+                elif message is None or not unchanged:
+                    wrong_accepted.append("%s -> %s" % (current, target))
+        report.check("adapter: 9.1 every non-edge transition is refused and the lead is untouched",
+                     not wrong_accepted, "accepted: %s" % ", ".join(wrong_accepted))
+        report.check("adapter: 9.1 every skill edge (and re-asserting a state) is accepted for a "
+                     "scored, qualified lead", not wrong_refused, "\n".join(wrong_refused[:6]))
+        lead = _json_copy(qualified)
+        lead["status"] = "CONTACTED"
+        message, unchanged = patch(lead, "VERIFIED")
+        report.check("adapter: 9.2 a lead in an application-layer state is not moved",
+                     message is not None and "application layer" in message and unchanged,
+                     str(message))
+        message, unchanged = patch(_json_copy(qualified), "APPROVED_FOR_OUTREACH")
+        report.check("adapter: INV-09 APPROVED_FOR_OUTREACH is never written",
+                     message is not None and "approval and every later state" in message
+                     and unchanged, str(message))
+        message, unchanged = patch(_json_copy(unscored), "QUALIFIED")
+        report.check("adapter: INV-37 an unscored lead cannot move VERIFIED -> QUALIFIED",
+                     message is not None and unchanged, "accepted")
+        for current, target in (("VERIFIED", "QUALIFIED"), ("QUALIFIED", "MATCH_CANDIDATE"),
+                                ("QUALIFIED", "READY_FOR_REVIEW")):
+            lead = _json_copy(not_qualified)
+            lead["status"] = current
+            message, unchanged = patch(lead, target)
+            report.check("adapter: INV-37 a scored lead with qualified false cannot move %s -> %s"
+                         % (current, target),
+                         message is not None and "qualified true" in message and unchanged,
+                         str(message))
+        adapter, _ = file_adapter()
+        lead = _json_copy(not_qualified)
+        lead["status"] = "QUALIFIED"
+        try:
+            adapter.post_research_leads([lead])
+            message = None
+        except tw.DataError as exc:
+            message = str(exc)
+        report.check("adapter: INV-37 save-leads refuses a qualified-false record at QUALIFIED",
+                     message is not None and "qualified true" in message, str(message))
+
+        # -- 1-10: save-leads never silently downgrades a stored lead ------------------------
+        adapter, root = file_adapter()
+        path = os.path.join(root, "leads", "BUY-gulfglow-example.json")
+
+        def save(record, overwrite=False):
+            return adapter.post_research_leads([_json_copy(record)], overwrite=overwrite)[0]
+
+        first, second = save(qualified), save(qualified)
+        report.check("adapter: save-leads reports created, then unchanged, for the same lead",
+                     first.get("result") == "created" and second.get("result") == "unchanged",
+                     "%r / %r" % (first, second))
+        row = save(unscored)
+        stored = read_json(path)
+        report.check("adapter: save-leads refuses to replace a scored lead with an unscored one",
+                     row.get("result") == "refused"
+                     and stored.get("qualification_score") == qualified["qualification_score"]
+                     and stored.get("score_version") == qualified["score_version"],
+                     "%r; stored score %r" % (row, stored.get("qualification_score")))
+        raw_path = os.path.join(tmp, "raw-leads.json")
+        _adapter_write(raw_path, {"records": [unscored]})
+        command = [sys.executable, adapter_path, "save-leads", "--data-dir", root, "--input",
+                   raw_path, "--as-of", AS_OF, "--quiet"]
+        proc = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              universal_newlines=True)
+        try:
+            rows = json.loads(proc.stdout)
+        except ValueError:
+            rows = []
+        report.check("adapter: save-leads CLI exits 1 with a refused row and keeps the scored lead",
+                     proc.returncode == 1 and rows and rows[0].get("result") == "refused"
+                     and read_json(path).get("qualification_score")
+                     == qualified["qualification_score"],
+                     "exit %d stdout %s stderr %s" % (proc.returncode, proc.stdout[:200],
+                                                      proc.stderr[:300]))
+        proc = subprocess.run(command + ["--overwrite"], stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE, universal_newlines=True)
+        try:
+            rows = json.loads(proc.stdout)
+        except ValueError:
+            rows = []
+        report.check("adapter: save-leads --overwrite replaces it and reports updated",
+                     proc.returncode == 0 and rows and rows[0].get("result") == "updated"
+                     and read_json(path).get("score_version") == "unscored",
+                     "exit %d stdout %s stderr %s" % (proc.returncode, proc.stdout[:200],
+                                                      proc.stderr[:300]))
+        ahead = _json_copy(qualified)
+        ahead["status"] = "QUALIFIED"
+        _adapter_write(path, ahead)
+        row = save(qualified)
+        report.check("adapter: save-leads refuses a status regression (QUALIFIED -> VERIFIED)",
+                     row.get("result") == "refused" and read_json(path).get("status") == "QUALIFIED",
+                     repr(row))
+        row = save(qualified, overwrite=True)
+        report.check("adapter: save-leads overwrite=True applies the status regression",
+                     row.get("result") == "updated" and read_json(path).get("status") == "VERIFIED",
+                     repr(row))
+        owned = _json_copy(qualified)
+        owned["status"] = "CONTACTED"
+        _adapter_write(path, owned)
+        row = save(qualified, overwrite=True)
+        report.check("adapter: save-leads never replaces an application-layer lead, even with "
+                     "overwrite", row.get("result") == "refused"
+                     and read_json(path).get("status") == "CONTACTED", repr(row))
+
+    # -- INV-25 redaction --------------------------------------------------------------------
+    token = "tw-test-token-7f3a91"
+    out = tw._redact("request to /rfqs/134 failed with tw-test-token-7f3a91 in the echo", token)
+    report.check("adapter: _redact removes the bearer token it is given",
+                 token not in out and "***redacted***" in out, out)
+    for text in ("Authorization: Bearer zz-unknown-credential-42",
+                 "authorization=zz-unknown-credential-42"):
+        out = tw._redact(text)
+        report.check("adapter: _redact removes an Authorization value it was not told about (%s)"
+                     % text.split("zz")[0].strip(), "zz-unknown-credential-42" not in out, out)
+    saved = os.environ.get("TRADEWITH_TOKEN")
+    os.environ["TRADEWITH_TOKEN"] = "env-token-5c2e88"
+    try:
+        out = tw._redact("upstream echoed env-token-5c2e88")
+    finally:
+        if saved is None:
+            os.environ.pop("TRADEWITH_TOKEN", None)
+        else:
+            os.environ["TRADEWITH_TOKEN"] = saved
+    report.check("adapter: _redact removes the TRADEWITH_TOKEN environment value",
+                 "env-token-5c2e88" not in out, out)
+    out = tw._redact("partners@tradewith.example", token)
+    report.check("adapter: _redact targets credentials only; a company address is left intact",
+                 out == "partners@tradewith.example", out)
+
+    # -- HTTP backend against a local stdlib server (127.0.0.1 only) --------------------------
+    import http.server
+    import threading
+
+    http_token = "tw-http-token-3b9d51"
+    seen = {"auth": [], "paths": []}
+    rfq_bytes = json.dumps(rfq_134, ensure_ascii=False).encode("utf-8")
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def _reply(self, code, body):
+            data = body if isinstance(body, bytes) else body.encode("utf-8")
+            self.send_response(code)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def do_GET(self):
+            seen["auth"].append(self.headers.get("Authorization"))
+            seen["paths"].append(self.path)
+            if self.path == "/rfqs/134":
+                if seen["paths"].count(self.path) == 1:
+                    return self._reply(429, "{}")
+                return self._reply(200, rfq_bytes)
+            if self.path == "/rfqs/401":
+                return self._reply(401, '{"error": "token %s is not valid"}' % http_token)
+            return self._reply(429, "{}")
+
+        def do_PATCH(self):
+            seen["paths"].append("PATCH " + self.path)
+            self._reply(200, "{}")
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    saved_env = dict((name, os.environ.get(name)) for name in ("no_proxy", "NO_PROXY"))
+    os.environ["no_proxy"] = os.environ["NO_PROXY"] = "127.0.0.1,localhost"
+    backoff = tw.RETRY_BACKOFF_SECONDS
+    tw.RETRY_BACKOFF_SECONDS = 0.0
+    try:
+        client = tw.HttpAdapter(base_url="http://127.0.0.1:%d" % server.server_address[1],
+                                token=http_token, max_retries=2, timeout=10, as_of=AS_OF,
+                                quiet=True)
+        try:
+            document, error = client.get_rfq("134"), None
+        except tw.AdapterError as exc:
+            document, error = None, str(exc)
+        report.check("adapter http: a 429 is retried and the RFQ arrives on the next attempt",
+                     document is not None and document.get("rfq_id") == "134"
+                     and seen["paths"].count("/rfqs/134") == 2,
+                     "error %s; paths %s" % (error, seen["paths"]))
+        report.check("adapter http: every request carries Authorization: Bearer <token>",
+                     seen["auth"] and all(value == "Bearer " + http_token for value in seen["auth"]),
+                     repr(seen["auth"]))
+        try:
+            client.get_rfq("401")
+            error = None
+        except tw.AdapterError as exc:
+            error = str(exc)
+        report.check("adapter http: a 401 is not retried and the echoed token never reaches the "
+                     "error", error is not None and http_token not in error
+                     and "***redacted***" in error and seen["paths"].count("/rfqs/401") == 1,
+                     str(error))
+        try:
+            client.get_rfq("busy")
+            error = None
+        except tw.AdapterError as exc:
+            error = str(exc)
+        report.check("adapter http: the retry budget is bounded (max_retries 2 = 3 attempts)",
+                     error is not None and seen["paths"].count("/rfqs/busy") == 3,
+                     "error %s; paths %s" % (error, seen["paths"]))
+        try:
+            client.patch_lead_status("BUY-gulfglow-example", "APPROVED_FOR_OUTREACH")
+            error = None
+        except tw.DataError as exc:
+            error = str(exc)
+        report.check("adapter http: APPROVED_FOR_OUTREACH is refused before any request",
+                     error is not None and not [p for p in seen["paths"] if p.startswith("PATCH")],
+                     "error %s; paths %s" % (error, seen["paths"]))
+    finally:
+        tw.RETRY_BACKOFF_SECONDS = backoff
+        for name, value in saved_env.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+        server.shutdown()
+        server.server_close()
+    try:
+        tw.HttpAdapter._resolve_base_url("http://api.tradewith.example")
+        error = None
+    except tw.UsageError as exc:
+        error = str(exc)
+    report.check("adapter http: a bearer token is never sent over plain http to a remote host",
+                 error is not None, "accepted")
+
+
+# ---------------------------------------------------------------------------
+# 8. validate_output.py negative fixtures, outreach drafts, Mode 1 -> Mode 4
+# ---------------------------------------------------------------------------
+INVALID = os.path.join(FIXTURES, "invalid")
+DRAFTS = os.path.join(FIXTURES, "drafts")
+
+# Every rule id these phases must hold a failing case for; a rule without one is untested.
+TARGETED_DOCUMENT_RULES = {"INV-01", "INV-02", "INV-04", "INV-05", "INV-06", "INV-22", "INV-30",
+                           "INV-37", "EVI-01", "EVI-02", "EVI-03", "EVI-04", "EVI-05", "EVI-06",
+                           "VAL-01"}
+TARGETED_DRAFT_RULES = {"DRAFT-%02d" % n for n in range(1, 13)} | {"INV-09", "INV-31", "INV-34",
+                                                                    "R10.4.6"}
+
+
+def _apply_mutations(document, mutations):
+    """Apply a tests/fixtures/invalid/*.json mutation list (set / delete / swap / set_each)."""
+    def parent_of(path):
+        node = document
+        for key in path[:-1]:
+            node = node[key]
+        return node
+
+    for mutation in mutations:
+        path = mutation["path"]
+        parent = parent_of(path)
+        if mutation["op"] == "set":
+            parent[path[-1]] = mutation["value"]
+        elif mutation["op"] == "delete":
+            del parent[path[-1]]
+        elif mutation["op"] == "swap":
+            other = parent_of(mutation["with"])
+            parent[path[-1]], other[mutation["with"][-1]] = (other[mutation["with"][-1]],
+                                                            parent[path[-1]])
+        elif mutation["op"] == "set_each":
+            for item in parent[path[-1]]:
+                item.update(mutation["value"])
+        elif mutation["op"] == "append":
+            parent[path[-1]].append(mutation["value"])
+        else:
+            raise ValueError("unknown mutation op %r" % (mutation["op"],))
+    return document
+
+
+def _validator_verdict(args):
+    """Run validate_output.py; return (exit code, reported rule ids, short detail)."""
+    code, out, err = run_script("validate_output.py", list(args) + ["--json"])
+    try:
+        doc = json.loads(out)
+    except ValueError:
+        return code, set(), (err.strip() or out.strip())[:400]
+    failures = doc.get("invariant_failures") or []
+    rules = set(item.get("invariant") for item in failures)
+    rules |= set(item["invariant"] for item in doc.get("warnings") or [] if item.get("invariant"))
+    if doc.get("errors"):
+        rules.add("SCHEMA")
+    detail = ["%s %s" % (item.get("invariant"), str(item.get("message"))[:160])
+              for item in failures + (doc.get("warnings") or []) + (doc.get("errors") or [])]
+    return code, rules, "\n".join(detail[:8])
+
+
+def _invalid_base(base, pipeline, spec=None):
+    if base == "literal":
+        return _json_copy(spec["document"])
+    source, _, record_id = base.partition(":")
+    if source == "match_134":
+        return _json_copy(pipeline.match_134) if pipeline.match_134 else None
+    if source == "buyers_uae":
+        records = (pipeline.buyers_uae or {}).get("records") or []
+    elif source == "buyers_golden":
+        records = read_json(os.path.join(FIXTURES, "buyers.golden.json"))["records"]
+    else:
+        return None
+    for record in records:
+        if record.get("buyer_id") == record_id:
+            return _json_copy(record)
+    return None
+
+
+def phase_validator_negatives(report, pipeline, allow_missing):
+    specs = sorted(glob.glob(os.path.join(INVALID, "*.json")))
+    if missing_scripts() or not (pipeline.buyers_uae and pipeline.match_134):
+        (report.skip if allow_missing else report.fail)(
+            "validator negative: fixtures", "pipeline output unavailable")
+        return
+    covered = set()
+    with tempfile.TemporaryDirectory() as tmp:
+        # Controls: an unmutated base passes --strict, or a failure below proves nothing.
+        for base in ("buyers_uae:BUY-gulfglow-example", "buyers_golden:BUY-gulfglow-example",
+                     "match_134"):
+            path = os.path.join(tmp, "control.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump(_invalid_base(base, pipeline), fh, ensure_ascii=False)
+            kind = "match-result" if base == "match_134" else "buyer"
+            code, rules, detail = _validator_verdict(["--input", path, "--schema", kind,
+                                                      "--invariants", "--strict",
+                                                      "--as-of", AS_OF])
+            report.check("validator negative: control %s passes --strict" % base,
+                         code == 0 and not rules, "exit %d %s\n%s" % (code, sorted(rules), detail))
+        for spec_path in specs:
+            spec = read_json(spec_path)
+            name = "validator negative: %s %s" % (spec["rule"],
+                                                  os.path.basename(spec_path)[:-len(".json")])
+            document = _invalid_base(spec["base"], pipeline, spec)
+            if document is None:
+                report.fail(name, "base %s not found" % spec["base"])
+                continue
+            document = _apply_mutations(document, spec.get("mutations") or [])
+            path = os.path.join(tmp, os.path.basename(spec_path))
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump(document, fh, ensure_ascii=False)
+            args = ["--input", path, "--schema", spec.get("schema", "auto"), "--invariants",
+                    "--as-of", AS_OF]
+            problems = []
+            if spec.get("strict"):
+                code, _, detail = _validator_verdict(args)
+                if code != 0:
+                    problems.append("without --strict a warning-only rule must exit 0, got %d\n%s"
+                                    % (code, detail))
+                args.append("--strict")
+            code, rules, detail = _validator_verdict(args)
+            if code != 1:
+                problems.append("exit %d, expected 1" % code)
+            if spec["rule"] not in rules:
+                problems.append("%s not reported (reported: %s)" % (spec["rule"], sorted(rules)))
+            covered.add(spec["rule"])
+            report.check(name, not problems, "\n".join(problems + [detail]))
+    report.check("validator negative: every targeted rule has a failing fixture",
+                 TARGETED_DOCUMENT_RULES <= covered,
+                 "no fixture for %s" % sorted(TARGETED_DOCUMENT_RULES - covered))
+
+
+VALID = os.path.join(FIXTURES, "valid")
+
+
+def phase_validator_positives(report, allow_missing):
+    """tests/fixtures/valid/*.json: honest records the policy allows must pass --strict.
+
+    Each spec mutates a raw golden record, scores it (so evidence_quality and confidence are
+    recomputed by the scorer, never typed in) and validates it. Its control adds one mutation
+    that removes the policy's reason and must fail the rule, so the pass is not a blind spot.
+    """
+    specs = sorted(glob.glob(os.path.join(VALID, "*.json")))
+    if missing_scripts():
+        (report.skip if allow_missing else report.fail)("validator positive: fixtures",
+                                                        "scripts/ not present")
+        return
+    report.check("validator positive: tests/fixtures/valid holds fixtures", bool(specs), VALID)
+    with tempfile.TemporaryDirectory() as tmp:
+        for spec_path in specs:
+            spec = read_json(spec_path)
+            stem = os.path.basename(spec_path)[:-len(".json")]
+            golden = read_json(os.path.join(FIXTURES, "buyers.golden.json"))
+
+            def verdict(mutations, label):
+                document = _apply_mutations(_invalid_base(spec["base"], None, spec), mutations)
+                envelope = dict(golden, records=[document])
+                source = os.path.join(tmp, "%s.%s.in.json" % (stem, label))
+                with open(source, "w", encoding="utf-8") as fh:
+                    json.dump(envelope, fh, ensure_ascii=False)
+                scored = os.path.join(tmp, "%s.%s.scored.json" % (stem, label))
+                code, _, err = run_script(spec["scorer"], [
+                    "--input", source, "--query", os.path.join(FIXTURES, spec["query"]),
+                    "--as-of", AS_OF, "--output", scored])
+                if code != 0 or not os.path.isfile(scored):
+                    return None, set(), "%s exit %d\n%s" % (spec["scorer"], code, err.strip()[:300])
+                return _validator_verdict(["--input", scored, "--invariants", "--strict",
+                                           "--as-of", AS_OF])
+
+            code, rules, detail = verdict(spec["mutations"], "positive")
+            report.check("validator positive: %s (%s) passes --strict after scoring"
+                         % (stem, spec["policy"]), code == 0 and not rules,
+                         "exit %s %s\n%s" % (code, sorted(rules), detail))
+            control = spec["control"]
+            code, rules, detail = verdict(spec["mutations"] + control["mutations"], "control")
+            report.check("validator positive: %s control (%s) fails %s"
+                         % (stem, control["description"], control["rule"]),
+                         code == 1 and control["rule"] in rules,
+                         "exit %s %s\n%s" % (code, sorted(rules), detail))
+
+
+def _draft_text(name):
+    with open(os.path.join(DRAFTS, name), encoding="utf-8") as fh:
+        return fh.read()
+
+
+_DRAFT_B = "buyer.en.gulfglow.md"
+_DRAFT_BK = "buyer.ko.dunesourcing.md"
+_DRAFT_SK = "seller.ko.hanbitcos.md"
+_DRAFT_SE = "seller.en.hanbitcos.rfq134.md"
+GOOD_DRAFTS = ((_DRAFT_B, ("buyers_uae",)), (_DRAFT_BK, ("buyers_uae",)),
+               (_DRAFT_SK, ("sellers",)), (_DRAFT_SE, ("match_134", "rfq_134")))
+_B_FOOTER = "partners@tradewith.example\n\nPersonalization facts"
+_B_CHANNEL = "Recipient channel: partnership_form — https://gulfglow.example/brand-partnership"
+_B_NOTICE = ("- Submitted through the distributor or partner application form published at\n"
+             "  https://gulfglow.example/brand-partnership.\n"
+             "- Sender: TradeWith — partners@tradewith.example\n"
+             "- No telephone number is contacted from this workflow.")
+_SK_NOTICE = ("Required legal notices\n- 제목 맨 앞에 (광고) 표시\n"
+              "- 전송자: TradeWith (서울특별시 중구 세종대로 12)\n"
+              "- 연락처: partners@tradewith.example\n"
+              "- 수신거부: partners@tradewith.example 로 회신하시면 이후 광고성 정보를 보내지 않습니다.\n"
+              "- 본 메일은 https://hanbitcos.example/contact 에 공개된 문의 채널로 발송되었습니다.\n\n")
+_BK_PARTNER = "귀사 파트너 페이지는 브랜드 제휴 문의를 받는다고 안내하고 있습니다."
+_BK_GREETING = "안녕하세요, Dune Sourcing Partners LLC 무역팀 여러분."
+_SK_GREETING = "안녕하세요, Hanbit Cosmetics Co., Ltd. 수출팀님."
+_B_WHO = "We are TradeWith, a Korea-based B2B sourcing desk for K-Beauty."
+_B_OPENING = ("Your brand-partnership page states that partnership enquiries are reviewed by your "
+              "sourcing team.")
+_B_RULE4 = ("Your news page, dated 2026-07-15, says you are actively looking for new Korean beauty "
+            "brands.")
+_B_RULE4_FACT = ("(observed 2026-09-10)\n\nCompliance checks",
+                 "(observed 2026-09-10)\n- News page dated 2026-07-15 announces an open call for new "
+                 "Korean beauty brands — [https://gulfglow.example/news/open-call-2026] (observed "
+                 "2026-09-10)\n\nCompliance checks")
+_SE_DEMAND = ("Requirements: MOQ ceiling",
+              "A buyer is currently looking for private-label sunscreen into the United Arab "
+              "Emirates.\nRequirements: MOQ ceiling")
+
+# (label, base draft, [(old, new), ...] applied once each in order, --record keys, rule or None)
+# The personal-data and later-state strings live here, not in tests/fixtures/, because the
+# fixture scans (INV-31, INV-09) must keep finding none there.
+DRAFT_CASES = (
+    ("envelope line 4 removed", _DRAFT_B, [("Approval: required (human)\n", "")], (), "DRAFT-01"),
+    ("checklist item pre-ticked", _DRAFT_B,
+     [("- [ ] Contact channel is an official company channel",
+       "- [x] Contact channel is an official company channel")], (), "DRAFT-01"),
+    ("line 3 says auto-send true", _DRAFT_B, [("Auto-send: false", "Auto-send: true")], (), "INV-09"),
+    ("a state past review", _DRAFT_B,
+     [("Status: READY_FOR_REVIEW", "Status: APPROVED_FOR_OUTREACH")], (), "INV-09"),
+    ("subject over 60 characters", _DRAFT_B,
+     [("Subject: Korean sunscreen suppliers for Gulf Glow",
+       "Subject: Korean sunscreen, serum, toner and cleanser suppliers for Gulf Glow Trading")],
+     (), "DRAFT-02"),
+    ("greeting drops the company", _DRAFT_B,
+     [("Hello Gulf Glow Trading FZ-LLC brand partnerships team,", "Hello brand partnerships team,")],
+     (), "DRAFT-03"),
+    ("zero personalization facts", _DRAFT_B,
+     [("- Brand-partnership page states that partnership enquiries are reviewed by the sourcing "
+       "team — [https://gulfglow.example/brand-partnership] (observed 2026-09-10)\n", ""),
+      ("- Korean beauty page states direct import from Korean manufacturers and six Korean "
+       "brands carried — [https://gulfglow.example/korean-beauty] (observed 2026-09-10)\n", "")],
+     (), "DRAFT-04"),
+    ("body URL missing from facts", _DRAFT_SK,
+     [("- 한국 무역 기관 디렉터리: 수출 시장 SA, KW, SG, JP — "
+       "[https://koreatradeagency.example/directory/hanbitcos] (observed 2026-09-10)\n", "")],
+     (), "DRAFT-04"),
+    ("fact URL is on no evidence item", _DRAFT_B,
+     [("[https://gulfglow.example/korean-beauty] (observed",
+       "[https://gulfglow.example/press-2026] (observed")], ("buyers_uae",), "DRAFT-05"),
+    ("fact observed date differs from the evidence", _DRAFT_B,
+     [("(observed 2026-09-10)", "(observed 2026-09-12)")], ("buyers_uae",), "DRAFT-05"),
+    ("unfilled {{token}}", _DRAFT_B,
+     [("Your Korean beauty page states", "Your {{buyer.category_display}} page states")],
+     (), "DRAFT-06"),
+    ("surviving [[ev:]] marker", _DRAFT_B,
+     [("carry six Korean brands.", "carry six Korean brands. [[ev: EV-003]]")], (), "DRAFT-06"),
+    ("EN fake opt-out", _DRAFT_B,
+     [("If it is not, tell us which categories are and we will keep the note on file.",
+       "If it is not, please ignore this email.")], (), "DRAFT-07"),
+    ("KO fake opt-out", _DRAFT_SK,
+     [('관심이 없으시면 "관심 없음"이라고 회신해 주십시오. 이후로는 연락드리지 않겠습니다.',
+       "회신이 필요 없으시면 이 메일은 무시하셔도 됩니다.")], (), "DRAFT-07"),
+    ("advertising flag set to no", _DRAFT_B,
+     [("Advertising label / opt-out required: unknown",
+       "Advertising label / opt-out required: no")], (), "DRAFT-08"),
+    ("claims verified is blocked", _DRAFT_B,
+     [("Claims verified against evidence: yes", "Claims verified against evidence: blocked")],
+     (), "DRAFT-08"),
+    ("jurisdiction differs from the record country", _DRAFT_B,
+     [("Jurisdiction: United Arab Emirates", "Jurisdiction: Saudi Arabia")],
+     ("buyers_uae",), "DRAFT-08"),
+    ("drafted from an unscored record", _DRAFT_B, [], ("buyers_golden",), "DRAFT-09"),
+    ("drafted for a seller the match run excluded", _DRAFT_SE,
+     [("Hanbit Cosmetics Co., Ltd.", "Daehan Sun Care Co., Ltd."),
+      ("Hanbit Cosmetics Co., Ltd.", "Daehan Sun Care Co., Ltd.")],
+     ("match_134", "rfq_134"), "DRAFT-09"),
+    ("channel is not one of the record's", _DRAFT_B,
+     [(_B_CHANNEL, "Recipient channel: partnership_form — https://gulfglow.example/other-form")],
+     ("buyers_uae",), "DRAFT-10"),
+    ("channel type outside the vocabulary", _DRAFT_B,
+     [("Recipient channel: partnership_form", "Recipient channel: personal_email")],
+     (), "DRAFT-10"),
+    ("KR corporate email subject without (광고)", _DRAFT_SK,
+     [("Subject: (광고) 선케어", "Subject: 선케어")], (), "DRAFT-11"),
+    ("body over the 150-word buyer limit (strict)", _DRAFT_B,
+     [("We are TradeWith, a Korea-based B2B sourcing desk for K-Beauty.",
+       "We are TradeWith, a Korea-based B2B sourcing desk for K-Beauty."
+       + " We compare Korean skincare makers on published facts." * 20)], (), "DRAFT-12"),
+    ("notice block not verbatim", _DRAFT_B,
+     [("- No telephone number is contacted from this workflow.\n", "")], (), "R10.4.6"),
+    ("KR required notice block absent", _DRAFT_SK, [(_SK_NOTICE, "")], (), "R10.4.6"),
+    ("no block on file and no fallback line", _DRAFT_B,
+     [(_B_CHANNEL, "Recipient channel: linkedin — https://www.linkedin.example/company/gulfglow")],
+     (), "R10.4.6"),
+    ("free-mail sender address", _DRAFT_B,
+     [(_B_FOOTER, "tradewith.desk@gmail.com\n\nPersonalization facts")], (), "INV-31"),
+    ("personal local part (name-shape heuristic: warning only, even under --strict)", _DRAFT_B,
+     [(_B_FOOTER, "minji.kim@tradewith.example\n\nPersonalization facts")], (), ("WARN", "INV-31")),
+    ("KR mobile number", _DRAFT_B,
+     [(_B_FOOTER, "partners@tradewith.example · 010-2345-6789\n\nPersonalization facts")],
+     (), "INV-31"),
+    ("+82 mobile number", _DRAFT_B,
+     [(_B_FOOTER, "partners@tradewith.example · +82 10 2345 6789\n\nPersonalization facts")],
+     (), "INV-31"),
+    ("EN honorific and name", _DRAFT_B,
+     [("brand partnerships team,", "brand partnerships team, attention Mr. Haddad,")],
+     (), "INV-31"),
+    ("KO name and title (surname heuristic: warning only, even under --strict)", _DRAFT_SK,
+     [("수출팀님.", "수출팀 김민지 과장님.")], (), ("WARN", "INV-31")),
+    ("EN third-party action claim", _DRAFT_B,
+     [("Your brand-partnership page states",
+       "A distributor asked us specifically about your brand. Your brand-partnership page states")],
+     (), "INV-34"),
+    ("EN uncited buyer claim", _DRAFT_B,
+     [("We are TradeWith, a Korea",
+       "We have a buyer currently looking for your sunscreen. We are TradeWith, a Korea")],
+     (), "INV-34"),
+    ("EN third-party claim with a modifier before the verb", _DRAFT_B,
+     [("We are TradeWith, a Korea",
+       "A distributor in Dubai is actively looking for your sunscreen. We are TradeWith, a Korea")],
+     (), "INV-34"),
+    ("EN third-party claim that a client wants the recipient's line", _DRAFT_B,
+     [("We are TradeWith, a Korea",
+       "One of our clients in Riyadh needs your SPF range. We are TradeWith, a Korea")],
+     (), "INV-34"),
+    ("KO third-party interest claim", _DRAFT_SK,
+     [("저희는 TradeWith, K-Beauty 해외", "해당 바이어가 관심이 있습니다.\n저희는 TradeWith, K-Beauty 해외")],
+     (), "INV-34"),
+    ("demand claim citing a closed RFQ", _DRAFT_SE, [_SE_DEMAND], ("match_134", "rfq_134_closed"),
+     "INV-34"),
+    ("demand claim without the RFQ status in the body", _DRAFT_SE,
+     [_SE_DEMAND, ("status matching as of 2026-09-12", "as of 2026-09-12")], (), "INV-34"),
+    ("demand claim citing an open RFQ with status and date", _DRAFT_SE, [_SE_DEMAND],
+     ("match_134", "rfq_134"), None),
+    ("no block on file, literal fallback line present", _DRAFT_B,
+     [(_B_CHANNEL, "Recipient channel: linkedin — https://www.linkedin.example/company/gulfglow"),
+      (_B_NOTICE, "- No notice block on file for United Arab Emirates / linkedin — obtain wording "
+                  "before sending")], (), None),
+    ("KO buyer channel is not one of the record's", _DRAFT_BK,
+     [("corporate_email — trade@dunesourcing.example", "corporate_email — sales@dunesourcing.example")],
+     ("buyers_uae",), "DRAFT-10"),
+    # INV-34 honest wording: a sender's own search, an invitation, a negative and a generic
+    # customer request name no third party wanting the recipient.
+    ("KO invitation to name categories of interest", _DRAFT_BK,
+     [("해당되지 않는다면 검토 중인 카테고리를", "관심이 있는 카테고리를")], ("buyers_uae",), None),
+    ("KO conditional interest", _DRAFT_BK,
+     [("해당되지 않는다면 검토 중인 카테고리를", "혹시 관심이 있다면 검토 중인 카테고리를")], (), None),
+    ("KO sender's own search for partners", _DRAFT_BK,
+     [(_BK_PARTNER, "저희는 UAE 유통 파트너를 찾고 있습니다.")], ("buyers_uae",), None),
+    ("KO negative: no enquiry is pending", _DRAFT_BK, [(_BK_PARTNER, "회신 대기 중인 문의는 없습니다.")],
+     (), None),
+    ("EN sender's own search for distributors", _DRAFT_B,
+     [(_B_WHO, "We are currently looking for UAE distributors.")], ("buyers_uae",), None),
+    ("EN generic customer request", _DRAFT_B,
+     [(_B_WHO, _B_WHO + " Our customers have asked for SPF data sheets.")], (), None),
+    # templates/buyer_outreach.md section 3: "you are looking for" licensed by a dated
+    # sourcing_signals fact instead of an RFQ.
+    ("buyer rule-4 dated sourcing sentence with a dated fact line", _DRAFT_B,
+     [(_B_OPENING, _B_RULE4), _B_RULE4_FACT], (), None),
+    ("buyer rule-4 sentence backed by a sourcing_signals evidence item", _DRAFT_B,
+     [(_B_OPENING, _B_RULE4), _B_RULE4_FACT], ("buyers_uae_signal",), None),
+    ("buyer rule-4 sentence whose fact URL is not a sourcing_signals item", _DRAFT_B,
+     [(_B_OPENING, _B_RULE4), _B_RULE4_FACT], ("buyers_uae",), "INV-34"),
+    ("buyer rule-4 sentence without its date", _DRAFT_B,
+     [(_B_OPENING, _B_RULE4.replace(", dated 2026-07-15,", "")), _B_RULE4_FACT], (), "INV-34"),
+    # INV-31: role and department greetings, role addresses, the company's own names.
+    ("KO greeting to the company's Korean short name and title (record names it)", _DRAFT_SK,
+     [(_SK_GREETING, "안녕하세요, Hanbit Cosmetics Co., Ltd. 한빛 대표님.")], ("sellers_ko",), None),
+    ("KO greeting to a short name and title without --record (warning only)", _DRAFT_SK,
+     [(_SK_GREETING, "안녕하세요, Hanbit Cosmetics Co., Ltd. 한빛 대표님.")], (), ("WARN", "INV-31")),
+    ("role address with lab and K-Beauty words", _DRAFT_B,
+     [(_B_FOOTER, "kbeauty.lab@brand.example\n\nPersonalization facts")], (), None),
+    ("role address built from the company's own name", _DRAFT_SK,
+     [(_B_FOOTER, "hanbit.korea@hanbitcos.example\n\nPersonalization facts")], (), None),
+    # DRAFT-03: a Korean greeting may address an English-named company by its Korean name.
+    ("KO greeting by the record's company_name_ko", _DRAFT_SK,
+     [(_SK_GREETING, "안녕하세요, 한빛화장품 수출팀님.")], ("sellers_ko",), None),
+    ("KO greeting by a Korean name no --record supplies", _DRAFT_SK,
+     [(_SK_GREETING, "안녕하세요, 한빛화장품 수출팀님.")], (), "DRAFT-03"),
+) + tuple(
+    ("KO role greeting %s" % role, _DRAFT_BK,
+     [(_BK_GREETING, "안녕하세요, Dune Sourcing Partners LLC %s." % role)], (), None)
+    for role in ("상품 기획 팀장님", "홍보 팀장님", "고객 서비스 팀장님", "성분 연구 실장", "전문가님",
+                 "문의 주신 부장님")
+)
+
+
+def phase_outreach_drafts(report, pipeline, allow_missing):
+    if missing_scripts() or not (pipeline.buyers_uae and pipeline.sellers and pipeline.match_134):
+        (report.skip if allow_missing else report.fail)("outreach draft: validator cases",
+                                                        "pipeline output unavailable")
+        return
+    sys.path.insert(0, SCRIPT_DIR)
+    sys.dont_write_bytecode = True
+    import validate_output  # noqa: E402
+
+    with tempfile.TemporaryDirectory() as tmp:
+        records = {"rfq_134": os.path.join(FIXTURES, "rfq.134.json"),
+                   "buyers_golden": os.path.join(FIXTURES, "buyers.golden.json")}
+        closed = read_json(records["rfq_134"])
+        closed["status"] = "closed"
+        # The UAE envelope with Gulf Glow's open-call page also recorded as a dated
+        # sourcing_signals item (buyer template section 3), and the seller envelope with
+        # Hanbit's Korean name (seller.schema.json company_name_ko).
+        signal = _json_copy(pipeline.buyers_uae)
+        sellers_ko = _json_copy(pipeline.sellers)
+        for record in signal.get("records") or []:
+            if record.get("buyer_id") == "BUY-gulfglow-example":
+                record["evidence"].append({
+                    "evidence_id": "EV-010", "claim": "sourcing_signals",
+                    "value": "open_call_for_suppliers",
+                    "source_url": "https://gulfglow.example/news/open-call-2026",
+                    "source_domain": "gulfglow.example", "source_type": "official_site",
+                    "source_tier": 1, "is_official": True, "observed_at": "2026-09-10T09:00:00Z",
+                    "source_date": "2026-07-15", "confidence": 0.9,
+                    "quote_or_summary": "Open call for suppliers: we are accepting new Korean beauty "
+                                        "brands this season.", "retrieval_method": "page_fetch"})
+        for record in sellers_ko.get("records") or []:
+            if record.get("seller_id") == "SEL-hanbitcos-example":
+                record["company_name_ko"] = "한빛화장품"
+        for key, document in (("buyers_uae", pipeline.buyers_uae), ("sellers", pipeline.sellers),
+                              ("match_134", pipeline.match_134), ("rfq_134_closed", closed),
+                              ("buyers_uae_signal", signal), ("sellers_ko", sellers_ko)):
+            records[key] = os.path.join(tmp, "%s.json" % key)
+            with open(records[key], "w", encoding="utf-8") as fh:
+                json.dump(document, fh, ensure_ascii=False)
+
+        def verdict(text, keys):
+            path = os.path.join(tmp, "draft.md")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(text)
+            args = ["--input", path, "--schema", "outreach-draft", "--strict"]
+            for key in keys:
+                args.extend(["--record", records[key]])
+            return _validator_verdict(args)
+
+        for name, keys in GOOD_DRAFTS:
+            for use in (keys, ()):
+                code, rules, detail = verdict(_draft_text(name), use)
+                report.check("outreach draft: good %s passes --strict %s"
+                             % (name, "with --record" if use else "without --record"),
+                             code == 0 and not rules,
+                             "exit %d %s\n%s" % (code, sorted(rules), detail))
+
+        covered = set()
+        for label, base, edits, keys, expected in DRAFT_CASES:
+            shown = "WARN %s" % expected[1] if isinstance(expected, tuple) else expected or "PASS"
+            name = "outreach draft: %s %s" % (shown, label)
+            text = _draft_text(base)
+            anchor_missing = None
+            for old, new in edits:
+                if old not in text:
+                    anchor_missing = old
+                    break
+                text = text.replace(old, new, 1)
+            if anchor_missing is not None:
+                report.fail(name, "mutation anchor not found: %r" % (anchor_missing[:80],))
+                continue
+            code, rules, detail = verdict(text, keys)
+            if expected is None:
+                report.check(name, code == 0 and not rules,
+                             "exit %d %s\n%s" % (code, sorted(rules), detail))
+            elif isinstance(expected, tuple):
+                # A non-blocking warning: reported, yet the draft still passes --strict.
+                report.check(name, code == 0 and rules == {expected[1]},
+                             "exit %d, reported %s\n%s" % (code, sorted(rules), detail))
+            else:
+                covered.add(expected)
+                report.check(name, code == 1 and expected in rules,
+                             "exit %d, reported %s\n%s" % (code, sorted(rules), detail))
+        report.check("outreach draft: every draft rule has a failing case",
+                     TARGETED_DRAFT_RULES <= covered,
+                     "no case for %s" % sorted(TARGETED_DRAFT_RULES - covered))
+
+    # compliance.config.json is the lookup; templates/legal_notices.md is the wording. They
+    # must name the same keys with the same status, or a draft is checked against a block that
+    # the page does not carry.
+    config = validate_output.load_compliance_config()
+    blocks = validate_output.load_legal_notices()
+    with open(os.path.join(PKG_ROOT, "templates", "legal_notices.md"), encoding="utf-8") as fh:
+        index = dict(re.findall(r"^\| `([A-Z]{2}\.[a-z_]+)` \| `([a-z_]+)` \|", fh.read(), re.M))
+    statuses = dict((key, value.get("status")) for key, value in config["notice_blocks"].items())
+    report.check("outreach draft: compliance.config.json notice_blocks agree with "
+                 "legal_notices.md (keys, status, block bodies)",
+                 statuses == index and sorted(blocks) == sorted(index)
+                 and all(blocks[key] for key in blocks),
+                 "config %s\nindex %s\nblocks %s" % (statuses, index, sorted(blocks)))
+
+    # The importable function the adapter can call on its JSON queue shape.
+    json_draft = {"entity_id": "BUY-gulfglow-example", "side": "Buyer",
+                  "channel_type": "partnership_form",
+                  "channel_value": "https://gulfglow.example/brand-partnership",
+                  "language": "English", "subject": "Korean sunscreen suppliers for Gulf Glow",
+                  "body": "(rendered in draft_markdown)",
+                  "personalization_facts": [{"fact": "Brand-partnership page",
+                                             "source_url": "https://gulfglow.example/brand-partnership",
+                                             "evidence_id": "EV-006"}],
+                  "draft_markdown": _draft_text(_DRAFT_B)}
+    issues = validate_output.validate_outreach_draft(json_draft, [pipeline.buyers_uae])
+    report.check("outreach draft: validate_outreach_draft() accepts a clean JSON draft",
+                 not issues, "%r" % (issues[:3],))
+    wrong = _json_copy(json_draft)
+    wrong["personalization_facts"][0]["evidence_id"] = "EV-001"
+    rules = set(i["invariant"] for i in validate_output.validate_outreach_draft(
+        wrong, [pipeline.buyers_uae]))
+    report.check("outreach draft: a JSON fact citing an evidence_id on another URL is DRAFT-05",
+                 "DRAFT-05" in rules, "reported %s" % sorted(rules))
+    bare = _json_copy(json_draft)
+    del bare["draft_markdown"]
+    rules = set(i["invariant"] for i in validate_output.validate_outreach_draft(bare))
+    report.check("outreach draft: a JSON draft without draft_markdown is not reviewable (DRAFT-01)",
+                 "DRAFT-01" in rules, "reported %s" % sorted(rules))
+
+
+def phase_mode1_to_mode4(report, allow_missing):
+    cases = ("e2e: Mode 1 score_buyer -> Mode 4 draft passes against the qualified record",
+             "e2e: the same draft aimed at a non-qualified record is refused (DRAFT-09)")
+    if missing_scripts():
+        for case in cases:
+            (report.skip if allow_missing else report.fail)(case, "scripts/ not present")
+        return
+    with tempfile.TemporaryDirectory() as tmp:
+        scored = os.path.join(tmp, "buyers.scored.json")
+        code, _, err = run_script("score_buyer.py", [
+            "--input", os.path.join(FIXTURES, "buyers.golden.json"),
+            "--query", os.path.join(FIXTURES, "query-buyer-uae-kbeauty.json"),
+            "--as-of", AS_OF, "--output", scored])
+        problems = []
+        if code != 0 or not os.path.isfile(scored):
+            problems.append("score_buyer.py exit %d\n%s" % (code, err.strip()[:300]))
+            report.fail(cases[0], "\n".join(problems))
+            report.fail(cases[1], "no scored envelope")
+            return
+        envelope = read_json(scored)
+        target = index_by(envelope.get("records") or [], "buyer_id").get("BUY-gulfglow-example")
+        if not target or target.get("qualified") is not True:
+            problems.append("BUY-gulfglow-example is not a qualified scored record: %r"
+                            % ((target or {}).get("qualified"),))
+        code, rules, detail = _validator_verdict([
+            "--input", os.path.join(DRAFTS, _DRAFT_B), "--schema", "outreach-draft",
+            "--record", scored, "--strict"])
+        if code != 0 or rules:
+            problems.append("exit %d %s\n%s" % (code, sorted(rules), detail))
+        report.check(cases[0], not problems, "\n".join(problems))
+
+        other = next((record for record in envelope.get("records") or []
+                      if record.get("qualified") is False), None)
+        if other is None:
+            report.fail(cases[1], "the scored envelope holds no non-qualified record")
+            return
+        path = os.path.join(tmp, "draft.nonqualified.md")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(_draft_text(_DRAFT_B).replace("Gulf Glow Trading FZ-LLC", other["company_name"]))
+        code, rules, detail = _validator_verdict([
+            "--input", path, "--schema", "outreach-draft", "--record", scored, "--strict"])
+        report.check(cases[1], code == 1 and "DRAFT-09" in rules,
+                     "%s: exit %d %s\n%s" % (other.get("buyer_id"), code, sorted(rules), detail))
 
 
 # ---------------------------------------------------------------------------
@@ -2854,9 +4393,14 @@ def main(argv=None):
     phase_pipeline(report, pipeline, args.allow_missing_scripts)
     phase_cases(report, pipeline, args.allow_missing_scripts)
     phase_field_regressions(report, args.allow_missing_scripts)
+    phase_audit_regressions(report, args.allow_missing_scripts)
+    phase_validator_negatives(report, pipeline, args.allow_missing_scripts)
+    phase_validator_positives(report, args.allow_missing_scripts)
+    phase_outreach_drafts(report, pipeline, args.allow_missing_scripts)
+    phase_mode1_to_mode4(report, args.allow_missing_scripts)
     phase_safety(report)
     phase_package(report)
-    phase_adapter_guards(report)
+    phase_adapter_guards(report, pipeline, args.allow_missing_scripts)
 
     passed, failed, skipped = report.counts()
     print("-" * 78)

@@ -50,7 +50,7 @@ Blocks are keyed on the BUILD-CONTRACT 3.6 channel vocabulary. Where a country h
 the company itself invited, on its own page. `corporate_email` always has its own block because it
 is unsolicited electronic messaging and a different question (`compliance-notes.md` §4.2).
 
-`phone`, `linkedin` and `messenger` have **no blocks in v0.1.0**: telephone marketing sits under
+`phone`, `linkedin` and `messenger` have **no blocks in v0.1.1**: telephone marketing sits under
 separate do-not-call regimes this package does not cover, and the other two are platform-terms
 questions rather than notice-wording questions. They fall to the §1 step-4 fallback line every time.
 

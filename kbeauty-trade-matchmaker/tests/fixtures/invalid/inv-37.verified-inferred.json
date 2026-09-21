@@ -1,0 +1,25 @@
+{
+  "rule": "INV-37",
+  "description": "VERIFIED resting only on inferred items.",
+  "base": "buyers_golden:BUY-gulfglow-example",
+  "schema": "buyer",
+  "mutations": [
+    {
+      "op": "set",
+      "path": [
+        "status"
+      ],
+      "value": "VERIFIED"
+    },
+    {
+      "op": "set_each",
+      "path": [
+        "evidence"
+      ],
+      "value": {
+        "inferred": true,
+        "confidence": 0.5
+      }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "rule": "INV-01",
+  "description": "product_categories gains a token no product_categories evidence value contains.",
+  "base": "buyers_uae:BUY-gulfglow-example",
+  "schema": "buyer",
+  "mutations": [
+    {
+      "op": "set",
+      "path": [
+        "product_categories"
+      ],
+      "value": [
+        "skincare",
+        "sunscreen",
+        "cleanser",
+        "mask_sheet",
+        "hair_treatment"
+      ]
+    }
+  ]
+}

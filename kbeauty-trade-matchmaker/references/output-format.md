@@ -175,6 +175,8 @@ Try:
 
 Used by `templates/buyer_outreach.md` and `templates/seller_outreach.md`, and by any outreach the agent renders inline.
 
+A draft is rendered only for a **scored** target: a buyer or seller record from `score_buyer.py` / `score_seller.py` with `qualified: true`, or a `score_match.py` candidate with `hard_filter.passed: true` and `qualified: true`. The scorers never write `status`; the lifecycle states `QUALIFIED` / `MATCH_CANDIDATE` are set afterwards by a human or the adapter and are not the drafting gate.
+
 ```
 Outreach Draft — {{side}} — {{company_name}}
 Status: READY_FOR_REVIEW
@@ -215,6 +217,29 @@ Hard rules:
 - **R10.4.4** The CTA is a sourcing request / proposal submission, never "sign up" (PRD OUT-03).
 - **R10.4.5** `{{side}}` ∈ `Buyer` | `Seller`. `{{language}}` is the recipient's business language (e.g. `English`, `Korean`); the envelope labels stay English.
 - **R10.4.6** When `Advertising label / opt-out required` is `yes` or `unknown`, the draft MUST append the matching block from `templates/legal_notices.md` **verbatim** under a `Required legal notices` heading — or, when no block exists for that jurisdiction/channel, the literal line `- No notice block on file for {{country_name}} / {{channel_type}} — obtain wording before sending`. Blocks are keyed `{{country_alpha2}}.{{channel_type}}` (PRD OUT-06). The outreach templates never inline legal wording of their own, and this skill never concludes that a notice is sufficient.
+
+#### 10.4.1 Machine checks (`validate_output.py --schema outreach-draft`)
+
+`python3 scripts/validate_output.py --input draft.md --schema outreach-draft --record <scored envelope | record | match result> [--record rfq.json] --strict` parses the draft into `schemas/outreach-draft.schema.json` and applies the rules below; exit 1 means the draft does not go to review. The rules marked *(record)* run only when `--record` is given. Jurisdiction × channel resolution reads `schemas/compliance.config.json`; notice wording is read from `templates/legal_notices.md`. `validate_outreach_draft()` in the same script runs the identical check on the adapter's JSON draft (its `draft_markdown` is the text checked). A *warning* fails only under `--strict`; a *non-blocking warning* is reported and never fails, not even under `--strict`, so an honest draft still passes the self-check above.
+
+| Rule | Fails when |
+|---|---|
+| `DRAFT-01` | envelope line 1 or lines 4–7, a heading (`Body` → `Personalization facts` → `Compliance checks`, then `Reviewer checklist` / `Required legal notices`), one of the six checklist items above, or the `Next action:` line is missing or out of order; a checklist item is pre-ticked; a JSON draft has no `draft_markdown` |
+| `INV-09` | line 2 or 3 is not literally `Status: READY_FOR_REVIEW` / `Auto-send: false`; any `status:`, `auto_send:` or `manual_approval_required:` line says otherwise; a state past review is named |
+| `DRAFT-02` | `Subject:` is over 60 characters, carries `!`, or opens with `Re:` |
+| `DRAFT-03` | the greeting (first body line) names neither the company from line 1 nor, *(record)*, the target's `normalized_name`, `company_name_ko` or an alias (so a Korean greeting may use the Korean name of an English-named company) |
+| `DRAFT-04` | no `Personalization facts` line, a malformed one, or a body `[url]` that no fact lists |
+| `DRAFT-05` | *(record)* a fact's URL is the `source_url` of no evidence item on the target, its `observed` date differs, a JSON fact's `evidence_id` is not on that URL, or the fact rests only on `stale` evidence |
+| `DRAFT-06` | an unrendered `{{token}}` or `[[ev:` marker survives |
+| `DRAFT-07` | a fake opt-out ("ignore this email", "무시하셔도 됩니다") |
+| `DRAFT-08` | a compliance line is missing; `Personal data used` is not the literal; `Claims verified against evidence` is `blocked`; the review or advertising flag differs from what `compliance.config.json` resolves for the jurisdiction and channel; *(record)* the jurisdiction is not the record's country |
+| `R10.4.6` | the flag resolves to `yes` / `unknown` and the `{{country_alpha2}}.{{channel_type}}` block (a form or contact page uses the country's `partnership_form` block) is not reproduced verbatim, or no block exists and the literal fallback line is absent; *(record)* the block's channel source URL is not on the record |
+| `DRAFT-09` | *(record)* the target is absent or excluded, unscored, not `qualified: true`, a match candidate that failed the hard filter, or of the other side |
+| `DRAFT-10` | the channel type is outside the company-level vocabulary, a `corporate_email` carries no address, or *(record)* the channel is not one of the target's `contact_channels` |
+| `DRAFT-11` | the block requires a subject prefix (`KR.corporate_email`: `(광고)`) and `Subject:` does not begin with it |
+| `DRAFT-12` | *(warning; fails under `--strict`)* the body exceeds the template limit (Buyer 150 words, Seller 180) |
+| `INV-31` | a free-mail address, a Korean mobile number (`010-…`, `+82 10 …`), or `Mr.` / `Ms.` / `Mrs.` / `Mx.` / `Miss` with a capitalised name. *(non-blocking warning)* a name-shaped local part with no role word (`minji.kim@`), or a Korean surname-shaped word before a title or 님 (`김민지 과장님`). Role and department words (`상품 기획 팀장님`, `전문가님`, `kbeauty.lab@`) and the company's own names from line 1 and the record (`한빛 대표님` for 한빛화장품, `hanbit.korea@hanbitcos.example`) do not warn |
+| `INV-34` | wording that a **third party wants the recipient** ("a distributor asked us about your brand", "we have a buyer", "해당 바이어가 관심이 있습니다", "찾고 있는 바이어") or urgency ("only 3 slots", "곧 마감"), in English or Korean, without an `RFQ #id`, an open status (`qualified` / `matching` / `proposal_open`) and an `as of` date stated in the subject or body; *(record)* the match run's RFQ or the RFQ document disagrees. The sender's own search ("We are currently looking for UAE distributors", "저희는 유통 파트너를 찾고 있습니다"), an invitation ("관심이 있는 카테고리를 알려 주시면") or a negative ("회신 대기 중인 문의는 없습니다") is not a demand claim. "You are actively looking for …" (`templates/buyer_outreach.md` section 3) needs no RFQ when its sentence states a date that a Personalization fact backs: *(record)* the fact's URL is a `sourcing_signals` evidence item of tier ≤ 2, neither stale nor inferred, whose `source_date` is that date; without `--record`, the fact line's own text states that date |
 
 ### 10.5 Shared line rules
 
