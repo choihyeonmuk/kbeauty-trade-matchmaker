@@ -7039,6 +7039,52 @@ def _phase_plugins_tool_scan(report):
 # ---------------------------------------------------------------------------
 # 7. adapter guards: INV-10 / INV-25 dispatch keys, INV-34 live demand
 # ---------------------------------------------------------------------------
+def phase_validator_code_tokens(report, allow_missing):
+    """INV-02 must not reject "NA" where it is a code: North America in export_regions, Namibia
+    in a country field. Anywhere else, and in any other casing, it is still an unknown surrogate."""
+    if missing_scripts():
+        (report.skip if allow_missing else report.fail)("validator codes: NA token",
+                                                        "scripts/ not present")
+        return
+    with open(os.path.join(FIXTURES, "sellers.golden.json"), encoding="utf-8") as fh:
+        base = json.load(fh)["records"][0]
+    cases = [
+        ("export_regions ['NA'] is North America, not a surrogate",
+         [("export_regions", ["EU", "NA"])], False),
+        ("export_countries ['NA'] is Namibia, not a surrogate",
+         [("export_countries", ["NA"])], False),
+        ("the evidence item that proves export_regions may hold 'NA' too",
+         [("export_regions", ["NA"]), ("evidence", "+export_regions")], False),
+        ("an evidence item for any other claim may not hold 'NA'",
+         [("evidence", "+headquarters_city")], True),
+        ("lower-case 'na' in export_regions is still a surrogate",
+         [("export_regions", ["na"])], True),
+        ("'NA' in a free-text field is still a surrogate",
+         [("headquarters_city", "NA")], True),
+    ]
+    with tempfile.TemporaryDirectory() as tmp:
+        for label, sets, expect in cases:
+            record = json.loads(json.dumps(base))
+            for key, value in sets:
+                if key == "evidence":
+                    item = json.loads(json.dumps(record["evidence"][0]))
+                    item.update(evidence_id="EV-NA", claim=value[1:], value=["NA"])
+                    record["evidence"].append(item)
+                else:
+                    record[key] = value
+            source = os.path.join(tmp, "na.json")
+            with open(source, "w", encoding="utf-8") as fh:
+                json.dump(record, fh, ensure_ascii=False)
+            _, out, err = run_script("validate_output.py", [
+                "--input", source, "--schema", "seller", "--invariants", "--as-of", AS_OF, "--json"])
+            try:
+                rules = set(f.get("invariant") for f in json.loads(out).get("invariant_failures") or [])
+            except ValueError:
+                report.fail("validator codes: %s" % label, (err or out)[:300])
+                continue
+            report.check("validator codes: %s" % label, ("INV-02" in rules) == expect, sorted(rules))
+
+
 def phase_adapter_guards(report):
     adapter_path = os.path.join(PKG_ROOT, "adapters", "tradewith_adapter.py")
     if not os.path.isfile(adapter_path):
@@ -7160,6 +7206,7 @@ def main(argv=None):
     phase_safety(report)
     phase_package(report)
     phase_plugins(report)
+    phase_validator_code_tokens(report, args.allow_missing_scripts)
     phase_adapter_guards(report)
 
     passed, failed, skipped = report.counts()

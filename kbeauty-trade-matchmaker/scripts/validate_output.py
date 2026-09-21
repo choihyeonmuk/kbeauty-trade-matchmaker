@@ -72,6 +72,12 @@ FORBIDDEN_STATES = frozenset(
 
 # INV-02: strings that silently stand in for "unknown" and must never be stored.
 UNKNOWN_SURROGATES = frozenset(["n/a", "na", "null", "nil", "none given", "-", "--", "?", "tbd", "n.a."])
+# "NA" is also a real code: the North America token of seller.export_regions and the ISO-3166-1
+# alpha-2 of Namibia. In a field whose values are codes, the exact upper-case token is data.
+CODE_FIELDS = frozenset(["country", "export_countries", "export_regions", "excluded_markets",
+                         "destination_country", "region_countries", "required_seller_countries",
+                         "excluded_seller_countries"])
+_CODE_PATH = re.compile(r"(?:^|\.)(%s)(?:\[\d+\])?$" % "|".join(sorted(CODE_FIELDS)))
 
 TRI_STATE_FIELDS = (
     "korean_products_signal",
@@ -217,8 +223,17 @@ class _Failures(object):
 def _inv_generic(document, kind, index, ident, out):
     """Document-shape invariants that apply to every kind."""
     # INV-02: no silent stand-in for "unknown" anywhere in the document.
+    # An evidence item mirrors the field it proves, so its value holds the same codes.
+    code_values = set(
+        "%s.value" % path if path else "value"
+        for path, node in _walk(document)
+        if isinstance(node, dict) and node.get("claim") in CODE_FIELDS
+    )
     for path, value in _walk(document):
         if isinstance(value, str) and value.strip().casefold() in UNKNOWN_SURROGATES:
+            if value == "NA" and (_CODE_PATH.search(path)
+                                  or re.sub(r"\[\d+\]$", "", path) in code_values):
+                continue
             out.add(
                 "INV-02",
                 index,
