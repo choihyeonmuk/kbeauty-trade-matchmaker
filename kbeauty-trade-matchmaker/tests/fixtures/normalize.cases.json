@@ -186,6 +186,77 @@
     {
       "input": "Sunbright LLP",
       "expected": "sunbright"
+    },
+    {
+      "input": "주식회사한빛코스메틱",
+      "expected": "한빛코스메틱"
+    },
+    {
+      "input": "(주)한빛코스메틱",
+      "expected": "한빛코스메틱"
+    },
+    {
+      "input": "한빛코스메틱주식회사",
+      "expected": "한빛코스메틱"
+    },
+    {
+      "input": "유한회사 가온코스",
+      "expected": "가온코스"
+    },
+    {
+      "input": "합명회사가온",
+      "expected": "가온"
     }
+  ],
+  "normalize_category_note": "_common.normalize_category cases. in_vocabulary false marks a slug the seller-side scorers drop with a note instead of scoring it as a verified mismatch; null is a vertical marker.",
+  "normalize_category": [
+    {"input": "선크림", "expected": "sunscreen", "in_vocabulary": true},
+    {"input": "썬크림", "expected": "sunscreen", "in_vocabulary": true},
+    {"input": "자외선차단제", "expected": "sunscreen", "in_vocabulary": true},
+    {"input": "sunscreen_spf50", "expected": "sunscreen", "in_vocabulary": true},
+    {"input": "Sunscreen SPF50+", "expected": "sunscreen", "in_vocabulary": true},
+    {"input": "sun_cream", "expected": "sunscreen", "in_vocabulary": true},
+    {"input": "cleansing_foam", "expected": "cleanser", "in_vocabulary": true},
+    {"input": "클렌징 폼", "expected": "cleanser", "in_vocabulary": true},
+    {"input": "toner pad", "expected": "toner", "in_vocabulary": true},
+    {"input": "립스틱", "expected": "lip_makeup", "in_vocabulary": true},
+    {"input": "serums", "expected": "serum", "in_vocabulary": true},
+    {"input": "k_beauty", "expected": null, "in_vocabulary": false},
+    {"input": "K-Beauty", "expected": null, "in_vocabulary": false},
+    {"input": "packaging_materials", "expected": "packaging_materials", "in_vocabulary": false}
+  ],
+  "normalize_country_note": "_common.normalize_country cases (ISO-3166-1 alpha-2 from a code, an English name or alias, or a Korean name). null means unconvertible, which normalize_company.py writes as unknown with a note.",
+  "normalize_country": [
+    {"input": "United Kingdom", "expected": "GB"},
+    {"input": "UK", "expected": "GB"},
+    {"input": "Great Britain", "expected": "GB"},
+    {"input": "영국", "expected": "GB"},
+    {"input": "gb", "expected": "GB"},
+    {"input": "Korea", "expected": "KR"},
+    {"input": "South Korea", "expected": "KR"},
+    {"input": "Republic of Korea", "expected": "KR"},
+    {"input": "대한민국", "expected": "KR"},
+    {"input": "한국", "expected": "KR"},
+    {"input": "United Arab Emirates", "expected": "AE"},
+    {"input": "UAE", "expected": "AE"},
+    {"input": "아랍에미리트", "expected": "AE"},
+    {"input": "USA", "expected": "US"},
+    {"input": "미국", "expected": "US"},
+    {"input": "Japan", "expected": "JP"},
+    {"input": "일본", "expected": "JP"},
+    {"input": "Viet Nam", "expected": "VN"},
+    {"input": "The Netherlands", "expected": "NL"},
+    {"input": "Côte d'Ivoire", "expected": "CI"},
+    {"input": "unknown", "expected": "unknown"},
+    {"input": "Atlantis", "expected": null},
+    {"input": "Georgia", "expected": null},
+    {"input": "Republic of Georgia", "expected": "GE"},
+    {"input": "America", "expected": null},
+    {"input": "United States of America", "expected": "US"},
+    {"input": "XX", "expected": null},
+    {"input": "zz", "expected": null},
+    {"input": "EU", "expected": null},
+    {"input": "ae", "expected": "AE"},
+    {"input": "Uk", "expected": "GB"}
   ]
 }

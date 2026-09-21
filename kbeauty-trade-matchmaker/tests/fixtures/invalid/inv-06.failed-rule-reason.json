@@ -1,0 +1,19 @@
+{
+  "rule": "INV-06",
+  "description": "An excluded seller's failed rule has an empty reason.",
+  "base": "match_134",
+  "schema": "match-result",
+  "mutations": [
+    {
+      "op": "set",
+      "path": [
+        "excluded",
+        0,
+        "failed_rules",
+        0,
+        "reason"
+      ],
+      "value": ""
+    }
+  ]
+}

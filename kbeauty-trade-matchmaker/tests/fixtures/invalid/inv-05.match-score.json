@@ -1,0 +1,17 @@
+{
+  "rule": "INV-05",
+  "description": "match_score is not clamp(base_score + delta).",
+  "base": "match_134",
+  "schema": "match-result",
+  "mutations": [
+    {
+      "op": "set",
+      "path": [
+        "results",
+        0,
+        "match_score"
+      ],
+      "value": 50
+    }
+  ]
+}

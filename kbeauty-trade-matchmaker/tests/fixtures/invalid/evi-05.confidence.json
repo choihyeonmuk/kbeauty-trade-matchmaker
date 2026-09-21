@@ -1,0 +1,15 @@
+{
+  "rule": "EVI-05",
+  "description": "confidence no longer follows from evidence quality, coverage, staleness and conflicts.",
+  "base": "buyers_uae:BUY-gulfglow-example",
+  "schema": "buyer",
+  "mutations": [
+    {
+      "op": "set",
+      "path": [
+        "confidence"
+      ],
+      "value": 0.5
+    }
+  ]
+}

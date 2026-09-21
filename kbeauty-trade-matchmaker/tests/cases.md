@@ -773,9 +773,9 @@ and has no case of its own).
 | `mcp: M-24 INV-13 the same read-only transcript prints byte-identical stdout twice` | The whole read-only transcript, run a second time against the same root, prints the same bytes and exit code |
 | `mcp: M-25 output_path writes a new file inside the root …` | `output` equals `{path, bytes, sha256}` of the file on disk, no `document` is returned, and the file parses equal to the CLI output |
 | `mcp: M-26 an existing output_path is refused and the file is unchanged` | The same `output_path` again, and an input file as `output_path`: refused with "already exists", bytes unchanged |
-| `mcp: M-27 a script that exits 1 after writing …` | The poisoned input with `output_path`: `isError`, `exit_code` 1, `output.path` reported and the error says a retry needs a new `output_path` |
+| `mcp: M-27 a scorer that fails its own validation …` | The poisoned input with `output_path`: `isError`, `exit_code` 1, `output_path` itself left unwritten, `output.path` reports the `.invalid.json` sibling (`_common.invalid_output_path`) and the error says a retry needs a new `output_path` |
 | `mcp: M-28 output_path refusals …` | A dangling symlink (its target is not created), a missing directory (not created), a symlinked directory leading out of the root (nothing written outside) and an existing directory named `existing-dir.json` |
-| `mcp: M-29 nothing but the two requested files was written under the root` | `out/` holds exactly the test's own symlink plus the two written files |
+| `mcp: M-29 nothing but the requested file and the failed call's .invalid sibling …` | `out/` holds exactly the test's own symlink, the one written file and the failed call's `.invalid.json` sibling |
 | `mcp: M-30 a result above the default inline cap is refused …` | The UAE buyer run (about 180 KB) without `output_path` under the default 32,768-byte cap: `isError`, `exit_code` 0, the error names `output_path`, no `document` |
 | `mcp: M-31 a message above 16 MiB is -32600 …` | The oversized line is answered -32600 with id null and the next ping is answered |
 | `mcp: M-32 without --quiet each call logs one stderr line …` | Every stderr line starts `kbtm-mcp: `, no traceback, exit 0 |
@@ -820,3 +820,22 @@ exit-1 rows of section 14) red. No scorer, schema, golden or version changed.
 | `review: R-15 the generic csv guards a formula behind leading whitespace` | The CSV cell is `' =1+1` |
 | `review: R-16 the widened URL scan still passes …` | `hotel-20240101`, a registry id `0123456789` in a path, a `%20`-encoded BPOM number and `/tel-plans/2024` give no personal-data hit |
 | `review: R-17 the network scan flags …` | The shared scan helper flags `from urllib import request`, `__import__(…)`, `importlib`, a mail-protocol module and `subprocess` outside its allow-list (`scripts/mcp_server.py`, `tools/build_release.py`), and passes `urllib.parse` and comments |
+
+## 11. Validator negatives, outreach drafts, Mode 1 → Mode 4
+
+| Case | What it asserts | Rule |
+|---|---|---|
+| `validator negative: control …` | The unmutated bases (scored `BUY-gulfglow-example`, its raw golden record, the RFQ #134 match result) pass `--strict`, so a failure below is caused by the mutation | — |
+| `validator negative: <rule> <fixture>` | Each `tests/fixtures/invalid/*.json` applies one mutation (`set` / `delete` / `swap` / `set_each`) to a base and must exit **1** with that rule id reported. `evi-06.stale-age` must also exit **0** without `--strict` | INV-01, -02, -04, -05, -06, -22, -30, -37, EVI-01…EVI-06, VAL-01 |
+| `validator negative: every targeted rule has a failing fixture` | No targeted rule is left without a fixture | — |
+| `outreach draft: good <draft> passes --strict …` | `tests/fixtures/drafts/` holds one buyer EN, buyer KO, seller KO (KR `corporate_email`, `(광고)`) and seller EN (RFQ #134, KR `contact_page`) draft; each passes with and without `--record` | output-format 10.4 |
+| `outreach draft: <rule> <label>` | A table in `run_tests.py` edits a good draft once per rule and asserts exit **1** plus the rule id; two `PASS` rows prove the gates are not bans (a demand claim citing an open RFQ with status and date; a channel with no block and the literal fallback line). Personal-data and later-state strings live in the table, never in `tests/fixtures/` | DRAFT-01…DRAFT-12, INV-09, INV-31, INV-34, R10.4.6 |
+| `outreach draft: compliance.config.json notice_blocks agree with legal_notices.md` | Same keys, same `status`, every block body parsed | R10.4.6 |
+| `outreach draft: validate_outreach_draft() …` | The importable function accepts a clean adapter JSON draft, reports `DRAFT-05` for an `evidence_id` on another URL and `DRAFT-01` for a JSON draft with no `draft_markdown` | DRAFT-01, DRAFT-05 |
+| `e2e: Mode 1 score_buyer -> Mode 4 …` | `score_buyer.py` over the golden buyers writes a scored envelope; the Gulf Glow draft validates against its qualified record, and the same draft aimed at a non-qualified record is refused with `DRAFT-09` | SKILL.md Mode 4 prerequisite |
+| `readiness: … score_match._rfq_readiness agrees` / `extensions.rfq_readiness … agrees` | The real readiness function and the block `score_match.py` writes under `extensions` match `rfq.readiness.expected.json`; a missing block fails | SCORING-CONTRACT 2.9 |
+| `package: README.md exists at the repository root` | Reported as **SKIP** when the suite runs inside an installed copy (`.kbtm-install-manifest` present, or no `.git` beside the package) | BUILD-CONTRACT 2.2 note |
+
+Fixture corrections made with these rules: `BUY-palefade-example` and `SEL-areumfactory-example` (in
+`sellers.golden.json` and both match envelopes) were `VERIFIED` while every evidence item was `stale:
+true`; they are now `DISCOVERED` (INV-37). `status` is not read by any scorer, so no score moved.

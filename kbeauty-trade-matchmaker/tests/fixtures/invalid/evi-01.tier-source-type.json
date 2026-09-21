@@ -1,0 +1,17 @@
+{
+  "rule": "EVI-01",
+  "description": "A tier-1 item whose source_type is social.",
+  "base": "buyers_uae:BUY-gulfglow-example",
+  "schema": "buyer",
+  "mutations": [
+    {
+      "op": "set",
+      "path": [
+        "evidence",
+        0,
+        "source_type"
+      ],
+      "value": "social"
+    }
+  ]
+}

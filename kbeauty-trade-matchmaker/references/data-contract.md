@@ -343,7 +343,7 @@ Fields shared with the buyer (`schema_version`, `score_version`, `company_name`,
 | `product_forms` | array of slug | | absent ⇒ **inapplicable** | absent/empty makes the form criterion inapplicable, not unknown |
 | `quantity` | `quantity_value` | | `"unknown"` / absent | compared on **`max`** for capacity checks |
 | `max_moq` | number \| null | | `null` = no constraint | drives HF-03 and S-OP1 |
-| `moq_unit` | string | | absent ⇒ `"units"` | the unit `max_moq` and `quantity` are denominated in. **Set this whenever the catalogue is in `kg`, `pcs`, `EA` or `sets`**, or every such seller is permanently unit-mismatched |
+| `moq_unit` | string | | absent ⇒ `"units"` | the unit `max_moq` and `quantity` are denominated in. Count spellings — `pcs`, `pieces`, `EA`, `개`, `unit` — are the same unit as `"units"` (`_common.UNIT_SYNONYMS`) and need no special handling. **Set this whenever the catalogue uses a different basis such as `kg` or `sets`**, or every such seller is permanently unit-mismatched |
 | `target_price` | `price_range` \| number+currency \| null \| `"unknown"` | | `null` / `"unknown"` | informational in v0.1.0; not scored |
 | `commercial_model` | enum `branded \| private_label \| oem_odm \| either` | ✔ | — | `either` makes HF-02 inapplicable |
 | `required_certifications` | array of token | | absent ⇒ **inapplicable** | drives HF-04, which fires only when `seller.certifications_verified == true` |
@@ -524,7 +524,7 @@ The keys that are load-bearing and easy to miss:
 | Key | Meaning and default |
 |---|---|
 | `quantity` | the order quantity, compared on its **max** by the capacity criterion. Absent/unknown means the capacity criterion can only reach `capacity_no_constraint_known` — it is **not** unknown |
-| `moq_unit` | **defaults to `"units"`**. Compared against `seller.moq_unit`; a mismatch makes the MOQ criterion unknown, skips HF-03 and fires `moq_unit_mismatch` |
+| `moq_unit` | **defaults to `"units"`**. Compared against `seller.moq_unit` after unit-synonym normalisation (`pcs` / `EA` / `개` / `unit` all equal `units`); a remaining mismatch (`kg` against `units`) makes the MOQ criterion unknown, skips HF-03 and fires `moq_unit_mismatch` |
 | `region_countries` | the alpha-2 list the operator's region word expanded to **by the agent**. Scripts never expand regions. Absent ⇒ the region signals cannot fire (not unknown, no penalty) |
 | `adjacent_region_countries` | same shape, the neighbouring-market tier |
 | `company_types` | the buyer types the operator asked for. A **discovery filter only** in v0.1.0: a candidate whose **known** type falls outside the list is a query-fit exclusion; an `"unknown"` type is never excluded. No criterion scores it |
@@ -969,7 +969,7 @@ RFQ `status` is a separate lowercase namespace (section 6) and is never mixed wi
 | From | Allowed next states | Performed by | Entry condition |
 |---|---|---|---|
 | *(new)* | `DISCOVERED` | **skill** | A candidate exists with at least one source URL |
-| `DISCOVERED` | `VERIFIED`, `CLOSED` | **skill** | `VERIFIED` requires ≥ 1 evidence item on a material claim from a tier ≤ 3 source |
+| `DISCOVERED` | `VERIFIED`, `CLOSED` | **skill** | `VERIFIED` requires ≥ 1 evidence item on a material claim from a tier ≤ 3 source that is neither `inferred` nor `stale` |
 | `VERIFIED` | `QUALIFIED`, `DISCOVERED`, `CLOSED` | **skill** | `QUALIFIED` requires a `scored` profile document (`score_version != "unscored"`) |
 | `QUALIFIED` | `MATCH_CANDIDATE`, `READY_FOR_REVIEW`, `VERIFIED`, `CLOSED` | **skill** | `MATCH_CANDIDATE` requires passing the hard filter of a specific match run |
 | `MATCH_CANDIDATE` | `READY_FOR_REVIEW`, `QUALIFIED`, `CLOSED` | **skill** | `READY_FOR_REVIEW` requires a complete outreach draft |
@@ -1000,7 +1000,7 @@ re-run with new evidence.
 | Status | The document must also carry |
 |---|---|
 | `DISCOVERED` | ≥ 1 evidence item with a resolvable `source_url` |
-| `VERIFIED` | ≥ 1 evidence item whose `claim` is a material claim and whose `source_tier <= 3` |
+| `VERIFIED` | ≥ 1 evidence item whose `claim` is a material claim, whose `source_tier <= 3`, and that is neither `inferred` nor `stale` |
 | `QUALIFIED`, `MATCH_CANDIDATE`, `READY_FOR_REVIEW` | `score_version != "unscored"` **and** `dimension_scores` present |
 | `MATCH_CANDIDATE` | a `match_run_id` |
 | `APPROVED_FOR_OUTREACH` and later | **nothing produced by this package may carry these** |

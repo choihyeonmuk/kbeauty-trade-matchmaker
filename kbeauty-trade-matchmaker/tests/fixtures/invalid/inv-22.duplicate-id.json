@@ -1,0 +1,17 @@
+{
+  "rule": "INV-22",
+  "description": "Two evidence items share EV-001.",
+  "base": "buyers_uae:BUY-gulfglow-example",
+  "schema": "buyer",
+  "mutations": [
+    {
+      "op": "set",
+      "path": [
+        "evidence",
+        1,
+        "evidence_id"
+      ],
+      "value": "EV-001"
+    }
+  ]
+}

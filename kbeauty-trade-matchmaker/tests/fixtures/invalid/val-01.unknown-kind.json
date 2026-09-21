@@ -1,0 +1,10 @@
+{
+  "rule": "VAL-01",
+  "description": "An object no kind detector recognises used to be a warning and exit 0.",
+  "base": "literal",
+  "schema": "auto",
+  "document": {
+    "note": "not a package document"
+  },
+  "mutations": []
+}

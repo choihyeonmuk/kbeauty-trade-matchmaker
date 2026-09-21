@@ -1,0 +1,17 @@
+{
+  "rule": "INV-01",
+  "description": "The record says distributor; its only company_type evidence now says retailer. Key presence used to be enough.",
+  "base": "buyers_uae:BUY-gulfglow-example",
+  "schema": "buyer",
+  "mutations": [
+    {
+      "op": "set",
+      "path": [
+        "evidence",
+        0,
+        "value"
+      ],
+      "value": "retailer"
+    }
+  ]
+}

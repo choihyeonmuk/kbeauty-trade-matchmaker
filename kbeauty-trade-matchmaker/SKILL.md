@@ -26,7 +26,7 @@ plugin packaging and the release archives are described in `references/runtime-a
 | **Normalize** | `canonical_domain`, `normalized_name`, `alias_domains`, canonical `website`, alpha-2 `country`, `moq_unit` precedence. Canonical category slugs and certification tokens are the **agent's** job — the script never touches `product_categories` or `certifications`; `_common.normalize_category` / `_common.normalize_certification` are the reference mappings, applied by the scorers at comparison time. | `scripts/normalize_company.py` |
 | **Dedupe** | One company, one record: `www`/non-www, IDN and alias domains collapse; conflicts recorded, never silently resolved. | `scripts/dedupe_companies.py` |
 | **Score** | Rubric scoring and hard filters, deterministically — never eyeballed. | `scripts/score_buyer.py`, `score_seller.py`, `score_match.py` |
-| **Verify** | Schema plus contract invariants (INV-01…INV-37). Exit 1 means not shippable. | `scripts/validate_output.py` |
+| **Verify** | Schema plus contract invariants (INV-01…INV-37, evidence rules EVI-01…EVI-06, draft rules DRAFT-01…DRAFT-12). Exit 1 means not shippable. | `scripts/validate_output.py` |
 | **Output** | Render exactly the blocks below; report `unknown` and `Missing:` honestly. | this file |
 
 The one model-authored step — the semantic rerank and the rationale/risks narrative — is bounded, is
@@ -65,7 +65,7 @@ handed back to the script as a file, and can never resurrect a hard-filter failu
 | "find K-Beauty buyers / distributors / importers in `<market>`" · 바이어 발굴 | 1 · Buyer Discovery | `references/buyer-discovery.md` (§8.1 for the claim keys the scorer prices) | `score_buyer.py` |
 | "find Korean manufacturers / OEM-ODM / suppliers for `<product>`" · 셀러 소싱 | 2 · Seller Discovery | `references/seller-discovery.md` | `score_seller.py` |
 | "match RFQ #N to sellers" · "이 요청에 맞는 셀러" | 3 · RFQ Matching | `references/matching-rules.md` | `score_match.py` |
-| "draft outreach to X" · 아웃리치 초안 | 4 · Outreach Draft | `references/outreach-guidelines.md` | *(none — template only)* |
+| "draft outreach to X" · 아웃리치 초안 | 4 · Outreach Draft | `references/outreach-guidelines.md` | `validate_output.py --schema outreach-draft` |
 
 Pass `--as-of YYYY-MM-DD` (the operator's run date) on every command: it is the only time source, and
 scripts never read a clock. `--help` prints each script's full flag set.
@@ -87,7 +87,7 @@ python3 scripts/validate_output.py --input buyers.scored.json --schema discovery
 ```
 
 - **Output:** one `discovery-result` envelope (`summary`, `records`, `excluded`, `partial`, `notes`) rendered as
-  the 12.1 block. A buyer run applies **no `HF-xx` rule** — every configured predicate reads `seller.*`
+  the 10.1 block. A buyer run applies **no `HF-xx` rule** — every configured predicate reads `seller.*`
   or `rfq.*` — so the only two exclusions are a query `company_type` mismatch and the DISC-06
   no-evidenced-material-claim gate; category and country fit are priced by B-MR2 / B-MR1 / B-KF3
   instead. An excluded candidate leaves `records[]` for `excluded[]` and is never ranked.
@@ -120,7 +120,8 @@ python3 scripts/score_seller.py --input tmp.sellers.deduped.json --query query-s
 python3 scripts/validate_output.py --input sellers.scored.json --schema discovery-result --invariants
 ```
 
-- **Output:** the 12.1 block plus `MOQ:`, `Certifications:` and `Export markets:` lines.
+- **Output:** one `discovery-result` envelope rendered as the 10.2 seller block — the 10.1 layout plus
+  `MOQ:`, `Certifications:` and `Export markets:` lines.
 
 ### Mode 3 — RFQ Matching
 
@@ -140,13 +141,16 @@ python3 scripts/score_match.py --input match.134.input.json --as-of 2026-09-12 -
 python3 scripts/validate_output.py --input match.134.json --schema match-result --invariants
 ```
 
-- **Output:** one `match-result` document rendered as the 12.2 block. `no_match` is always present: an
+- **Output:** one `match-result` document rendered as the 10.3 block. `no_match` is always present: an
   empty result set is reported as `No qualified match` with a reason, the binding rules and relaxation
   suggestions — never as a silent empty list.
 
 ### Mode 4 — Outreach Draft
 
-- **Required:** a target company already `QUALIFIED` or `MATCH_CANDIDATE`, plus its evidence. **Optional:** a
+- **Required:** a scored target plus its evidence — a `score_buyer.py` / `score_seller.py` record with
+  `qualified: true`, or a `score_match.py` candidate with `hard_filter.passed: true` and `qualified: true`.
+  Scorers never write `status`; `QUALIFIED` / `MATCH_CANDIDATE` are set later by a human or the adapter, so
+  they are not the gate here. **Optional:** a
   cited `rfq_id`, recipient `language` (default: the recipient's business language), `channel` (company-level
   only). Cap: 20 drafts per run.
 - **Steps:** pick the template → personalize only with evidence-backed facts → list every fact with its source
@@ -154,7 +158,16 @@ python3 scripts/validate_output.py --input match.134.json --schema match-result 
   or opt-out is `yes`/`unknown`, add the jurisdiction-and-channel notice block the template names, verbatim;
   when none is on file, print the literal line `- No notice block on file for {{country_name}} /
   {{channel_type}} — obtain wording before sending`.
-- **Command:** none. Render `templates/buyer_outreach.md` or `templates/seller_outreach.md`.
+- **Command:** render `templates/buyer_outreach.md` or `templates/seller_outreach.md`, then validate the draft —
+  exit 1 means it does not go to review:
+
+```bash
+python3 scripts/validate_output.py --input draft.md --schema outreach-draft --record buyers.scored.json --strict
+```
+
+  `--record` is the scored envelope, record or match result the draft was built from (repeat it with the RFQ
+  document when the draft cites one); rule ids are listed in `references/output-format.md` §10.4.1.
+
 - **Output:** the 10.4 envelope (`references/output-format.md`) whose 2nd and 3rd lines are literally `Status: READY_FOR_REVIEW` and
   `Auto-send: false`, ending with the reviewer checklist and `Next action: human review, then
   APPROVED_FOR_OUTREACH in the application layer`.
@@ -281,7 +294,7 @@ the flags it exposes, no new behaviour. The flags left out, and client setup, ar
 | `references/output-format.md` | Rendering any result block: 12.1 discovery, 12.2 match, 10.4 outreach envelope, shared line rules, Korean label map |
 | `references/runtime-adapters.md` | Binding a capability to this runtime's actual tool, or a capability is missing, or installing the package as a plugin |
 | `scripts/mcp_server.py` | The runtime calls the package scripts as tools rather than through a shell; client configuration is in `references/runtime-adapters.md` |
-| `schemas/*.json` | Binding shapes for `buyer`, `seller`, `rfq`, `evidence`, `match-result`, `discovery-result`, and every number in `scoring.config.json` |
+| `schemas/*.json` | Binding shapes for `buyer`, `seller`, `rfq`, `evidence`, `match-result`, `discovery-result`, `outreach-draft`, every number in `scoring.config.json`, and the jurisdiction × channel lookup in `compliance.config.json` |
 | `scripts/*.py` | Running the pipeline (`scripts/_common.py` is the shared library every CLI script imports; the six pipeline scripts are listed above, the two calibration scripts, the run-diff script, the standalone re-check script `scripts/stale_evidence.py`, the export script and the optional tool server `scripts/mcp_server.py` below them) |
 | `templates/buyer_outreach.md`, `templates/seller_outreach.md` | Rendering a draft; the seller template has RFQ-present and RFQ-absent variants |
 | `templates/legal_notices.md` | Appending the `Required legal notices` block to a draft: the per-jurisdiction x per-channel wording, copied verbatim, keyed `{{country_alpha2}}.{{channel_type}}` (R10.4.6) |
@@ -290,18 +303,18 @@ the flags it exposes, no new behaviour. The flags left out, and client setup, ar
 
 ## Output formats
 
-**`references/output-format.md` is the rendering contract** — 12.1 discovery, 12.2 match, the 10.4
-outreach envelope, the 10.5 shared line rules and the optional Korean label map (요약 / 상위 후보 /
+**`references/output-format.md` is the rendering contract** — 10.1 buyer and 10.2 seller discovery, 10.3 match, the
+10.4 outreach envelope, the 10.5 shared line rules and the optional Korean label map (요약 / 상위 후보 /
 매칭 결과 / 제외 / 근거 / 출처 / 확인 필요). Load it before rendering any result block.
 
 Everything outside `{{…}}` is literal: headings on their own line, one blank line between blocks,
 detail lines indented exactly three spaces, ` — ` an em dash, unknowns the lowercase word `unknown`.
 
-- **Discovery (12.1)** renders `Summary` → `Top Candidates` → `Excluded / low fit` → `Recommended
+- **Discovery (10.1 / 10.2)** renders `Summary` → `Top Candidates` → `Excluded / low fit` → `Recommended
   next action`. Every candidate carries `Website:`, `Country:`, `Type:`, `Why:` (≥ 2 reasons),
   `Contact:`, `Evidence:` and `Missing:`; a seller run adds `MOQ:`, `Certifications:` and
   `Export markets:` after `Why:`. `Excluded / low fit` is omitted only when there is nothing to list.
-- **Match (12.2)** renders the RFQ header (one `{{required_cert}}: Required` line per required
+- **Match (10.3)** renders the RFQ header (one `{{required_cert}}: Required` line per required
   certification, in the RFQ's order, dropped when the list is empty) → `Matches` → `Excluded` → the
   one-line `Summary:`. When `no_match.is_no_match` is true the `Matches` block is replaced by
   `No qualified match` with `Reason:`, `Binding rules:` and a `Try:` list; `Excluded` and `Summary:`
@@ -327,7 +340,7 @@ Run every line; a `no` is a blocker, not a caveat.
 - **Sending anything** — no email, message or campaign; the package has no send capability and must not be paired with one.
 - **Contact-list building** — harvesting personal emails, phone numbers or profiles.
 - **Legal, customs, tax or regulatory rulings** — this skill flags where review is needed; registration, labelling and import approval go to qualified counsel.
-- **Non-K-Beauty verticals** (food, medical devices, electronics) in v0.1.0 — rubric, categories, certifications and query matrices are cosmetics-specific; say so rather than scoring out of scope.
+- **Non-K-Beauty verticals** (food, medical devices, electronics) in v0.1.1 — rubric, categories, certifications and query matrices are cosmetics-specific; say so rather than scoring out of scope.
 - **Trade execution** — contracts, payment, escrow, logistics, customs filing.
 - **A generic company lookup or one known URL** — this is a multi-stage sourcing pipeline, not a fact check.
 - **Scoring without evidence** — if no source can be opened, report that the evidence bar was not met instead of producing numbers anyway.

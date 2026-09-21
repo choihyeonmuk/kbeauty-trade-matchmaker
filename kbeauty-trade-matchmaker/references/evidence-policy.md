@@ -137,8 +137,9 @@ Tier drives `evidence.source_tier_points` in the evidence-quality sub-score, and
 monotone: tier 1 > 2 > 3 > 4 > 5. A record whose material claims rest on tier 4/5 sources will score
 lower on evidence quality than an identical record sourced from the company's own pages, and that is
 the intended discrimination (PRD DISC-06: evidence quality outranks result count). Certification
-tokens whose **best** supporting evidence is tier 4 or 5 additionally fire the
-`certification_claim_unverified` adjustment on `compliance_readiness` (SCORING-CONTRACT §2.4).
+tokens whose **best** supporting evidence is tier 4 or 5, or that **no** evidence item supports at
+all, additionally fire the `certification_claim_unverified` adjustment on `compliance_readiness`
+(SCORING-CONTRACT §2.4).
 
 ### 4.3 Tier → evidence-item `confidence` (data-entry guidance)
 
@@ -153,7 +154,7 @@ tokens whose **best** supporting evidence is tier 4 or 5 additionally fire the
 | Tier 3, a company social post stating the value | 0.50 – 0.75 |
 | Tier 4, a third-party directory entry or press release | 0.30 – 0.60 |
 | Tier 5, community or blog mention | 0.10 – 0.30 |
-| Any item with `inferred: true` | cap at **0.60**, whatever the tier |
+| Any item with `inferred: true` | cap at **0.60**, whatever the tier — a MUST, enforced as `EVI-03` (§4.5) |
 | Any item with `stale: true` | reduce by roughly one band |
 
 Only one mechanism reads this number: the conflict-resolution ladder, step (c) in §6 below. It is
@@ -170,6 +171,21 @@ Only one mechanism reads this number: the conflict-resolution ladder, step (c) i
 
 Record confidence **never** reads `qualification_score` or `match_score`. A confident record can be a
 bad fit and a shaky record can be a great one; the two axes are independent by design.
+
+### 4.5 What `validate_output.py` enforces on every buyer / seller record
+
+| Rule | Fails when |
+|---|---|
+| `INV-01` | a material claim's value is not what its evidence says: a scalar no item's value equals (compared after `_common.normalize_unit` / `normalize_country` / `normalize_category` / `normalize_certification`), a list token no item contains, or an item asserting a value while the record field is absent or `"unknown"` — unless a `conflicts[]` entry for that field has `winning_value: "unknown"` (§6.4), or every asserting item is `stale` or below tier 3 (§8 rows 9 and 11: kept as supporting signal, never forcing a value) |
+| `INV-22` | a duplicate `evidence_id`, or a `conflicts_with` / `evidence_ids` reference that resolves to no item on the record |
+| `INV-37` | `VERIFIED` without a tier ≤ 3 material-claim item that is neither `inferred` nor `stale`; `QUALIFIED`, `MATCH_CANDIDATE` or `READY_FOR_REVIEW` on an unscored record |
+| `EVI-01` | `source_tier` 1 without `source_type: official_site` and `is_official: true`, or the reverse; a `third_party` item marked `is_official` |
+| `EVI-02` | `source_domain` is not the domain of `source_url`, or an `official_site` item was read on a domain that is not the record's `canonical_domain`, `website` or `alias_domains` |
+| `EVI-03` | an `inferred` item above confidence 0.60 (§4.3) |
+| `EVI-04` | a scored record's `dimension_scores.evidence_quality` is more than 1 point from `_common.evidence_quality` over its own evidence |
+| `EVI-05` | its `confidence` is more than 0.01 from `_common.record_confidence` |
+| `EVI-06` | *(warning; fails under `--strict`)* an item older than `stale_threshold_days` that is not `stale`, on a record that is neither `stale` nor `closed` / `unreachable` |
+| `VAL-01` | the document kind cannot be detected (pass `--schema`) |
 
 ---
 

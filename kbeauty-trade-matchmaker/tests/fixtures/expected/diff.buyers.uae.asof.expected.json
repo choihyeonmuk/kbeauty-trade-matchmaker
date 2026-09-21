@@ -65,21 +65,21 @@
       "matched_by": "id",
       "company_name": "Kanto Import Partners KK",
       "score": {
-        "before": 36,
-        "after": 32,
+        "before": 37,
+        "after": 33,
         "delta": -4
       },
       "dimensions": [
         {
           "dimension": "evidence_quality",
-          "before": 64,
-          "after": 23,
+          "before": 74,
+          "after": 33,
           "delta": -41
         }
       ],
       "confidence": {
-        "before": 0.41,
-        "after": 0.15,
+        "before": 0.47,
+        "after": 0.21,
         "delta": -0.26
       }
     },

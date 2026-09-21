@@ -512,6 +512,12 @@ def resolve_output_path(root, raw, read_paths):
     if os.path.lexists(real):
         raise Refusal("output_path %r already exists; the server never overwrites a file, "
                       "so pick a new name" % raw)
+    # A scorer that fails self-validation writes its document beside output_path instead
+    # (_common.invalid_output_path), so that sibling is a file this call may create too.
+    sibling = _common.invalid_output_path(real)
+    if os.path.lexists(sibling):
+        raise Refusal("%r already exists beside output_path %r; the server never overwrites "
+                      "a file, so pick a new name" % (os.path.basename(sibling), raw))
     if real in read_paths:
         raise Refusal("output_path %r is also an input of this call" % raw)
     return real
@@ -716,6 +722,16 @@ def call_tool(tool, arguments, config):
         elif code == 0:
             error = "%s exited 0 but wrote no file at output_path" % tool["script"]
             ok = False
+        else:
+            # The document failed the scorer's own validation: output_path was left unwritten
+            # and the invalid document sits beside it, where no chained call picks it up.
+            kept = _common.invalid_output_path(output_real)
+            if os.path.isfile(kept) and not os.path.islink(kept):
+                size, sha = _sha256_file(kept)
+                body = {"output": {"path": kept, "bytes": size, "sha256": sha}}
+                error = ("%s; output_path was not written and the invalid document was kept at "
+                         "%s, so a retry needs a new output_path" % (
+                             error or ("%s exited %d" % (tool["script"], code)), kept))
     elif stdout.strip():
         size = len(proc.stdout)
         if size > config["max_inline"]:

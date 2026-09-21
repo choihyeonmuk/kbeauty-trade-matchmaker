@@ -1,0 +1,44 @@
+{
+  "rule": "INV-01",
+  "policy": "evidence-policy 6.4",
+  "description": "Two official, equally dated, equally confident tier-1 pages disagree on company_type (distributor / importer). The ladder cannot decide, so the field is held as unknown, both items are kept and cross-linked, and conflicts[] records winning_value unknown. Scored by score_buyer.py, so evidence_quality and confidence are recomputed, not typed in.",
+  "base": "buyers_golden:BUY-gulfglow-example",
+  "scorer": "score_buyer.py",
+  "query": "query-buyer-uae-kbeauty.json",
+  "mutations": [
+    {"op": "set", "path": ["company_type"], "value": "unknown"},
+    {"op": "set", "path": ["evidence", 0, "conflicts_with"], "value": ["EV-010"]},
+    {"op": "append", "path": ["evidence"], "value": {
+      "schema_version": "0.1.0",
+      "evidence_id": "EV-010",
+      "claim": "company_type",
+      "value": "importer",
+      "source_url": "https://gulfglow.example/company-profile",
+      "source_domain": "gulfglow.example",
+      "source_type": "official_site",
+      "source_tier": 1,
+      "is_official": true,
+      "observed_at": "2026-09-10T09:00:00Z",
+      "source_date": "2026-07-01",
+      "confidence": 0.9,
+      "quote_or_summary": "Gulf Glow Trading FZ-LLC is an importer of record for beauty brands.",
+      "retrieval_method": "page_fetch",
+      "conflicts_with": ["EV-001"]
+    }},
+    {"op": "set", "path": ["conflicts"], "value": [{
+      "field": "company_type",
+      "winning_value": "unknown",
+      "losing_value": "importer",
+      "winning_evidence_ids": [],
+      "losing_evidence_ids": ["EV-001", "EV-010"],
+      "resolution": "manual",
+      "note": "EV-001 says distributor; EV-010 says importer. Both official, both dated 2026-07-01, same tier, same confidence. Held as unknown pending human adjudication."
+    }]},
+    {"op": "append", "path": ["notes"], "value": "company_type held as unknown: two official pages disagree (EV-001 distributor, EV-010 importer); operator adjudication required."}
+  ],
+  "control": {
+    "description": "the same record without the conflicts[] entry",
+    "rule": "INV-01",
+    "mutations": [{"op": "delete", "path": ["conflicts"]}]
+  }
+}

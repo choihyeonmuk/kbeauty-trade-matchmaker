@@ -50,6 +50,8 @@ from __future__ import annotations
 
 import abc
 import argparse
+import datetime
+import importlib.util
 import json
 import os
 import re
@@ -140,6 +142,10 @@ APPLICATION_ONLY_STATES = frozenset(
         "MATCHED",
     }
 )
+
+# INV-37 / SKILL.md Mode 4: these states are entered only by a scored record with
+# qualified true. A raw ("unscored") or not-qualified record stops at VERIFIED.
+SCORED_ONLY_STATES = frozenset({"QUALIFIED", "MATCH_CANDIDATE", "READY_FOR_REVIEW"})
 
 # Skill-performed edges of the BUILD-CONTRACT.md 9.1 transition table. Edges
 # owned by the application layer are deliberately absent, which is what makes
@@ -239,39 +245,15 @@ DRAFT_FORBIDDEN_KEYS = frozenset(
 )
 
 # INV-34 / R10.4.3 first clause: a live-demand claim is forbidden unless a cited
-# rfq_id resolves to an RFQ in one of these states, with that status and the RFQ's
-# as_of date stated in the draft itself. The phrase list is the seller_outreach.md
-# section 8 table plus the outreach-guidelines.md 7.1 rows, in both languages. It is
-# illustrative, not exhaustive -- the rule is the intent, not the wording -- so it
-# is a floor under the reviewer, never a licence for anything it fails to match.
-LIVE_DEMAND_RFQ_STATES = ("qualified", "matching", "proposal_open")
-
-LIVE_DEMAND_PATTERNS = (
-    r"currently\s+looking",
-    r"actively\s+looking",
-    r"we\s+have\s+a\s+buyer",
-    r"active\s+demand",
-    r"buyers?\s+(?:is|are)\s+searching",
-    r"buyers?\s+(?:is|are)\s+waiting",
-    r"orders?\s+(?:is|are)\s+waiting",
-    r"several\s+buyers",
-    r"limited\s+slots",
-    r"closing\s+soon",
-    r"exclusive\s+supply\s+opportunity",
-    r"place\s+an\s+order\s+immediately",
-    r"guarantee\s+you\s+orders",
-    r"지금\s*찾고\s*있",
-    r"바이어가\s*찾",
-    r"찾는\s*바이어",
-    r"바이어가\s*대기",
-    r"바이어를\s*보유",
-    r"수요가\s*많",
-    r"즉시\s*발주",
-    r"독점\s*공급\s*기회",
-    r"마감\s*임박",
-)
-
-_LIVE_DEMAND_RE = tuple(re.compile(pattern, re.IGNORECASE) for pattern in LIVE_DEMAND_PATTERNS)
+# rfq_id resolves to an open RFQ whose status and as_of date the draft states. The
+# phrase list, the status/date readers and the open states are NOT kept here: they
+# are imported from scripts/validate_output.py (_import_validator), so the adapter
+# and the validator can never drift into two different floors.
+#
+# An RFQ status is a point-in-time fact. A draft whose rfq_as_of is older than
+# scoring.config.json output.max_rfq_age_days (default below) before the run's
+# as_of is refused as stale demand.
+DEFAULT_MAX_RFQ_AGE_DAYS = 30
 
 DRAFT_FIXED_FIELDS = (
     ("status", "READY_FOR_REVIEW"),
@@ -349,8 +331,13 @@ def _redact(text, token=None):
     for value in candidates:
         if value and len(value) >= 4 and value in out:
             out = out.replace(value, "***redacted***")
-    # Belt and braces: never let a full Authorization header escape.
-    out = re.sub(r"(?i)(authorization\s*[:=]\s*)(\S+)", r"\1***redacted***", out)
+    # Belt and braces: never let a full Authorization header escape. The scheme word
+    # (Bearer/Basic/Token) is kept; the credential after it is what gets removed.
+    out = re.sub(
+        r"(?i)(authorization\s*[:=]\s*)((?:bearer|basic|token)\s+)?(\S+)",
+        r"\1\2***redacted***",
+        out,
+    )
     return out
 
 
@@ -494,25 +481,95 @@ def _record_id(record, kind):
 # --------------------------------------------------------------------------
 
 _COMMON_CACHE = {}
+_VALIDATOR_CACHE = {}
 _CONFIG_CACHE = {}
 
 
+def _load_by_path(name, path):
+    """Execute one sibling script as a module, from its file, never from sys.path."""
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def _import_common():
-    """Import scripts/_common.py lazily, or return None when it is absent."""
+    """Import scripts/_common.py lazily, or return None when it is absent.
+
+    An installed copy may share a process with another package that also ships a
+    `_common` module, so a `_common` already in sys.modules is reused only when it
+    is this package's own file.
+    """
     if "module" in _COMMON_CACHE:
         return _COMMON_CACHE["module"]
     module = None
-    if os.path.isfile(os.path.join(SCRIPTS_DIR, "_common.py")):
-        if SCRIPTS_DIR not in sys.path:
-            sys.path.insert(0, SCRIPTS_DIR)
+    path = os.path.join(SCRIPTS_DIR, "_common.py")
+    if os.path.isfile(path):
         try:
-            import _common  # noqa: E402  (deliberately deferred to call time)
-
-            module = _common
+            loaded = sys.modules.get("_common")
+            loaded_path = getattr(loaded, "__file__", None) if loaded is not None else None
+            if loaded_path and os.path.realpath(loaded_path) == os.path.realpath(path):
+                module = loaded
+            else:
+                module = _load_by_path("kbtm_common", path)
         except Exception:  # a broken sibling must not take the adapter down
             module = None
     _COMMON_CACHE["module"] = module
     return module
+
+
+def _import_validator():
+    """Import scripts/validate_output.py by path, or return None when it cannot be used.
+
+    The draft guards (INV-34 phrase list, validate_outreach_draft) come from this one
+    module so the adapter never keeps a second, drifting copy. validate_output.py does
+    `import _common`; for the duration of its import that name is bound to this
+    package's _common, then sys.modules["_common"] is put back exactly as it was
+    (restored, or removed when nothing held it) and the scripts directory that
+    validate_output.py inserts into sys.path is taken out again.
+    """
+    if "module" in _VALIDATOR_CACHE:
+        return _VALIDATOR_CACHE["module"]
+    module = None
+    path = os.path.join(SCRIPTS_DIR, "validate_output.py")
+    common = _import_common()
+    if common is not None and os.path.isfile(path):
+        previous = sys.modules.get("_common")
+        saved_path = list(sys.path)
+        sys.modules["_common"] = common
+        try:
+            candidate = _load_by_path("kbtm_validate_output", path)
+            if hasattr(candidate, "validate_outreach_draft"):
+                module = candidate
+        except Exception:
+            module = None
+        finally:
+            if previous is not None:
+                sys.modules["_common"] = previous
+            else:
+                sys.modules.pop("_common", None)
+            sys.path[:] = saved_path
+    _VALIDATOR_CACHE["module"] = module
+    return module
+
+
+def _max_rfq_age_days(config):
+    """scoring.config.json output.max_rfq_age_days, else DEFAULT_MAX_RFQ_AGE_DAYS."""
+    value = (config.get("output") or {}).get("max_rfq_age_days", DEFAULT_MAX_RFQ_AGE_DAYS)
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise UsageError("output.max_rfq_age_days must be a non-negative integer, got %r" % (value,))
+    return value
+
+
+def _parse_date(value):
+    """A YYYY-MM-DD string as a date, or None."""
+    text = str(value or "").strip()
+    if not _DATE_PATTERN.match(text):
+        return None
+    try:
+        return datetime.datetime.strptime(text, "%Y-%m-%d").date()
+    except ValueError:
+        return None
 
 
 def load_config(path=None):
@@ -788,65 +845,152 @@ def _forbidden_key_paths(node, prefix=""):
     return hits
 
 
-def _check_live_demand_claim(out, label):
+def _draft_demand_text(out, validator):
+    """Subject and body as a reviewer reads them: the JSON fields AND the rendered draft.
+
+    Only subject and body are scanned, as validate_output.py does: the reviewer
+    checklist of every draft quotes "currently looking" in order to forbid it.
+    """
+    parts = [out[field] for field in ("subject", "body") if isinstance(out.get(field), str)]
+    markdown = out.get("draft_markdown")
+    if isinstance(markdown, str) and markdown.strip():
+        parsed, _problems = validator.parse_outreach_draft(markdown)
+        parts.extend(parsed[field] for field in ("subject", "body") if isinstance(parsed.get(field), str))
+    return "\n".join(parts)
+
+
+def _check_live_demand_claim(out, label, validator, adapter=None, as_of=None, max_age_days=None,
+                             evidence=None):
     """INV-34 / R10.4.3 first clause, on the text a reviewer will actually read.
 
-    A draft may say a buyer is looking only when it cites an RFQ that is really
-    open and states that RFQ's status and date. Without the citation the sentence
-    is fabricated demand (PRD 11.1, PRD test T05), which is the highest-risk
-    failure on the seller side, so it is a refusal rather than a warning.
-    """
-    parts = []
-    for field in ("subject", "body", "draft_markdown"):
-        value = out.get(field)
-        if isinstance(value, str):
-            parts.append(value)
-    text = "\n".join(parts)
-    if not text.strip():
-        return
-    matched = [regex.pattern for regex in _LIVE_DEMAND_RE if regex.search(text)]
-    if not matched:
-        return
+    A draft may say a buyer is looking, or cite an RFQ at all, only when the RFQ is
+    really open: it carries rfq_id, an open rfq_status and an rfq_as_of, states that
+    status and date in the text, the date is no older than max_age_days before the
+    run's as_of, and -- when the adapter can read them -- the RFQ resolves through
+    get_rfq with that status and date, and the target passed the hard filter of every
+    stored match run for that RFQ. Caller-supplied rfq_status / rfq_as_of are claims,
+    not facts. Anything less is fabricated demand (PRD 11.1, PRD test T05).
 
+    `as_of` must be the run date the caller chose: a draft that carries an rfq_* field or
+    cites an RFQ is refused when it is None, because freshness measured against the
+    config's frozen as_of_default would pass a stale RFQ. `evidence` (the stored lead's
+    items, or None) licenses a dated "you are looking for" sentence exactly as
+    validate_output.live_demand_matches does.
+
+    Returns (rfq_documents, match_documents) read along the way, for the validator.
+    """
+    text = _draft_demand_text(out, validator)
+    facts = [fact for fact in out.get("personalization_facts") or [] if isinstance(fact, dict)]
+    markdown = out.get("draft_markdown")
+    if isinstance(markdown, str) and markdown.strip():
+        facts.extend(validator.parse_outreach_draft(markdown)[0].get("personalization_facts") or [])
+    matched = validator.live_demand_matches(text, facts, evidence)
+    cited = sorted(set(validator._rfq_key(value) for value in validator._RFQ_CITATION_RE.findall(text)))
+    carries = any(str(out.get(field) or "").strip() for field in ("rfq_id", "rfq_status", "rfq_as_of"))
+    if not (matched or cited or carries):
+        return [], []
+    if (cited or carries) and not _parse_date(as_of):
+        raise DataError(
+            "%s cites an RFQ (rfq_id / rfq_status / rfq_as_of or 'RFQ #…') but no explicit as_of "
+            "was given; pass --as-of YYYY-MM-DD (as_of= in Python) so RFQ freshness is measured "
+            "against the run date, never the config's as_of_default (INV-34, R10.4.3)" % (label,)
+        )
+
+    open_states = validator.LIVE_DEMAND_RFQ_STATES
     rfq_id = str(out.get("rfq_id") or "").strip()
+    rfq_key = validator._rfq_key(rfq_id)
     rfq_status = str(out.get("rfq_status") or "").strip()
     rfq_as_of = str(out.get("rfq_as_of") or "").strip()
     problems = []
     if not rfq_id:
         problems.append("no rfq_id is cited")
-    if rfq_status not in LIVE_DEMAND_RFQ_STATES:
-        problems.append(
-            "rfq_status %r is not one of %s"
-            % (rfq_status or None, ", ".join(LIVE_DEMAND_RFQ_STATES))
-        )
-    if not _DATE_PATTERN.match(rfq_as_of):
+    elif [value for value in cited if value != rfq_key]:
+        problems.append("the text cites RFQ #%s but rfq_id is %r" % ("/#".join(cited), rfq_id))
+    if rfq_status not in open_states:
+        problems.append("rfq_status %r is not one of %s" % (rfq_status or None, ", ".join(open_states)))
+    stated = [value.lower() for value in validator._RFQ_STATUS_RE.findall(text)]
+    if rfq_status and rfq_status not in stated:
+        problems.append("the draft never states the RFQ status %r" % (rfq_status,))
+    not_open = sorted(set(value for value in stated if value not in open_states))
+    if not_open:
+        problems.append("the draft states the RFQ status %s, which is not open" % "/".join(not_open))
+    rfq_date = _parse_date(rfq_as_of)
+    run_date = _parse_date(as_of)
+    if rfq_date is None:
         problems.append("rfq_as_of %r is not a YYYY-MM-DD date" % (rfq_as_of or None,))
     else:
-        if rfq_status and rfq_status not in text:
-            problems.append("the draft never states the RFQ status %r" % (rfq_status,))
-        if rfq_as_of not in text:
+        if rfq_as_of not in validator._RFQ_DATE_RE.findall(text):
             problems.append("the draft never states the RFQ date %r" % (rfq_as_of,))
+        if run_date is not None and rfq_date > run_date:
+            problems.append("rfq_as_of %s is after the run's as_of %s" % (rfq_as_of, as_of))
+        elif run_date is not None and max_age_days is not None and (run_date - rfq_date).days > max_age_days:
+            problems.append(
+                "rfq_as_of %s is %d days before the run's as_of %s; an RFQ status older than %d "
+                "days is stale demand (scoring.config.json output.max_rfq_age_days)"
+                % (rfq_as_of, (run_date - rfq_date).days, as_of, max_age_days)
+            )
+
+    rfq_documents, match_documents = [], []
+    if adapter is not None and rfq_id:
+        document = adapter._lookup_rfq(rfq_key or rfq_id, rfq_id)
+        if document is None:
+            problems.append("RFQ %s could not be read through the %s backend" % (rfq_id, adapter.name))
+        else:
+            rfq_documents.append(document)
+            actual = document.get("status")
+            if actual not in open_states:
+                problems.append("RFQ %s is %r in TradeWith, not an open status" % (rfq_id, actual))
+            elif rfq_status and actual != rfq_status:
+                problems.append("the draft says status %r but RFQ %s is %r" % (rfq_status, rfq_id, actual))
+            stored_as_of = document.get("as_of")
+            if _parse_date(stored_as_of) is not None and stored_as_of != rfq_as_of:
+                problems.append(
+                    "the draft says as of %r but RFQ %s is as of %s" % (rfq_as_of or None, rfq_id, stored_as_of)
+                )
+        entity_id = out.get("entity_id")
+        for match in adapter._lookup_matches():
+            if validator._rfq_key(match.get("rfq_id")) != rfq_key:
+                continue
+            run = match.get("match_run_id")
+            for row in match.get("excluded") or []:
+                if isinstance(row, dict) and row.get("seller_id") == entity_id:
+                    problems.append("%s is excluded from match run %s" % (entity_id, run))
+            for row in match.get("results") or []:
+                if isinstance(row, dict) and row.get("seller_id") == entity_id:
+                    match_documents.append(match)
+                    if (row.get("hard_filter") or {}).get("passed") is not True:
+                        problems.append("%s did not pass the hard filter of match run %s" % (entity_id, run))
+
     if problems:
         raise DataError(
-            "%s makes a live-demand claim (matched %s) but %s; a demand claim requires a "
-            "cited rfq_id in status %s with that status and its as_of date stated in the "
-            "draft (INV-34, R10.4.3, PRD 11.1)"
+            "%s %s but %s; a demand claim or RFQ citation requires an rfq_id that resolves to an "
+            "open (%s), current RFQ with that status and its as_of date stated in the draft "
+            "(INV-34, R10.4.3, PRD 11.1)"
             % (
                 label,
-                ", ".join("/%s/" % pattern for pattern in matched),
+                "makes a live-demand claim (matched %s)" % ", ".join("/%s/" % p for p in matched[:3])
+                if matched
+                else "cites an RFQ",
                 "; ".join(problems),
-                "/".join(LIVE_DEMAND_RFQ_STATES),
+                "/".join(open_states),
             )
         )
+    return rfq_documents, match_documents
 
 
-def _normalize_draft(draft, index):
+def _normalize_draft(draft, index, adapter=None, as_of=None):
     """Enforce the review-queue shape of one outreach draft.
 
     Rule (c) of BUILD-CONTRACT.md 13.3: drafts are written ONLY with
     status READY_FOR_REVIEW, auto_send false and manual_approval_required true.
     Absent flags are filled in with those values; a flag present with any other
     value is a refusal, never a silent correction.
+
+    READY_FOR_REVIEW is also a claim that the draft is reviewable, so the draft then
+    goes through scripts/validate_output.py validate_outreach_draft -- against the
+    stored lead, match run and RFQ when `adapter` can read them -- and any
+    error-severity issue is a refusal (ValidationError.errors lists them all).
+    Warnings go to stderr and do not block.
     """
     label = "draft[%d]" % index
     if not isinstance(draft, dict):
@@ -920,11 +1064,47 @@ def _normalize_draft(draft, index):
                 "and line 3 exactly 'Auto-send: false' (R10.4.1, INV-09)" % label
             )
 
-    _check_live_demand_claim(out, label)
+    validator = _import_validator()
+    if validator is None:
+        raise DataError(
+            "%s: scripts/validate_output.py could not be imported; refusing to queue a draft "
+            "that was not validated (BUILD-CONTRACT.md 13.3 rule a)" % label
+        )
+    # RFQ freshness is measured against an as_of somebody chose (--as-of / as_of=), never the
+    # config's frozen as_of_default.
+    if adapter is not None:
+        run_as_of = as_of or (adapter.as_of if adapter.as_of_explicit else None)
+        max_age_days, quiet = adapter.max_rfq_age_days, adapter.quiet
+    else:
+        run_as_of, max_age_days, quiet = as_of, _max_rfq_age_days(load_config()), False
+    # The stored target, when there is one: a match candidate first (its hard filter
+    # and qualified flag gate DRAFT-09), then the lead record. The RFQ rides along so
+    # the validator can check the citation. With no target the draft is checked alone.
+    lead = adapter._lookup_lead(out["entity_id"]) if adapter is not None else None
+    rfq_documents, records = _check_live_demand_claim(
+        out, label, validator, adapter=adapter, as_of=run_as_of, max_age_days=max_age_days,
+        evidence=[item for item in lead.get("evidence") or [] if isinstance(item, dict)]
+        if lead is not None else None,
+    )
 
     if not out.get("draft_id"):
         out["draft_id"] = "OD-%s-%s" % (out["entity_id"], out["channel_type"])
     out["draft_id"] = _safe_id(out["draft_id"], "%s.draft_id" % label)
+
+    if lead is not None:
+        records.append(lead)
+    issues = validator.validate_outreach_draft(out, record=records + rfq_documents if records else None)
+    errors = [issue for issue in issues if issue.get("severity") != "warning"]
+    if errors:
+        exc = ValidationError(
+            "%s (%s) failed outreach-draft validation and was not queued for review (%d problem%s)"
+            % (label, out["draft_id"], len(errors), "" if len(errors) == 1 else "s"),
+            ["%s: %s" % (issue.get("invariant"), issue.get("message")) for issue in errors],
+        )
+        exc.issues = issues
+        raise exc
+    for issue in issues:
+        _eprint("warning: %s %s: %s" % (label, issue.get("invariant"), issue.get("message")), quiet)
     return out
 
 
@@ -947,6 +1127,23 @@ def _check_status_target(status):
     if value not in SKILL_WRITABLE_STATES:
         raise DataError("refusing to write status %s: outside the skill's range" % value)
     return value
+
+
+def _check_scored_target(document, label, target):
+    """INV-37 / SKILL.md Mode 4: QUALIFIED and later need a scored record with qualified true."""
+    if target not in SCORED_ONLY_STATES:
+        return
+    problems = []
+    if document.get("score_version") in (None, "unscored"):
+        problems.append("it is unscored (score_version %r)" % (document.get("score_version"),))
+    if document.get("qualified") is not True:
+        problems.append("qualified is %r" % (document.get("qualified"),))
+    if problems:
+        raise DataError(
+            "refusing status %s for %s: %s; %s are entered only by a scored record with "
+            "qualified true (INV-37, SKILL.md Mode 4)"
+            % (target, label, " and ".join(problems), "/".join(sorted(SCORED_ONLY_STATES)))
+        )
 
 
 def _check_transition(current, target):
@@ -989,12 +1186,16 @@ class Adapter(abc.ABC):
         self.quiet = bool(quiet)
         self.strict = bool(strict)
         config = load_config(config_path)
+        # as_of_default keeps reads and observed_at deterministic; an RFQ-citing draft still
+        # needs an explicit as_of (_normalize_draft), so as_of_explicit remembers the difference.
+        self.as_of_explicit = bool(as_of)
         self.as_of = as_of or config.get("as_of_default")
         if not _DATE_PATTERN.match(str(self.as_of or "")):
             raise UsageError("as_of must be YYYY-MM-DD, got %r" % (self.as_of,))
         self.max_drafts_per_run = int(
             (config.get("output") or {}).get("max_outreach_drafts_per_run", 20)
         )
+        self.max_rfq_age_days = _max_rfq_age_days(config)
 
     # -- the six capabilities -------------------------------------------
 
@@ -1007,8 +1208,8 @@ class Adapter(abc.ABC):
         """GET /sellers?filters= -> a list of seller documents."""
 
     @abc.abstractmethod
-    def post_research_leads(self, records):
-        """POST /research/leads -> [{"id": ..., "status": ...}] per record."""
+    def post_research_leads(self, records, overwrite=False):
+        """POST /research/leads -> [{"id": ..., "status": ..., "result": ...}] per record."""
 
     @abc.abstractmethod
     def post_matches(self, match_result):
@@ -1060,6 +1261,7 @@ class Adapter(abc.ABC):
                     "package may set approval or any later state (INV-09, INV-37)"
                     % (index, identifier, status)
                 )
+            _check_scored_target(record, "records[%d] (%s)" % (index, identifier), status)
             self._validate_write(kind, record, "records[%d] (%s)" % (index, identifier))
             prepared.append((kind, identifier, record))
         return prepared
@@ -1075,7 +1277,26 @@ class Adapter(abc.ABC):
                 "run at %d (scoring.config.json output.max_outreach_drafts_per_run, "
                 "PRD 11.1)" % (len(items), self.max_drafts_per_run)
             )
-        return [_normalize_draft(draft, index) for index, draft in enumerate(items)]
+        return [_normalize_draft(draft, index, adapter=self) for index, draft in enumerate(items)]
+
+    # -- lookups the draft guards use; a backend that cannot read returns nothing --
+
+    def _lookup_rfq(self, *candidates):
+        """The RFQ a draft cites, read through get_rfq, or None when no spelling resolves."""
+        for candidate in dict.fromkeys(value for value in candidates if value):
+            try:
+                return self.get_rfq(candidate)
+            except AdapterError:
+                continue
+        return None
+
+    def _lookup_lead(self, entity_id):
+        """The stored lead a draft targets, or None when this backend cannot read leads."""
+        return None
+
+    def _lookup_matches(self):
+        """Stored match-result documents, or [] when this backend cannot read them."""
+        return []
 
     def _prepare_match(self, match_result):
         """Validate one or many match-result documents before persisting."""
@@ -1113,7 +1334,9 @@ class FileAdapter(Adapter):
           outreach-drafts/<draft_id>.json     written by post_outreach_drafts
 
     Writes are last-write-wins on the record id, which keeps a re-run of the
-    same inputs byte-stable (INV-13).
+    same inputs byte-stable (INV-13) -- except that save-leads refuses to
+    downgrade a stored lead (scored -> unscored, or a status regression) unless
+    overwrite is set (_lead_write_outcome).
     """
 
     name = "file"
@@ -1193,14 +1416,44 @@ class FileAdapter(Adapter):
             out = out[:limit]
         return out
 
-    def post_research_leads(self, records):
+    def post_research_leads(self, records, overwrite=False):
         prepared = self._prepare_leads(records)
         results = []
         for kind, identifier, record in prepared:
-            self._write_json(self.LEAD_DIR, identifier, record)
-            results.append({"id": identifier, "status": record.get("status", "DISCOVERED")})
-            _eprint("wrote lead %s (%s)" % (identifier, kind), self.quiet)
+            path = self._path(self.LEAD_DIR, identifier)
+            existing = self._read_json(path, "lead %s" % identifier) if os.path.isfile(path) else None
+            outcome, reason = _lead_write_outcome(existing, record, overwrite)
+            row = {"id": identifier, "status": record.get("status", "DISCOVERED"), "result": outcome}
+            if outcome == "refused":
+                row["status"] = existing.get("status")
+                row["reason"] = reason
+                _eprint("refused lead %s: %s" % (identifier, reason), self.quiet)
+            elif outcome == "unchanged":
+                _eprint("lead %s unchanged" % identifier, self.quiet)
+            else:
+                self._write_json(self.LEAD_DIR, identifier, record)
+                _eprint("wrote lead %s (%s, %s)" % (identifier, kind, outcome), self.quiet)
+            results.append(row)
         return results
+
+    def _lookup_lead(self, entity_id):
+        path = self._path(self.LEAD_DIR, _safe_id(entity_id, "entity_id"))
+        if not os.path.isfile(path):
+            return None
+        document = self._read_json(path, "lead %s" % entity_id)
+        return document if isinstance(document, dict) else None
+
+    def _lookup_matches(self):
+        directory = os.path.join(self.data_dir, self.MATCH_DIR)
+        if not os.path.isdir(directory):
+            return []
+        out = []
+        for name in sorted(os.listdir(directory)):
+            if name.endswith(".json"):
+                document = self._read_json(os.path.join(directory, name), "match file %s" % name)
+                if isinstance(document, dict):
+                    out.append(document)
+        return out
 
     def post_matches(self, match_result):
         prepared, many = self._prepare_match(match_result)
@@ -1234,11 +1487,46 @@ class FileAdapter(Adapter):
             raise DataError("lead %s is a %s document, not a buyer or seller" % (identifier, kind))
         current = document.get("status")
         _check_transition(current if isinstance(current, str) else None, target)
+        _check_scored_target(document, "lead %s" % identifier, target)
         document["status"] = target
         self._validate_write(kind, document, "lead %s" % identifier)
         self._write_json(self.LEAD_DIR, identifier, document)
         _eprint("lead %s: %s -> %s" % (identifier, current, target), self.quiet)
         return {"id": identifier, "status": target}
+
+
+def _lead_write_outcome(existing, record, overwrite):
+    """created / unchanged / updated / refused for one save-leads record over a stored lead.
+
+    A re-run of raw discovery must not silently replace a scored lead (qualification
+    96 -> "unscored" 0) or walk its status backwards. Both are refused unless the
+    caller passes overwrite. A lead in an application-layer state is never replaced.
+    """
+    if existing is None:
+        return "created", None
+    if existing == record:
+        return "unchanged", None
+    if not isinstance(existing, dict):
+        return "updated", None
+    old_status = existing.get("status")
+    if old_status in APPLICATION_ONLY_STATES:
+        return "refused", (
+            "the stored lead is %s, which the application layer owns (BUILD-CONTRACT.md 9.2); "
+            "--overwrite does not apply" % old_status
+        )
+    problems = []
+    if existing.get("score_version") not in (None, "unscored") and record.get("score_version") in (None, "unscored"):
+        problems.append(
+            "it would replace a scored lead (%s, qualification_score %r) with an unscored one"
+            % (existing.get("score_version"), existing.get("qualification_score"))
+        )
+    rank = dict((state, position) for position, state in enumerate(ENTITY_STATES))
+    new_status = record.get("status") or "DISCOVERED"
+    if old_status in rank and new_status in rank and rank[new_status] < rank[old_status]:
+        problems.append("it would move status back from %s to %s" % (old_status, new_status))
+    if problems and not overwrite:
+        return "refused", "%s; pass --overwrite to replace it" % "; ".join(problems)
+    return "updated", None
 
 
 def _seller_matches(seller, filters):
@@ -1565,12 +1853,16 @@ class HttpAdapter(Adapter):
             self._validate_read("seller", seller, "seller[%d]" % index)
         return body
 
-    def post_research_leads(self, records):
+    def post_research_leads(self, records, overwrite=False):
+        # This backend cannot read a stored lead, so the downgrade rule of
+        # _lead_write_outcome is the server's to enforce; `overwrite` travels with
+        # the request (adapters/tradewith_adapter.md 5.3).
         prepared = self._prepare_leads(records)
         method, path = self.ENDPOINTS["post_research_leads"]
         payload = {
             "as_of": self.as_of,
             "schema_version": SCHEMA_VERSION,
+            "overwrite": bool(overwrite),
             "records": [record for _kind, _id, record in prepared],
         }
         body = self._request(method, path, payload=payload)
@@ -1686,9 +1978,9 @@ def list_sellers(filters=None, adapter=None, **kwargs):
     return (adapter or get_adapter(**kwargs)).list_sellers(filters)
 
 
-def post_research_leads(records, adapter=None, **kwargs):
-    """PRD 13.1 `POST /research/leads` -> [{"id", "status"}]."""
-    return (adapter or get_adapter(**kwargs)).post_research_leads(records)
+def post_research_leads(records, adapter=None, overwrite=False, **kwargs):
+    """PRD 13.1 `POST /research/leads` -> [{"id", "status", "result"}]."""
+    return (adapter or get_adapter(**kwargs)).post_research_leads(records, overwrite=overwrite)
 
 
 def post_matches(match_result, adapter=None, **kwargs):
@@ -1875,6 +2167,11 @@ def _build_parser():
         help="POST /research/leads — store discovery results",
     )
     leads_parser.add_argument("-i", "--input", default=None, help="buyer/seller records (default: stdin)")
+    leads_parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="replace a stored lead even when that downgrades it (scored -> unscored, status regression)",
+    )
 
     matches_parser = subparsers.add_parser(
         "save-matches",
@@ -1971,7 +2268,9 @@ def _dispatch(args):
         return adapter.list_sellers(_seller_filters_from_args(args))
     if command in ("save-leads", "post-research-leads"):
         adapter = _adapter_from_args(args)
-        return adapter.post_research_leads(_read_json_argument(args.input, "--input"))
+        return adapter.post_research_leads(
+            _read_json_argument(args.input, "--input"), overwrite=args.overwrite
+        )
     if command in ("save-matches", "post-matches"):
         adapter = _adapter_from_args(args)
         return adapter.post_matches(_read_json_argument(args.input, "--input"))
@@ -2026,6 +2325,16 @@ def main(argv=None):
     else:
         text = json.dumps(result, ensure_ascii=False, separators=(",", ":"))
     sys.stdout.write(text + "\n")
+    refused = [
+        row for row in (result if isinstance(result, list) else [])
+        if isinstance(row, dict) and row.get("result") == "refused"
+    ]
+    if refused:
+        sys.stderr.write(
+            "ERROR: %d record(s) refused and left as stored: %s\n"
+            % (len(refused), ", ".join(str(row.get("id")) for row in refused))
+        )
+        return 1
     return 0
 
 

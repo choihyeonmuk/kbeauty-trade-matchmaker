@@ -1,0 +1,26 @@
+{
+  "rule": "EVI-03",
+  "description": "An inferred item above the 0.60 confidence cap.",
+  "base": "buyers_uae:BUY-gulfglow-example",
+  "schema": "buyer",
+  "mutations": [
+    {
+      "op": "set",
+      "path": [
+        "evidence",
+        8,
+        "inferred"
+      ],
+      "value": true
+    },
+    {
+      "op": "set",
+      "path": [
+        "evidence",
+        8,
+        "confidence"
+      ],
+      "value": 0.9
+    }
+  ]
+}

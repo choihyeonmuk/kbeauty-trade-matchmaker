@@ -1,0 +1,19 @@
+{
+  "rule": "INV-30",
+  "description": "The first two results are swapped.",
+  "base": "match_134",
+  "schema": "match-result",
+  "mutations": [
+    {
+      "op": "swap",
+      "path": [
+        "results",
+        0
+      ],
+      "with": [
+        "results",
+        1
+      ]
+    }
+  ]
+}

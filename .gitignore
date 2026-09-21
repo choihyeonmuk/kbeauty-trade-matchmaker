@@ -63,3 +63,6 @@ docs/FIELD-FINDINGS.json
 
 # Release archives built by tools/build_release.py
 dist/
+
+# Cloudflare tooling state
+.wrangler/

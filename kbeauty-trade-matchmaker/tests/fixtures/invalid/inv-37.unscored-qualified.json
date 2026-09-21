@@ -1,0 +1,15 @@
+{
+  "rule": "INV-37",
+  "description": "An unscored raw record claims QUALIFIED; the unscored early return used to skip INV-37 (roadmap 1-2).",
+  "base": "buyers_golden:BUY-gulfglow-example",
+  "schema": "buyer",
+  "mutations": [
+    {
+      "op": "set",
+      "path": [
+        "status"
+      ],
+      "value": "QUALIFIED"
+    }
+  ]
+}
