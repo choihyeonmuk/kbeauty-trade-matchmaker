@@ -1,0 +1,18 @@
+{
+  "rule": "INV-01",
+  "policy": "evidence-policy 8 row 11",
+  "description": "The Trade / Wholesale page that once evidenced wholesale_signal now returns 404. The item is kept with stale true and the field is unknown, because a dead link evidences nothing. Scored by score_buyer.py, so evidence_quality and confidence are recomputed.",
+  "base": "buyers_golden:BUY-gulfglow-example",
+  "scorer": "score_buyer.py",
+  "query": "query-buyer-uae-kbeauty.json",
+  "mutations": [
+    {"op": "set", "path": ["wholesale_signal"], "value": "unknown"},
+    {"op": "set", "path": ["evidence", 3, "stale"], "value": true},
+    {"op": "set", "path": ["evidence", 3, "quote_or_summary"], "value": "Trade / Wholesale menu item; its target page returned 404 on the latest read after a retry (reachable at the earlier read)."}
+  ],
+  "control": {
+    "description": "the same item not flagged stale",
+    "rule": "INV-01",
+    "mutations": [{"op": "set", "path": ["evidence", 3, "stale"], "value": false}]
+  }
+}

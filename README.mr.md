@@ -10,22 +10,23 @@
 
 > कार्यप्रवाहाचे दृश्य स्वरूप: शोधा, पडताळा, जुळवा आणि अंतिम निर्णय माणसाकडेच ठेवा.
 
-> **स्थिती: v0.3.0.** हा pipeline काल्पनिक fixtures वरील 536 cases वर तपासला गेला आहे आणि live वेबवर एकदा चाचणी घेतली गेली आहे. गुणांकन पद्धत (scoring rubric) **प्रत्यक्ष व्यावसायिक परिणामांशी अद्याप पडताळलेली नाही**: गुण पुन्हा तसेच मिळवता येतात आणि त्यांचा मागोवा घेता येतो, पण ते भविष्याचा अचूक अंदाज देतात हे अजून सिद्ध झालेले नाही. v0.2.0 मध्ये ते मोजण्यासाठीची साधने जोडली गेली ([गुणांची पडताळणी](#गुणांची-पडताळणी)), पण label केलेला नमुना (labelled sample) अजून अस्तित्वात नाही. RFQ Matching आणि Outreach Draft हे live डेटावर अजून चालवलेले नाहीत. कोणत्याही गुणांवर विश्वास ठेवण्यापूर्वी [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) वाचा.
+> **स्थिती: v0.4.0.** हा pipeline काल्पनिक fixtures वरील 748 cases वर तपासला गेला आहे आणि live वेबवर एकदा चाचणी घेतली गेली आहे. गुणांकन पद्धत (scoring rubric) **प्रत्यक्ष व्यावसायिक परिणामांशी अद्याप पडताळलेली नाही**: गुण पुन्हा तसेच मिळवता येतात आणि त्यांचा मागोवा घेता येतो, पण ते भविष्याचा अचूक अंदाज देतात हे अजून सिद्ध झालेले नाही. v0.2.0 मध्ये ते मोजण्यासाठीची साधने जोडली गेली ([गुणांची पडताळणी](#गुणांची-पडताळणी)), पण label केलेला नमुना (labelled sample) अजून अस्तित्वात नाही. RFQ Matching आणि Outreach Draft हे live डेटावर अजून चालवलेले नाहीत. कोणत्याही गुणांवर विश्वास ठेवण्यापूर्वी [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) वाचा.
 
 ---
 
 ## नवीन काय आहे
 
-**v0.3.0 (2026-09-19).** विद्यमान कोणतेही गुण बदलत नाहीत. सर्व नवीन भाग गुणांकन pipeline च्या बाहेर आहेत.
+**v0.4.0 (2026-09-21).** Rubric आता `kbtm-score-0.2.0` आहे. Audit मधून आलेल्या आठ दुरुस्त्या समाविष्ट झाल्या असून त्यांपैकी एक एका golden fixture चे गुण बदलते; त्यामुळे `kbtm-score-0.1.0` अंतर्गत साठवलेले गुण नवीन runs शी तुलना करण्यापूर्वी पुन्हा मोजावेत.
 
-- **Run diff (दोन runs मधील फरक).** `scripts/diff_runs.py` एकाच शोध किंवा RFQ च्या दोन गुणांकित runs ची तुलना करते, आणि नवीन व गायब झालेल्या कंपन्या, बदललेली वगळणी (exclusions), तसेच score, rank, qualified flag, confidence आणि Missing ओळीतील बदल यांची यादी देते. वेगवेगळ्या rubric आवृत्त्यांखाली गुणांकित झालेले runs ते नाकारते, आणि संपर्काचा कोणताही तपशील copy करत नाही. [दोन runs ची तुलना](#दोन-runs-ची-तुलना) पहा.
-- **Re-check queue (पुन्हा तपासणीची रांग).** `scripts/stale_evidence.py` साठवलेल्या कोणत्या नोंदी आणि पुराव्याची कोणती पृष्ठे पुन्हा वाचायची याची यादी, सर्वात तातडीचे आधी, देते. ते काहीही fetch करत नाही आणि कोणतीही नोंद किंवा गुण बदलत नाही. [Re-check queue](#re-check-queue-पुन्हा-तपासणीची-रांग) पहा.
-- **Lead export.** `scripts/export_leads.py` गुणांकित run ला spreadsheet/CRM CSV म्हणून किंवा TradeWith admin bulk-import file म्हणून लिहिते. ते फक्त file लिहिते. TradeWith च्या ओळींमध्ये संपर्काची कोणतीही fields नसतात आणि त्या admin ने review करण्यासाठी tier C म्हणून दाखल होतात. [Spreadsheet, CRM किंवा TradeWith मध्ये export](#spreadsheet-crm-किंवा-tradewith-मध्ये-export) पहा.
-- **Scripts MCP tools म्हणून.** एक ऐच्छिक local tool server (MCP, stdio) agent ला अकरा scripts tools म्हणून call करू देतो. तो फक्त एकाच project फोल्डरमध्ये वाचतो आणि लिहितो, कोणतीही file कधीही overwrite करत नाही आणि काहीही पाठवत नाही. [Scripts चा MCP tools म्हणून वापर](#scripts-चा-mcp-tools-म्हणून-वापर) पहा.
-- **Plugins.** Claude Code हे skill या repository मधून plugin म्हणून install करू शकतो. ChatGPT आणि Codex साठी प्रत्येक release सोबत फक्त skills असलेला plugin ZIP मिळतो, आणि याच मार्गाने हे skill web आणि mobile वरील ChatGPT पर्यंत पोहोचते. [Plugin म्हणून install करा](#plugin-म्हणून-install-करा) पहा.
-- Tests: 252 → 536 cases.
+- **Draft validation.** `validate_output.py --schema outreach-draft --record <गुणांकित run>` Mode 4 चा मसुदा तपासतो: envelope आणि त्याचा क्रम, प्रत्येक personalization fact गुणांकित record मधील पान त्याच observed date सह उद्धृत करते का, target qualified आहे आणि channel त्याच कंपनीचा आहे का, खोटा opt-out किंवा render न झालेला token उरलेला नाही ना, आणि compliance flags अधिकारक्षेत्र व channel शी जुळतात का. तो व्यापार अटी किंवा शब्दरचना तपासत नाही; ते अजूनही एक व्यक्तीच पाहते.
+- **Compliance lookup.** `schemas/compliance.config.json` मध्ये मसुदे ज्याच्याशी पडताळले जातात ती अधिकारक्षेत्र × channel सारणी आहे; त्यात भारत, इंडोनेशिया आणि तुर्किये समाविष्ट आहेत.
+- **Evidence नियम.** `--invariants` आता EVI-01…06 चालवतो: source tier विरुद्ध source type, official domain, inferred evidence वरील confidence ची मर्यादा, evidence quality, confidence आणि stale कालावधी.
+- **गुण बदलू शकणाऱ्या audit दुरुस्त्या.** परस्पर conflict दोनदा नव्हे, एकदाच मोजला जातो. उद्धरण नसलेले प्रमाणपत्र किमान directory मधून उद्धृत केलेल्या प्रमाणपत्राइतकेच गुण कमी करते. MOQ एककांचे समानार्थी (`pcs`, `EA`, `개`) आता MOQ hard filter बंद करत नाहीत. कशाशीही map न होणारी श्रेणी विक्रेत्याला कधीही नाकारत नाही. `--config` आता confidence आणि evidence quality पर्यंत पोहोचतो. देशांची नावे alpha-2 मध्ये normalise होतात. नावाला जोडून लिहिलेले कोरियन legal forms (`주식회사한빛`) dedupe होतात.
+- **अवैध document कधीही `--output` वर लिहिले जात नाही.** ते शेजारी `*.invalid.json` म्हणून लिहिले जाते, त्यामुळे साखळीतील पुढची command ते उचलू शकत नाही. MCP server तीच file कळवतो आणि ज्या `output_path` ची ती file आधीच अस्तित्वात आहे ते नाकारतो.
+- **`NA` हा code आहे.** INV-02 आता `export_regions` मधील North America किंवा country field मधील Namibia नाकारत नाही.
+- Tests: 536 → 748 cases.
 
-v0.2.0 मध्ये [गुण-पडताळणीची साधने](#गुणांची-पडताळणी) आणि भारत, इंडोनेशिया व तुर्किये साठी [market packs](#market-packs-बाजारपेठनिहाय-संच) जोडले गेले. प्रत्येक release च्या संपूर्ण नोंदी: [CHANGELOG.md](CHANGELOG.md) (फक्त इंग्रजीत उपलब्ध).
+v0.3.0 मध्ये run diff, re-check queue, lead export, MCP tool server आणि plugins जोडले गेले. v0.2.0 मध्ये [गुण-पडताळणीची साधने](#गुणांची-पडताळणी) आणि भारत, इंडोनेशिया व तुर्किये साठी [market packs](#market-packs-बाजारपेठनिहाय-संच) जोडले गेले. प्रत्येक release च्या संपूर्ण नोंदी: [CHANGELOG.md](CHANGELOG.md) (फक्त इंग्रजीत उपलब्ध).
 
 ---
 
@@ -166,6 +167,8 @@ kbeauty-trade-matchmaker/
 │   ├── run-diff.schema.json      # One comparison of two scored runs (v0.3.0)
 │   ├── recheck-queue.schema.json # The evidence to re-read (v0.3.0)
 │   ├── tradewith-bulk-buyers.schema.json  # TradeWith bulk-import body; no contact fields (v0.3.0)
+│   ├── outreach-draft.schema.json  # The Mode 4 draft envelope the validator checks (v0.4.0)
+│   ├── compliance.config.json    # Jurisdiction x channel lookup for the draft compliance block (v0.4.0)
 │   └── scoring.config.json       # Every weight, threshold and penalty lives in this one file
 ├── scripts/                      # Standard library only. No network, no credentials
 │   ├── _common.py                # Config, rounding, normalisation, tri-state helpers, schema validator
@@ -504,7 +507,7 @@ python3 tests/run_tests.py -v    # One line per case, not just failures
 
 Runner फक्त standard library वापरतो, fixtures स्वतःच्या स्थानाच्या सापेक्ष शोधतो, प्रत्येक script ला `--as-of 2026-09-12` देतो, आणि output ची अपेक्षित fixtures शी **byte-by-byte** तुलना करतो. Fixture cases च्या आधी तो schemas स्वतः तपासतो: ते parse होतात का, प्रत्येक `$ref` resolve होतो का, कोणताही असमर्थित keyword वापरलेला नाही ना, सामायिक `$defs` सर्व files मध्ये एकसारख्या आहेत का, आणि आत नमूद केलेल्या आवृत्त्या `scoring.config.json` शी जुळतात का.
 
-`plugins` phase repository-स्तरावरील manifests आणि builder वाचतो, त्यामुळे 536 ही पूर्ण संख्या repository checkout ला लागू होते; install केलेली प्रत दोन SKIPs दाखवते (`plugins` phase आणि एक MCP case). हा phase release builder एका तात्पुरत्या (throwaway) git repository मध्ये चालवतो, त्यामुळे commit न केलेल्या कामाचा निकालावर परिणाम होत नाही.
+`plugins` phase repository-स्तरावरील manifests आणि builder वाचतो, त्यामुळे 748 ही पूर्ण संख्या repository checkout ला लागू होते; install केलेली प्रत दोन SKIPs दाखवते (`plugins` phase आणि एक MCP case). हा phase release builder एका तात्पुरत्या (throwaway) git repository मध्ये चालवतो, त्यामुळे commit न केलेल्या कामाचा निकालावर परिणाम होत नाही.
 
 Scripts थेटही चालवता येतात. JSON `stdout` वर जातो आणि प्रत्येक diagnostic संदेश `stderr` वर, त्यामुळे pipes सुरक्षित आहेत.
 
@@ -568,9 +571,9 @@ Environment variables import च्या वेळी नव्हे तर ca
 
 | आवृत्ती | मूल्य | काय दर्शवते | कुठे असते |
 |---|---|---|---|
-| `skill_version` | `0.3.0` | Package: prompts, references, scripts, templates, tests | `SKILL.md` चा मुख्य मजकूर, `match-result.skill_version`, दोन्ही plugin manifests |
+| `skill_version` | `0.4.0` | Package: prompts, references, scripts, templates, tests | `SKILL.md` चा मुख्य मजकूर, `match-result.skill_version`, दोन्ही plugin manifests |
 | `schema_version` | `0.1.0` | रचनेचा contract: field names, enums, आवश्यक fields च्या याद्या | प्रत्येक document, `schemas/*.json` |
-| `score_version` | `kbtm-score-0.1.0` | Rubric: weights, निकष, संकेत, दंड, thresholds, hard filters | `scoring.config.json`, प्रत्येक गुणांकित document |
+| `score_version` | `kbtm-score-0.2.0` | Rubric: weights, निकष, संकेत, दंड, thresholds, hard filters | `scoring.config.json`, प्रत्येक गुणांकित document |
 
 ```bash
 python3 scripts/validate_output.py --version

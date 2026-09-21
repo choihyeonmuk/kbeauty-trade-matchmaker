@@ -1,0 +1,19 @@
+{
+  "rule": "INV-22",
+  "description": "conflicts_with names an evidence id the record does not carry.",
+  "base": "buyers_uae:BUY-gulfglow-example",
+  "schema": "buyer",
+  "mutations": [
+    {
+      "op": "set",
+      "path": [
+        "evidence",
+        0,
+        "conflicts_with"
+      ],
+      "value": [
+        "EV-999"
+      ]
+    }
+  ]
+}

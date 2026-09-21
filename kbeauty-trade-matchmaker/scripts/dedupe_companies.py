@@ -684,13 +684,10 @@ def _record_subdomain(record):
 
 def _names_disagree(left, right):
     """True when both normalized names are known and neither contains the other."""
-    left_name = left.get("normalized_name")
-    right_name = right.get("normalized_name")
-    if not isinstance(left_name, str) or not left_name.strip():
+    left_name = _common.name_match_key(left.get("normalized_name"))
+    right_name = _common.name_match_key(right.get("normalized_name"))
+    if not left_name or not right_name:
         return False
-    if not isinstance(right_name, str) or not right_name.strip():
-        return False
-    left_name, right_name = left_name.strip(), right_name.strip()
     if left_name == right_name:
         return False
     return left_name not in right_name and right_name not in left_name
@@ -728,8 +725,8 @@ def suggest_merges(records):
     for i in range(len(records)):
         for j in range(i + 1, len(records)):
             left, right = records[i], records[j]
-            name = left.get("normalized_name")
-            if not isinstance(name, str) or not name or name != right.get("normalized_name"):
+            name = _common.name_match_key(left.get("normalized_name"))
+            if not name or name != _common.name_match_key(right.get("normalized_name")):
                 continue
             left_country, right_country = _known_country(left), _known_country(right)
             if not left_country or left_country != right_country:
@@ -775,8 +772,9 @@ def build_components(records, ids, strict_country):
     candidate_pairs.sort(key=lambda pair: (ids[pair[0]], ids[pair[1]]))
     for i, j in candidate_pairs:
         left, right = records[i], records[j]
-        name = left.get("normalized_name")
-        if not isinstance(name, str) or not name or name != right.get("normalized_name"):
+        # name_match_key: a Hangul name compares with its spaces removed (scoring-10).
+        name = _common.name_match_key(left.get("normalized_name"))
+        if not name or name != _common.name_match_key(right.get("normalized_name")):
             continue
         left_domain, right_domain = _known_domain(left), _known_domain(right)
         left_country, right_country = _known_country(left), _known_country(right)

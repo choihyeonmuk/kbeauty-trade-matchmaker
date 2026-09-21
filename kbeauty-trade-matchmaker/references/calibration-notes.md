@@ -297,7 +297,7 @@ scripts that ship for exactly this purpose and nothing else.
 | What it cannot measure | **PRD 17 RFQ Conversion.** That needs outcome data fed back from the application layer after real outreach — who was contacted, who replied, which reply became an RFQ. No document this package produces carries it, and no report here may be read as evidence about it. |
 
 Neither script can change a score. Nothing reads the `calibration` block except these two, so a
-report never moves `score_version` (`kbtm-score-0.1.0`) or `schema_version` (`0.1.0`).
+report never moves `score_version` (`kbtm-score-0.2.0`) or `schema_version` (`0.1.0`).
 
 ### 7.1 Why the sheet is blind
 

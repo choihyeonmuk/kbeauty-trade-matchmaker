@@ -5,7 +5,7 @@
 | File | `templates/buyer_outreach.md` |
 | Side | `Buyer` — an overseas distributor, importer, wholesaler, retailer, brand or marketplace |
 | Envelope | `references/output-format.md` 10.4, reproduced literally (capitalization, punctuation, order) |
-| Package | `kbeauty-trade-matchmaker` · `skill_version 0.1.0` |
+| Package | `kbeauty-trade-matchmaker` · `skill_version 0.4.0` |
 | Korean gloss | 해외 바이어 대상 아웃리치 **초안** 템플릿. 초안 생성까지가 범위이며 자동 발송은 금지된다. |
 
 **Header note (BUILD-CONTRACT.md 1.4).** The 10.4 envelope is reproduced line for line. This template adds exactly two things the envelope permits but does not print: the `Required legal notices` heading mandated by R10.4.6, and the three-line INV-09 trailer. It adds no other line and removes none.
@@ -281,7 +281,7 @@ Personalization facts
 - 14 Korean sunscreen manufacturers verified in the TradeWith research pool — [https://app.tradewith.example/research/pools/kr-sunscreen] (observed 2026-09-12)
 
 Compliance checks
-- Jurisdiction: United Arab Emirates — direct-marketing review: unknown
+- Jurisdiction: United Arab Emirates — direct-marketing review: required
 - Advertising label / opt-out required: unknown
 - Personal data used: none (company-level channel only)
 - Claims verified against evidence: yes

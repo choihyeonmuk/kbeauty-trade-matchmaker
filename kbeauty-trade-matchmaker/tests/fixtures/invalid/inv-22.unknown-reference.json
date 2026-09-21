@@ -1,0 +1,19 @@
+{
+  "rule": "INV-22",
+  "description": "A contact channel cites an evidence id that resolves nowhere.",
+  "base": "buyers_uae:BUY-gulfglow-example",
+  "schema": "buyer",
+  "mutations": [
+    {
+      "op": "set",
+      "path": [
+        "contact_channels",
+        0,
+        "evidence_ids"
+      ],
+      "value": [
+        "EV-404"
+      ]
+    }
+  ]
+}

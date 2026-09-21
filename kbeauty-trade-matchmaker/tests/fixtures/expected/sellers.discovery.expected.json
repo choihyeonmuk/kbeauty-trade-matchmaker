@@ -3,7 +3,7 @@
   "run": {
     "script": "score_seller.py",
     "as_of": "2026-09-12",
-    "score_version": "kbtm-score-0.1.0",
+    "score_version": "kbtm-score-0.2.0",
     "threshold": 70,
     "threshold_mode": "fixed",
     "hard_filter_rules_applied": [

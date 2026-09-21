@@ -32,7 +32,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PACKAGE_ROOT = os.path.dirname(SCRIPT_DIR)
 SCHEMA_DIR = os.path.join(PACKAGE_ROOT, "schemas")
 
-SKILL_VERSION = "0.3.0"
+SKILL_VERSION = "0.4.0"
 SCHEMA_VERSION = "0.1.0"
 UNKNOWN = "unknown"
 
@@ -70,6 +70,7 @@ LEGAL_SUFFIXES = (
     "주식회사",
     "유한회사",
     "합자회사",
+    "합명회사",
 )
 
 #: Legal-form tokens stripped only from the END of a company name, longest-first.
@@ -110,6 +111,12 @@ LEGAL_FORMS_LEADING = (
     "pt",
     "cv",
 )
+
+#: Korean legal forms that registries and Naver listings routinely write with no space
+#: in front of or behind the name ("주식회사한빛코스메틱"). normalize_company_name strips
+#: them as a leading / trailing SUBSTRING of the first / last token, not only as a
+#: whole token, or dedupe key 2 misses the pair.
+KOREAN_LEGAL_FORMS = ("주식회사", "유한회사", "합자회사", "합명회사")
 
 #: Multi-part public suffixes embedded by BUILD-CONTRACT 8.2, matched longest-tail
 #: first (a three-label entry such as "smartstore.naver.com" wins over any two-label
@@ -396,7 +403,88 @@ CATEGORY_SYNONYMS = {
     "mens_cosmetics": "mens_grooming",
     "k_beauty": None,
     "kbeauty": None,
+    # English compounds a page or an RFQ prints instead of the bare slug. A slug that
+    # is NOT in the vocabulary after this table is dropped by the seller-side scorers
+    # with a note (never scored as a verified mismatch, never a hard-filter reject).
+    "sun_screen": "sunscreen",
+    "sun_protection": "sunscreen",
+    "uv_protection": "sunscreen",
+    "sun_stick_spf": "sun_stick",
+    "cleansing_foam": "cleanser",
+    "foam_cleanser": "cleanser",
+    "facial_cleanser": "cleanser",
+    "face_wash": "cleanser",
+    "cleansing_oil": "cleanser",
+    "cleansing_water": "cleanser",
+    "cleansing_balm": "cleanser",
+    "micellar_water": "cleanser",
+    "toner_pad": "toner",
+    "toner_pads": "toner",
+    "moisturiser": "moisturizer",
+    "face_cream": "moisturizer",
+    "moisturizing_cream": "moisturizer",
+    "eye_cream": "eye_care",
+    "sheet_masks": "mask_sheet",
+    "lip_gloss": "lip_makeup",
+    "hair_mask": "hair_treatment",
+    "mist": "face_mist",
+    # Korean spellings (keys are _slugify output with the underscores removed).
+    "선크림": "sunscreen",
+    "썬크림": "sunscreen",
+    "선블록": "sunscreen",
+    "썬블록": "sunscreen",
+    "선스크린": "sunscreen",
+    "자외선차단제": "sunscreen",
+    "선스틱": "sun_stick",
+    "썬스틱": "sun_stick",
+    "선쿠션": "sun_cushion",
+    "스킨케어": "skincare",
+    "기초화장품": "skincare",
+    "색조화장품": "makeup",
+    "메이크업": "makeup",
+    "헤어케어": "haircare",
+    "바디케어": "bodycare",
+    "토너": "toner",
+    "토너패드": "toner",
+    "에센스": "essence",
+    "세럼": "serum",
+    "앰플": "ampoule",
+    "수분크림": "moisturizer",
+    "아이크림": "eye_care",
+    "마스크팩": "mask_sheet",
+    "시트마스크": "mask_sheet",
+    "클렌저": "cleanser",
+    "클렌징폼": "cleanser",
+    "폼클렌저": "cleanser",
+    "클렌징오일": "cleanser",
+    "클렌징워터": "cleanser",
+    "미스트": "face_mist",
+    "쿠션": "cushion",
+    "쿠션팩트": "cushion",
+    "파운데이션": "foundation",
+    "컨실러": "concealer",
+    "립스틱": "lip_makeup",
+    "립틴트": "lip_makeup",
+    "틴트": "lip_makeup",
+    "립밤": "lip_makeup",
+    "bb크림": "base_makeup",
+    "cc크림": "base_makeup",
+    "샴푸": "shampoo",
+    "컨디셔너": "conditioner",
+    "린스": "conditioner",
+    "헤어트리트먼트": "hair_treatment",
+    "바디워시": "body_wash",
+    "바디로션": "body_lotion",
+    "핸드크림": "hand_care",
+    "향수": "perfume",
+    "남성화장품": "mens_grooming",
+    "케이뷰티": None,
+    "k뷰티": None,
 }
+
+#: A trailing SPF / PA grade on a slug ("sunscreen_spf50", "sun_stick_spf50_pa") names a
+#: product grade, not a category; it is stripped before the vocabulary lookup.
+_CATEGORY_GRADE_SUFFIX_RE = re.compile(r"(_spf\d*)?(_pa\d*)?$")
 
 #: The vertical markers of BUILD-CONTRACT 8.5 that normalize_category drops.
 VERTICAL_MARKERS = frozenset(["k_beauty", "kbeauty"])
@@ -504,6 +592,223 @@ EXPORT_REGION_COUNTRIES["ASIA"] = (
     EXPORT_REGION_COUNTRIES["SEA"] | EXPORT_REGION_COUNTRIES["EA"] | EXPORT_REGION_COUNTRIES["SA"]
 )
 
+#: MOQ / quantity unit synonyms, keyed on the NFKC + casefold form with whitespace and
+#: periods removed. A VOCABULARY, not a tunable number (INV-29 unaffected). Every
+#: spelling of a count of pieces - pcs, EA, 개, unit, pieces - is the same unit as
+#: "units"; before this table a seller writing "pcs" against a query in "units" took the
+#: unit-mismatch path, HF-03 was skipped and a confirmed 50,000 MOQ stayed qualified
+#: against a 3,000 ceiling. Only a genuinely different basis (kg against units, sets
+#: against units) is still a mismatch. An unlisted unit keeps its cleaned spelling.
+UNIT_SYNONYMS = {
+    "units": "units",
+    "unit": "units",
+    "pcs": "units",
+    "pc": "units",
+    "pieces": "units",
+    "piece": "units",
+    "ea": "units",
+    "each": "units",
+    "개": "units",
+    "sets": "sets",
+    "set": "sets",
+    "세트": "sets",
+    "kg": "kg",
+    "kgs": "kg",
+    "kilogram": "kg",
+    "kilograms": "kg",
+    "킬로그램": "kg",
+    "g": "g",
+    "gram": "g",
+    "grams": "g",
+    "그램": "g",
+    "ml": "ml",
+    "l": "l",
+    "liter": "l",
+    "liters": "l",
+    "litre": "l",
+    "litres": "l",
+}
+
+#: ISO-3166-1 alpha-2 name table: (code, English names and aliases, Korean names). A
+#: VOCABULARY, not a tunable number. It covers every country any region token above can
+#: name, every country the package's fixtures and references use, and the major K-Beauty
+#: export markets, so a raw record carrying "United Kingdom", "UK" or "영국" normalises to
+#: GB instead of "unknown" (which zeroed B-MR1 for an otherwise identical record).
+#: normalize_country() matches on _country_key(), so spacing, case, accents, a leading
+#: "the" and punctuation do not matter. Add a row here when a new market turns up.
+_COUNTRY_NAME_ROWS = (
+    ("AE", ("United Arab Emirates", "UAE", "Emirates"), ("아랍에미리트", "아랍에미레이트")),
+    ("AF", ("Afghanistan",), ("아프가니스탄",)),
+    ("AL", ("Albania",), ("알바니아",)),
+    ("AM", ("Armenia",), ("아르메니아",)),
+    ("AO", ("Angola",), ("앙골라",)),
+    ("AR", ("Argentina",), ("아르헨티나",)),
+    ("AT", ("Austria",), ("오스트리아",)),
+    ("AU", ("Australia",), ("호주", "오스트레일리아")),
+    ("AZ", ("Azerbaijan",), ("아제르바이잔",)),
+    ("BA", ("Bosnia and Herzegovina", "Bosnia"), ("보스니아헤르체고비나", "보스니아")),
+    ("BD", ("Bangladesh",), ("방글라데시",)),
+    ("BE", ("Belgium",), ("벨기에",)),
+    ("BG", ("Bulgaria",), ("불가리아",)),
+    ("BH", ("Bahrain",), ("바레인",)),
+    ("BN", ("Brunei", "Brunei Darussalam"), ("브루나이",)),
+    ("BO", ("Bolivia",), ("볼리비아",)),
+    ("BR", ("Brazil", "Brasil"), ("브라질",)),
+    ("BT", ("Bhutan",), ("부탄",)),
+    ("BY", ("Belarus",), ("벨라루스",)),
+    ("CA", ("Canada",), ("캐나다",)),
+    ("CH", ("Switzerland",), ("스위스",)),
+    ("CI", ("Cote d'Ivoire", "Ivory Coast"), ("코트디부아르",)),
+    ("CL", ("Chile",), ("칠레",)),
+    ("CM", ("Cameroon",), ("카메룬",)),
+    ("CN", ("China", "People's Republic of China", "PRC", "Mainland China"), ("중국",)),
+    ("CO", ("Colombia",), ("콜롬비아",)),
+    ("CR", ("Costa Rica",), ("코스타리카",)),
+    ("CY", ("Cyprus",), ("키프로스",)),
+    ("CZ", ("Czech Republic", "Czechia"), ("체코",)),
+    ("DE", ("Germany", "Deutschland"), ("독일",)),
+    ("DK", ("Denmark",), ("덴마크",)),
+    ("DO", ("Dominican Republic",), ("도미니카공화국",)),
+    ("DZ", ("Algeria",), ("알제리",)),
+    ("EC", ("Ecuador",), ("에콰도르",)),
+    ("EE", ("Estonia",), ("에스토니아",)),
+    ("EG", ("Egypt",), ("이집트",)),
+    ("ES", ("Spain", "Espana"), ("스페인",)),
+    ("ET", ("Ethiopia",), ("에티오피아",)),
+    ("FI", ("Finland",), ("핀란드",)),
+    ("FJ", ("Fiji",), ("피지",)),
+    ("FR", ("France",), ("프랑스",)),
+    ("GB", ("United Kingdom", "UK", "Great Britain", "Britain", "England", "Scotland",
+            "Wales", "Northern Ireland", "United Kingdom of Great Britain and Northern Ireland"),
+     ("영국",)),
+    # Bare "Georgia" is also a US state, so only the unambiguous country name is an alias.
+    ("GE", ("Republic of Georgia", "Georgia (country)"), ("조지아",)),
+    ("GH", ("Ghana",), ("가나",)),
+    ("GR", ("Greece",), ("그리스",)),
+    ("GT", ("Guatemala",), ("과테말라",)),
+    ("HK", ("Hong Kong", "Hong Kong SAR"), ("홍콩",)),
+    ("HN", ("Honduras",), ("온두라스",)),
+    ("HR", ("Croatia",), ("크로아티아",)),
+    ("HU", ("Hungary",), ("헝가리",)),
+    ("ID", ("Indonesia",), ("인도네시아",)),
+    ("IE", ("Ireland", "Republic of Ireland"), ("아일랜드",)),
+    ("IL", ("Israel",), ("이스라엘",)),
+    ("IN", ("India",), ("인도",)),
+    ("IQ", ("Iraq",), ("이라크",)),
+    ("IR", ("Iran",), ("이란",)),
+    ("IS", ("Iceland",), ("아이슬란드",)),
+    ("IT", ("Italy", "Italia"), ("이탈리아",)),
+    ("JO", ("Jordan",), ("요르단",)),
+    ("JP", ("Japan", "Nippon"), ("일본",)),
+    ("KE", ("Kenya",), ("케냐",)),
+    ("KG", ("Kyrgyzstan", "Kyrgyz Republic"), ("키르기스스탄",)),
+    ("KH", ("Cambodia",), ("캄보디아",)),
+    ("KP", ("North Korea", "DPRK", "Democratic People's Republic of Korea"),
+     ("북한", "조선민주주의인민공화국")),
+    ("KR", ("South Korea", "Korea", "Republic of Korea", "Korea, Republic of", "ROK"),
+     ("한국", "대한민국", "남한")),
+    ("KW", ("Kuwait",), ("쿠웨이트",)),
+    ("KZ", ("Kazakhstan",), ("카자흐스탄",)),
+    ("LA", ("Laos", "Lao PDR"), ("라오스",)),
+    ("LB", ("Lebanon",), ("레바논",)),
+    ("LK", ("Sri Lanka",), ("스리랑카",)),
+    ("LT", ("Lithuania",), ("리투아니아",)),
+    ("LU", ("Luxembourg",), ("룩셈부르크",)),
+    ("LV", ("Latvia",), ("라트비아",)),
+    ("LY", ("Libya",), ("리비아",)),
+    ("MA", ("Morocco",), ("모로코",)),
+    ("MD", ("Moldova",), ("몰도바",)),
+    ("ME", ("Montenegro",), ("몬테네그로",)),
+    ("MK", ("North Macedonia", "Macedonia"), ("북마케도니아",)),
+    ("MM", ("Myanmar", "Burma"), ("미얀마",)),
+    ("MN", ("Mongolia",), ("몽골",)),
+    ("MO", ("Macau", "Macao"), ("마카오",)),
+    ("MT", ("Malta",), ("몰타",)),
+    ("MV", ("Maldives",), ("몰디브",)),
+    ("MX", ("Mexico",), ("멕시코",)),
+    ("MY", ("Malaysia",), ("말레이시아",)),
+    ("MZ", ("Mozambique",), ("모잠비크",)),
+    ("NG", ("Nigeria",), ("나이지리아",)),
+    ("NI", ("Nicaragua",), ("니카라과",)),
+    ("NL", ("Netherlands", "Holland"), ("네덜란드",)),
+    ("NO", ("Norway",), ("노르웨이",)),
+    ("NP", ("Nepal",), ("네팔",)),
+    ("NZ", ("New Zealand",), ("뉴질랜드",)),
+    ("OM", ("Oman",), ("오만",)),
+    ("PA", ("Panama",), ("파나마",)),
+    ("PE", ("Peru",), ("페루",)),
+    ("PG", ("Papua New Guinea",), ("파푸아뉴기니",)),
+    ("PH", ("Philippines",), ("필리핀",)),
+    ("PK", ("Pakistan",), ("파키스탄",)),
+    ("PL", ("Poland",), ("폴란드",)),
+    ("PR", ("Puerto Rico",), ("푸에르토리코",)),
+    ("PS", ("Palestine", "State of Palestine"), ("팔레스타인",)),
+    ("PT", ("Portugal",), ("포르투갈",)),
+    ("PY", ("Paraguay",), ("파라과이",)),
+    ("QA", ("Qatar",), ("카타르",)),
+    ("RO", ("Romania",), ("루마니아",)),
+    ("RS", ("Serbia",), ("세르비아",)),
+    ("RU", ("Russia", "Russian Federation"), ("러시아",)),
+    ("SA", ("Saudi Arabia", "KSA", "Kingdom of Saudi Arabia"), ("사우디아라비아", "사우디")),
+    ("SE", ("Sweden",), ("스웨덴",)),
+    ("SG", ("Singapore",), ("싱가포르",)),
+    ("SI", ("Slovenia",), ("슬로베니아",)),
+    ("SK", ("Slovakia",), ("슬로바키아",)),
+    ("SN", ("Senegal",), ("세네갈",)),
+    ("SV", ("El Salvador",), ("엘살바도르",)),
+    ("SY", ("Syria",), ("시리아",)),
+    ("TH", ("Thailand",), ("태국",)),
+    ("TJ", ("Tajikistan",), ("타지키스탄",)),
+    ("TL", ("Timor-Leste", "East Timor"), ("동티모르",)),
+    ("TM", ("Turkmenistan",), ("투르크메니스탄",)),
+    ("TN", ("Tunisia",), ("튀니지",)),
+    ("TR", ("Turkey", "Turkiye"), ("튀르키예", "터키")),
+    ("TW", ("Taiwan",), ("대만",)),
+    ("TZ", ("Tanzania",), ("탄자니아",)),
+    ("UA", ("Ukraine",), ("우크라이나",)),
+    ("UG", ("Uganda",), ("우간다",)),
+    # Bare "America" also names the continents, so it is not an alias for US.
+    ("US", ("United States", "United States of America", "USA"), ("미국",)),
+    ("UY", ("Uruguay",), ("우루과이",)),
+    ("UZ", ("Uzbekistan",), ("우즈베키스탄",)),
+    ("VE", ("Venezuela",), ("베네수엘라",)),
+    ("VN", ("Vietnam", "Viet Nam"), ("베트남",)),
+    ("YE", ("Yemen",), ("예멘",)),
+    ("ZA", ("South Africa",), ("남아프리카공화국", "남아공")),
+    ("ZM", ("Zambia",), ("잠비아",)),
+    ("ZW", ("Zimbabwe",), ("짐바브웨",)),
+)
+
+
+def _country_key(text):
+    """Matching key for a country name: accents, case, a leading "the", spacing and
+    punctuation removed ("The Netherlands" -> "netherlands", "Côte d'Ivoire" -> "cotedivoire")."""
+    folded = unicodedata.normalize("NFKD", unicodedata.normalize("NFKC", text))
+    folded = "".join(ch for ch in folded if not unicodedata.combining(ch)).casefold().strip()
+    folded = re.sub(r"^the\s+", "", folded)
+    return re.sub(r"[^\w]|_", "", folded, flags=re.UNICODE)
+
+
+#: Every officially assigned ISO-3166-1 alpha-2 code (249). A two-letter token outside it
+#: ("XX", "EU", "UK") is not a country code; "UK" still resolves to GB through the name table.
+ISO_3166_ALPHA2 = frozenset(
+    """AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ
+    BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO
+    DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU
+    GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW
+    KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU
+    MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW
+    PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF
+    TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA
+    ZM ZW""".split()
+)
+
+#: _country_key(name) -> alpha-2. Built once from _COUNTRY_NAME_ROWS.
+COUNTRY_ALIASES = {}
+for _code, _english, _korean in _COUNTRY_NAME_ROWS:
+    for _name in (_code,) + _english + _korean:
+        COUNTRY_ALIASES[_country_key(_name)] = _code
+
 
 
 
@@ -581,6 +886,7 @@ SCHEMA_NAMES = (
     # An EXPORT document: scripts/export_leads.py writes it for a TradeWith admin to
     # import and no scorer reads it (references/data-contract.md section 9.4).
     "tradewith-bulk-buyers",
+    "outreach-draft",
 )
 
 _DATE_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
@@ -737,6 +1043,16 @@ def write_output(obj, pretty, stream=None):
         )
     target.write(text)
     target.write("\n")
+
+
+def invalid_output_path(path):
+    """Where a document that failed self-validation is written instead of --output.
+
+    "out/result.json" -> "out/result.invalid.json". The requested --output path is never
+    written with an invalid document, so a chained command cannot pick one up.
+    """
+    root, ext = os.path.splitext(path)
+    return "%s.invalid%s" % (root, ext or ".json")
 
 
 def eprint(*parts, **kwargs):
@@ -1022,10 +1338,46 @@ def normalize_company_name(name):
         text = re.sub(r"[^\w\s]|_", " ", text, flags=re.UNICODE)
         tokens = text.split()
         tokens = _strip_legal_forms(tokens)
+        tokens = _strip_attached_korean_forms(tokens)
+        tokens = _strip_legal_forms(tokens)
         tokens = _strip_edge_tokens(tokens, ("the",))
         return " ".join(tokens)
     except Exception:
         return ""
+
+
+def _strip_attached_korean_forms(tokens):
+    """Strip a Korean legal form glued to the front of the first or the end of the last token."""
+    changed = True
+    while changed and tokens:
+        changed = False
+        for form in KOREAN_LEGAL_FORMS:
+            if len(tokens[0]) > len(form) and tokens[0].startswith(form):
+                tokens = [tokens[0][len(form):]] + tokens[1:]
+                changed = True
+            if len(tokens[-1]) > len(form) and tokens[-1].endswith(form):
+                tokens = tokens[:-1] + [tokens[-1][: -len(form)]]
+                changed = True
+    return tokens
+
+
+_HANGUL_RE = re.compile(r"[가-힣]")
+
+
+def name_match_key(normalized_name):
+    """Secondary dedupe key for a normalized company name.
+
+    Korean names are spaced inconsistently ("한빛 코스메틱" / "한빛코스메틱") while the
+    company is the same, so a name that contains Hangul compares with every space
+    removed. A Latin-script name keeps its spaces: there a space separates words and
+    removing it would fold unrelated names together. Returns "" for a non-string.
+    """
+    if not isinstance(normalized_name, str):
+        return ""
+    text = normalized_name.strip()
+    if _HANGUL_RE.search(text):
+        return re.sub(r"\s+", "", text)
+    return text
 
 
 #: Alias kept because seller.schema.json / buyer.schema.json describe this helper
@@ -1656,11 +2008,60 @@ def normalize_category(token):
     slug = _slugify(token)
     if not slug:
         return None
-    if slug in CATEGORY_SYNONYMS:
-        return CATEGORY_SYNONYMS[slug]  # may be None for a vertical marker
-    if slug in VERTICAL_MARKERS:
-        return None
+    candidates = [slug]
+    if _HANGUL_RE.search(slug):
+        candidates.append(slug.replace("_", ""))
+    graded = _CATEGORY_GRADE_SUFFIX_RE.sub("", slug)
+    if graded and graded != slug:
+        candidates.append(graded)
+    if slug.endswith("s") and len(slug) > 3:
+        candidates.append(slug[:-1])  # plural of a vocabulary slug ("serums", "toners")
+    for candidate in candidates:
+        if candidate in CATEGORY_SYNONYMS:
+            return CATEGORY_SYNONYMS[candidate]  # may be None for a vertical marker
+        if candidate in VERTICAL_MARKERS:
+            return None
+        if candidate in CATEGORY_VOCABULARY:
+            return candidate
     return slug
+
+
+def is_known_category(slug):
+    """True when `slug` is a slug of the BUILD-CONTRACT 8.5 vocabulary."""
+    return isinstance(slug, str) and slug in CATEGORY_VOCABULARY
+
+
+def normalize_category_list(raw, notes, label):
+    """Seller-side / query-side category normalisation.
+
+    None = unknown; [] = verified empty; list = the in-vocabulary slugs. A vertical marker
+    and a slug outside the 8.5 vocabulary are both DROPPED with a note: an unmapped slug is
+    a term the vocabulary does not know, never evidence of a mismatch, so it must not reach
+    category_no_match or HF-01 (INV-07). A non-empty list that keeps nothing is UNKNOWN.
+    """
+    if not isinstance(raw, list):
+        return None
+    out = []
+    for slug in raw:
+        token = normalize_category(slug) if isinstance(slug, str) else None
+        if token is None:
+            notes.append(
+                "%s category token %r is a vertical marker, not a category; dropped before "
+                "scoring (BUILD-CONTRACT 8.5)" % (label, slug)
+            )
+            continue
+        if not is_known_category(token):
+            notes.append(
+                "%s category token %r is not in the BUILD-CONTRACT 8.5 vocabulary; dropped "
+                "before scoring (unmapped, treated as not stated rather than as a mismatch)"
+                % (label, slug)
+            )
+            continue
+        if token not in out:
+            out.append(token)
+    if raw and not out:
+        return None
+    return out
 
 
 def _category_parent(slug):
@@ -1677,7 +2078,9 @@ def _normalized_category_set(slugs):
     out = []
     for raw in slugs or []:
         slug = normalize_category(raw)
-        if slug and slug not in out:
+        # An unmapped slug relates to nothing: two identical unknown words are not an
+        # evidenced category match, and an unknown word is not an evidenced mismatch.
+        if slug and is_known_category(slug) and slug not in out:
             out.append(slug)
     return out
 
@@ -1741,6 +2144,39 @@ def verification_gaps(config, entity, record, penalties, record_categories=None,
             requested = ", ".join(slug.replace("_", " ") for slug in query_categories)
             labels.append("%s: %s" % (base, requested))
     return labels
+
+
+def normalize_unit(value):
+    """Canonical MOQ / quantity unit: UNIT_SYNONYMS applied after NFKC + casefold and
+    whitespace / period removal. Absent or "unknown" means "units" (SCORING-CONTRACT 2.3)."""
+    if value is None or is_unknown(value):
+        return "units"
+    text = unicodedata.normalize("NFKC", str(value)).casefold()
+    text = re.sub(r"[\s.]+", "", text)
+    if not text:
+        return "units"
+    return UNIT_SYNONYMS.get(text, text)
+
+
+def normalize_country(value):
+    """ISO-3166-1 alpha-2 for a code or a country name, "unknown", or None when unconvertible.
+
+    The name table is consulted before the two-letter shape test so that "UK" becomes GB;
+    any other two-letter value is upper-cased only when it is an assigned ISO-3166-1 code
+    (ISO_3166_ALPHA2), so "XX" or "EU" is unconvertible rather than a fake country
+    (BUILD-CONTRACT 8.7).
+    """
+    if not isinstance(value, str):
+        return None
+    text = unicodedata.normalize("NFKC", value).strip()
+    if is_unknown(text):
+        return UNKNOWN
+    code = COUNTRY_ALIASES.get(_country_key(text))
+    if code:
+        return code
+    if re.match(r"^[A-Za-z]{2}$", text) and text.upper() in ISO_3166_ALPHA2:
+        return text.upper()
+    return None
 
 
 def normalize_certification(token):
@@ -1825,6 +2261,62 @@ class _InverseString(str):
         return str.__le__(self, other)
 
 
+def unresolved_conflict_count(record):
+    """Number of unresolved conflicts on a record (SCORING-CONTRACT 4.4).
+
+    An unresolved conflict is a non-empty `conflicts_with` on an evidence item whose claim
+    has no conflicts[] entry. It is counted ONCE PER UNORDERED PAIR of evidence ids:
+    references/evidence-policy.md tells the agent to cross-link both items of a
+    disagreeing pair, and dedupe_companies.py writes both directions, so counting items
+    priced one reciprocal conflict as two (-20 instead of -10).
+    """
+    record = record if isinstance(record, dict) else {}
+    resolved_fields = set()
+    for conflict in record.get("conflicts") or []:
+        if isinstance(conflict, dict) and isinstance(conflict.get("field"), str):
+            resolved_fields.add(conflict["field"])
+    pairs = set()
+    items = record.get("evidence") if isinstance(record.get("evidence"), list) else []
+    for index, item in enumerate(items):
+        if not isinstance(item, dict):
+            continue
+        links = item.get("conflicts_with")
+        if not isinstance(links, list) or not links or item.get("claim") in resolved_fields:
+            continue
+        ident = item.get("evidence_id")
+        own = ident if isinstance(ident, str) and ident else "\x00item-%d" % (index,)
+        for link in links:
+            pairs.add(frozenset((own, str(link))))
+    return len(pairs)
+
+
+def record_confidence(record, entity, evidence_quality_score, config=None):
+    """SCORING-CONTRACT 0.7 confidence, every constant read from config["confidence"].
+
+    One implementation for all three scorers (INV-29): score_match.py previously carried
+    its own copy with the constants typed in, so --config never reached match confidence.
+    Never reads any score of the company except its evidence quality.
+    """
+    cfg = config if config is not None else load_config()
+    conf = cfg["confidence"]
+    coverage = conf["coverage_factor"]
+    record = record if isinstance(record, dict) else {}
+    claims = cfg["evidence"]["material_claims"][entity]
+    unknown_claims = sum(1 for claim in claims if is_unknown(record.get(claim)))
+    factor = _to_decimal(coverage["base"]) + _to_decimal(coverage["per_unknown_material_claim"]) * Decimal(
+        unknown_claims
+    )
+    factor = max(_to_decimal(coverage["floor"]), factor)
+    stale = _to_decimal(conf["stale_multiplier"]) if record.get("stale") is True else Decimal(1)
+    conflicts = (
+        _to_decimal(conf["unresolved_conflict_multiplier"]) if unresolved_conflict_count(record) else Decimal(1)
+    )
+    value = _to_decimal(evidence_quality_score) / Decimal(100) * factor * stale * conflicts
+    rounded = _to_decimal(round_half_up(value, 2))
+    rounded = max(_to_decimal(conf["min"]), min(Decimal(1), rounded))
+    return float(rounded)
+
+
 def evidence_quality(record, claim_set, as_of, config=None):
     """SCORING-CONTRACT section 4 evidence-quality sub-score, integer 0..100."""
     cfg = config if config is not None else load_config()
@@ -1887,14 +2379,7 @@ def evidence_quality(record, claim_set, as_of, config=None):
     if record_is_stale or all_covered_stale:
         stale_penalty = _to_decimal(evidence_config.get("stale_penalty", 0))
 
-    resolved_fields = set()
-    for conflict in record.get("conflicts") or []:
-        if isinstance(conflict, dict) and conflict.get("field"):
-            resolved_fields.add(conflict["field"])
-    unresolved = 0
-    for item in items:
-        if item.get("conflicts_with") and item.get("claim") not in resolved_fields:
-            unresolved += 1
+    unresolved = unresolved_conflict_count(record)
     conflict_penalty_total = Decimal(0)
     if unresolved:
         per_conflict = _to_decimal(evidence_config.get("conflict_penalty", 0))

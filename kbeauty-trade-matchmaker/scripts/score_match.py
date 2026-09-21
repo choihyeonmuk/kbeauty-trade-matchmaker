@@ -166,6 +166,12 @@ def _known_list(record, field):
 
 
 def _normalise_unit(value):
+    """MOQ unit through the shared synonym table (pcs / EA / 개 / unit are all "units")."""
+    return _common.normalize_unit(value)
+
+
+def _normalise_form(value):
+    """Product-form token: NFKC + casefold, whitespace and periods removed."""
     if value is None:
         return "units"
     text = unicodedata.normalize("NFKC", str(value)).casefold()
@@ -357,18 +363,9 @@ class _Ctx(object):
         raw = _known_list(self.seller, "product_categories")
         if raw is None:
             return None
-        out = []
-        for slug in raw:
-            token = _common.normalize_category(slug)
-            if token is None:
-                self.notes.append(
-                    "category token '%s' is a vertical marker, not a category: dropped from "
-                    "the scored list (BUILD-CONTRACT 8.5)" % (slug,)
-                )
-                continue
-            if token not in out:
-                out.append(token)
-        return out
+        # Vertical markers and unmapped slugs are dropped with a note; a non-empty list
+        # that keeps nothing is UNKNOWN, so HF-01 is skipped rather than failed (INV-07).
+        return _common.normalize_category_list(raw, self.notes, "seller")
 
     def _certifications(self):
         raw = _known_list(self.seller, "certifications")
@@ -442,8 +439,8 @@ def _crit_s_pf2(ctx):
     seller_forms = _known_list(ctx.seller, "product_forms")
     if seller_forms is None:
         return _unknown(["seller.product_forms"])
-    have = set(_normalise_unit(form) for form in seller_forms)
-    want = set(_normalise_unit(form) for form in (ctx.query.get("product_forms") or []))
+    have = set(_normalise_form(form) for form in seller_forms)
+    want = set(_normalise_form(form) for form in (ctx.query.get("product_forms") or []))
     fired = []
     if want and want.issubset(have):
         fired.append("form_exact_match")
@@ -824,7 +821,7 @@ CRITERION_HANDLERS = {
 
 
 def _adj_category_no_match_verified(ctx):
-    if not ctx.categories:
+    if not ctx.categories or not ctx.query_categories:
         return False
     return _common.category_relation(ctx.categories, ctx.query_categories) == "none"
 
@@ -883,7 +880,9 @@ def _best_cert_item(ctx, token):
 def _adj_certification_claim_unverified(ctx):
     for token in ctx.certifications or []:
         best = _best_cert_item(ctx, token)
-        if best is not None and _tier(best) in (4, 5):
+        # A held token no evidence item supports is treated as unverified too: otherwise
+        # citing a tier-4 directory cost -10 while citing nothing at all cost nothing.
+        if best is None or _tier(best) in (4, 5):
             return True
     return False
 
@@ -1033,29 +1032,8 @@ def _score_dimension(component, dimension_cfg, ctx, skipped_rules):
 
 
 def _confidence(ctx, evidence_quality):
-    """SCORING-CONTRACT 0.7. Never reads any score of the company itself."""
-    claims = ctx.config["evidence"]["material_claims"]["seller"]
-    unknown_count = 0
-    for claim in claims:
-        if claim not in ctx.seller or _common.is_unknown(ctx.seller.get(claim)):
-            unknown_count += 1
-    coverage_factor = max(Decimal("0.5"), Decimal(1) - Decimal("0.05") * Decimal(unknown_count))
-    stale_multiplier = Decimal("0.6") if ctx.seller.get("stale") is True else Decimal(1)
-    resolved_fields = set()
-    for conflict in ctx.seller.get("conflicts") or []:
-        if isinstance(conflict, dict) and conflict.get("field"):
-            resolved_fields.add(conflict["field"])
-    dangling = set()
-    for item in _evidence(ctx.seller):
-        links = item.get("conflicts_with")
-        if links and item.get("claim") not in resolved_fields:
-            dangling.add(item.get("claim"))
-    conflict_multiplier = Decimal("0.85") if dangling else Decimal(1)
-    value = (
-        _dec(evidence_quality) / Decimal(100) * coverage_factor * stale_multiplier * conflict_multiplier
-    )
-    rounded = _dec(_common.round_half_up(value, 2))
-    return float(_clamp(rounded, Decimal("0.05"), Decimal("1.0")))
+    """SCORING-CONTRACT 0.7, read from config["confidence"] by the shared helper (INV-29)."""
+    return _common.record_confidence(ctx.seller, "seller", evidence_quality, ctx.config)
 
 
 # --------------------------------------------------------------------------------------
@@ -1290,18 +1268,9 @@ def _project_rfq(rfq, base_query, as_of, notes):
     for slug in rfq.get("product_categories_extra") or []:
         if slug not in categories:
             categories.append(slug)
-    normalised = []
-    for slug in categories:
-        token = _common.normalize_category(slug)
-        if token is None:
-            notes.append(
-                "RFQ category token '%s' is a vertical marker, not a category: dropped "
-                "(BUILD-CONTRACT 8.5)" % (slug,)
-            )
-            continue
-        if token not in normalised:
-            normalised.append(token)
-    query["product_categories"] = normalised
+    # An RFQ whose categories all normalise away ("k_beauty") names no category at all:
+    # query.product_categories_absent then makes S-PF1 inapplicable and HF-01 inapplicable.
+    query["product_categories"] = _common.normalize_category_list(categories, notes, "RFQ") or []
 
     forms = rfq.get("product_forms")
     query["product_forms"] = list(forms) if isinstance(forms, list) else []
@@ -1937,7 +1906,7 @@ def _run(args, config):
     explicit = args.as_of
     if explicit is None and isinstance(envelope.get("as_of"), str):
         explicit = envelope["as_of"]
-    as_of = _common.resolve_as_of(list(sellers) + [rfq], explicit)
+    as_of = _common.resolve_as_of(list(sellers) + [rfq], explicit, config)
 
     base_query = envelope.get("query") if isinstance(envelope.get("query"), dict) else {}
     query = _project_rfq(rfq, base_query, as_of, notes)
@@ -2012,7 +1981,7 @@ def _run(args, config):
             dimension_key = component_source[component]
             dimension_cfg = config["seller"]["dimensions"][dimension_key]
             if dimension_cfg.get("computed_by") == "evidence_quality_function":
-                score = int(evidence_quality_fn(seller, claim_set, as_of))
+                score = int(evidence_quality_fn(seller, claim_set, as_of, config=config))
                 component_scores[component] = int(_clamp(score, 0, 100))
                 continue
             score, dim_details, dim_penalties = _score_dimension(
@@ -2359,6 +2328,7 @@ def _run(args, config):
     document["rfq_constraints"] = _rfq_constraints(rfq, query)
 
     exit_code = 0
+    target = args.output
     if args.validate:
         schema = _common.load_schema("match-result", args.schema_dir)
         errors = _common.validate(document, schema)
@@ -2367,11 +2337,15 @@ def _run(args, config):
             for line in errors[:20]:
                 _common.eprint("    " + line, quiet=args.quiet)
             exit_code = 1
+            if target:
+                # Never leave an invalid document at the requested --output path.
+                target = _common.invalid_output_path(target)
+                _common.eprint("    invalid document written to %s, not %s" % (target, args.output))
 
     stream = None
     handle = None
-    if args.output:
-        handle = open(args.output, "w", encoding="utf-8")
+    if target:
+        handle = open(target, "w", encoding="utf-8")
         stream = handle
     try:
         _common.write_output(document, args.pretty, stream)

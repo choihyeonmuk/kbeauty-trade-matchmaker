@@ -3,7 +3,7 @@
   "title": "K-Beauty Trade Matchmaker scoring configuration",
   "description": "The single place every tunable scoring number lives. score_buyer.py, score_seller.py, score_match.py and validate_output.py READ this file and MUST NOT hardcode any weight, point value, threshold or penalty. This is data, not a JSON Schema. PRD 6.3 (qualification rubrics), 6.4 (matching engine), 14 (determinism, versioning), Open Question 3 (threshold mode). Korean gloss: 모든 점수 상수의 단일 출처.",
   "schema_version": "0.1.0",
-  "score_version": "kbtm-score-0.1.0",
+  "score_version": "kbtm-score-0.2.0",
   "as_of_default": "2026-09-12",
   "config_notes": [
     "COMPUTATION ORDER for a buyer or seller dimension: (1) evaluate each criterion; (2) a criterion whose deciding inputs are ALL unknown takes unknown points instead of its signal points; (3) a criterion marked inapplicable for this query is dropped from BOTH the numerator and the denominator; (4) dimension_raw = 100 * sum(earned_points) / sum(applicable max_points); (5) dimension_score = clamp(round_half_up(dimension_raw) + sum(fired adjustments), 0, 100).",
@@ -102,7 +102,7 @@
     "stale_penalty_condition": "The record carries stale true, OR the covered material-claim set is NON-EMPTY and every covered material claim's best evidence is older than stale_threshold_days (PRD EVID-04, test T07). The non-empty guard is required: over an empty covered set the \"every\" clause is vacuously true and would penalise a fresh record whose evidence happens to carry no material claim. Applied once, not per item.",
     "conflict_penalty": -10,
     "conflict_penalty_max": -20,
-    "conflict_penalty_condition": "Per unresolved conflict on the record (PRD test T08). A conflict resolved in favour of the official/most recent source still costs nothing but must keep its conflict note.",
+    "conflict_penalty_condition": "Per unresolved conflict on the record (PRD test T08), counted once per UNORDERED PAIR of evidence ids: two items cross-linked to each other by conflicts_with are ONE conflict (-10), not two. A conflict resolved in favour of the official/most recent source still costs nothing but must keep its conflict note.",
     "inferred_penalty": -8,
     "inferred_penalty_condition": "At least one material claim rests only on evidence with inferred true (PRD EVID-03).",
     "components": {
@@ -489,6 +489,8 @@
             "max_points": 60,
             "aggregation": "max",
             "unknown_behavior": "neutral_penalty",
+            "inapplicable_when": ["query.product_categories_absent"],
+            "inapplicable_when_note": "Read by score_seller.py AND score_match.py. Without it score_match.py had no guard: an RFQ whose only category normalised away (a vertical marker such as k_beauty) fired category_no_match plus category_no_match_verified on every seller and returned no_match. Seller product_categories slugs outside the BUILD-CONTRACT 8.5 vocabulary are dropped with a note before scoring; a list that keeps none is unknown, never a verified mismatch.",
             "signals": {
               "category_exact_match": 60,
               "category_parent_match": 42,
@@ -651,7 +653,7 @@
           "sample_or_trial_order_accepted": 3,
           "moq_unit_mismatch": -10
         },
-        "adjustments_note": "moq_unit_mismatch fires when seller.moq_unit and the query unit differ, so the comparison could not be made; the criterion is then treated as unknown as well (seller.schema.json moq_unit)."
+        "adjustments_note": "moq_unit_mismatch fires when seller.moq_unit and the query unit differ after _common.UNIT_SYNONYMS normalisation (pcs, pieces, EA, 개 and unit are all \"units\"; kg or sets against units still differ), so the comparison could not be made; the criterion is then treated as unknown as well (seller.schema.json moq_unit)."
       },
       "compliance_readiness": {
         "max_points": 100,
@@ -717,7 +719,7 @@
           "certifications_verified_official": 5,
           "certification_claim_unverified": -10
         },
-        "adjustments_note": "certifications_verified_official maps to seller.certifications_verified == true (an official, exhaustive certification page); at the dimension ceiling it is clamped away, which is why S-CP1 now prices verification directly rather than leaving it to this adjustment. certification_claim_unverified fires when a HELD token's best supporting evidence sits on a tier 4-5 source, i.e. the claim is credible only as far as a directory, a press release or a forum post carries it. DECISION, recorded so it is not re-opened: this adjustment keeps that SOURCE-QUALITY condition and is deliberately NOT re-keyed to \"certifications_verified is not true\". Three reasons. (1) Verification is now priced exactly once, inside S-CP1 (55 verified against 38 unverified), where the criterion's own renormalisation contains it; a further -10 on the same input would price the same fact twice. (2) \"is not true\" is true of UNKNOWN as well as of false, and certifications_verified was unknown on 83% of a 12-company tier-1-verified Korean population, so the adjustment would fire on most of the field and separate nobody - the same failure that made the unknown flag useless at a limit of 2 (see unknown.max_unknown_dimensions_before_flag_by_entity_note). (3) It would also reach a record whose certifications are absent entirely, which has already paid the S-CP1 unknown neutral, so unknown would be penalised twice; the UNKNOWN RULE and never_hard_reject_on_unknown forbid that. The two conditions price different things and both are kept: S-CP1 prices whether the LIST is exhaustive, this adjustment prices whether the SOURCE is credible. Never infer a certification (PRD EVID-05, test acceptance 15.2).",
+        "adjustments_note": "certifications_verified_official maps to seller.certifications_verified == true (an official, exhaustive certification page); at the dimension ceiling it is clamped away, which is why S-CP1 now prices verification directly rather than leaving it to this adjustment. certification_claim_unverified fires when a HELD token's best supporting evidence sits on a tier 4-5 source, i.e. the claim is credible only as far as a directory, a press release or a forum post carries it, OR when no evidence item supports the held token at all - an uncited claim is no more credible than a directory-cited one, and before this a tier-4 citation cost -10 while citing nothing cost nothing. DECISION, recorded so it is not re-opened: this adjustment keeps that SOURCE-QUALITY condition and is deliberately NOT re-keyed to \"certifications_verified is not true\". Three reasons. (1) Verification is now priced exactly once, inside S-CP1 (55 verified against 38 unverified), where the criterion's own renormalisation contains it; a further -10 on the same input would price the same fact twice. (2) \"is not true\" is true of UNKNOWN as well as of false, and certifications_verified was unknown on 83% of a 12-company tier-1-verified Korean population, so the adjustment would fire on most of the field and separate nobody - the same failure that made the unknown flag useless at a limit of 2 (see unknown.max_unknown_dimensions_before_flag_by_entity_note). (3) It would also reach a record whose certifications are absent entirely, which has already paid the S-CP1 unknown neutral, so unknown would be penalised twice; the UNKNOWN RULE and never_hard_reject_on_unknown forbid that. The two conditions price different things and both are kept: S-CP1 prices whether the LIST is exhaustive, this adjustment prices whether the SOURCE is credible. Never infer a certification (PRD EVID-05, test acceptance 15.2).",
         "adjustments_residual_note": "Recorded for calibration, not fixed here: S-CP1 carries inapplicable_when query.required_certifications_absent, so in a discovery run that names no required certification the verified / unverified split never applies and verification reaches the dimension only through certifications_verified_official (+5), which the ceiling usually clamps. Closing it means making S-CP4 verification-aware, which is a scorer change as well as a table change and therefore a calibration decision rather than a config edit."
       },
       "export_readiness": {
@@ -976,7 +978,7 @@
   },
   "condition_keys": {
     "query.country_absent": "The discovery query set no country filter.",
-    "query.product_categories_absent": "The query (or RFQ) named no product category.",
+    "query.product_categories_absent": "The query (or RFQ) named no product category that normalises into the BUILD-CONTRACT 8.5 vocabulary (a vertical marker or an unmapped slug alone counts as absent).",
     "query.product_forms_absent": "rfq.product_forms is absent or empty, so no formulation was requested.",
     "query.channels_absent": "The query named no sales channel.",
     "query.required_certifications_absent": "rfq.required_certifications is absent or empty.",
@@ -991,6 +993,8 @@
     "match_default_top_n": 10,
     "max_top_n": 50,
     "max_outreach_drafts_per_run": 20,
+    "max_rfq_age_days": 30,
+    "max_rfq_age_days_note": "INV-34 freshness bound used by adapters/tradewith_adapter.py when it queues an outreach draft: a draft that cites an RFQ or makes a live-demand claim is refused when its rfq_as_of is more than this many days before the run's as_of (or after it). An RFQ status is a point-in-time fact; an old one is not current demand.",
     "max_outreach_drafts_per_run_note": "PRD 11.1 bulk guardrail. Hard cap on how many outreach drafts one run may produce, and the per-call cap on adapters/tradewith_adapter.py post_outreach_drafts (BUILD-CONTRACT.md 13.3 rule c). Drafts are review-queue writes with auto_send false; this package has no send capability at all (INV-10).",
     "render_score_as": "integer out of 100",
     "render_confidence_as": "HIGH >= 0.75, MEDIUM >= 0.5, LOW below 0.5",
@@ -998,7 +1002,7 @@
     "note": "PRD 12.1 renders confidence as a word (HIGH/MEDIUM/LOW) while the stored value stays numeric."
   },
   "calibration": {
-    "note": "Numbers used ONLY by scripts/make_review_sheet.py and scripts/acceptance_report.py, which MEASURE the rubric against operator labels. Nothing in this block can change a score: no scorer reads it, so score_version stays kbtm-score-0.1.0 and schema_version stays 0.1.0 when a value here moves. INV-29 still binds - the two calibration scripts hardcode none of these numbers. Read references/calibration-notes.md section 7 before changing one.",
+    "note": "Numbers used ONLY by scripts/make_review_sheet.py and scripts/acceptance_report.py, which MEASURE the rubric against operator labels. Nothing in this block can change a score: no scorer reads it, so score_version stays kbtm-score-0.2.0 and schema_version stays 0.1.0 when a value here moves. INV-29 still binds - the two calibration scripts hardcode none of these numbers. Read references/calibration-notes.md section 7 before changing one.",
     "min_sample": 30,
     "min_sample_note": "The smallest accept+reject population (`unsure` excluded) from which a Human Acceptance Rate may be quoted as evidence for a weight or threshold decision. Below it the report sets summary.insufficient_sample true and says in notes[] that it cannot justify a change. It is a reporting guard, not a statistical claim: references/calibration-notes.md section 7 states the sample composition rules (>= 2 countries, >= 2 categories, target 100-200 reviewed records) that the number alone cannot express.",
     "score_bands": [

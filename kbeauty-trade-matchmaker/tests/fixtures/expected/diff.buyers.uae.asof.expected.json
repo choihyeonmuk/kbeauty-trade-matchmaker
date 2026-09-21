@@ -1,15 +1,15 @@
 {
   "report_kind": "run-diff",
   "schema_version": "0.1.0",
-  "score_version": "kbtm-score-0.1.0",
-  "skill_version": "0.3.0",
+  "score_version": "kbtm-score-0.2.0",
+  "skill_version": "0.4.0",
   "as_of": "2028-03-01",
   "kind": "discovery-result",
   "entity": "buyer",
   "before": {
     "as_of": "2026-09-12",
-    "score_version": "kbtm-score-0.1.0",
-    "skill_version": "0.3.0",
+    "score_version": "kbtm-score-0.2.0",
+    "skill_version": "0.4.0",
     "match_run_id": null,
     "rfq_id": null,
     "threshold_used": 70,
@@ -20,8 +20,8 @@
   },
   "after": {
     "as_of": "2028-03-01",
-    "score_version": "kbtm-score-0.1.0",
-    "skill_version": "0.3.0",
+    "score_version": "kbtm-score-0.2.0",
+    "skill_version": "0.4.0",
     "match_run_id": null,
     "rfq_id": null,
     "threshold_used": 70,
@@ -65,21 +65,21 @@
       "matched_by": "id",
       "company_name": "Kanto Import Partners KK",
       "score": {
-        "before": 36,
-        "after": 32,
+        "before": 37,
+        "after": 33,
         "delta": -4
       },
       "dimensions": [
         {
           "dimension": "evidence_quality",
-          "before": 64,
-          "after": 23,
+          "before": 74,
+          "after": 33,
           "delta": -41
         }
       ],
       "confidence": {
-        "before": 0.41,
-        "after": 0.15,
+        "before": 0.47,
+        "after": 0.21,
         "delta": -0.26
       }
     },

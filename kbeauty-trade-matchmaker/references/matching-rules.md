@@ -7,7 +7,7 @@ bounded protocol that governs the one place a model may move a number.
 | | |
 |---|---|
 | Applies to | `scripts/score_match.py` (full pipeline) and `scripts/score_buyer.py` / `scripts/score_seller.py` (the discovery subset of stage 1) |
-| `score_version` | `kbtm-score-0.1.0` |
+| `score_version` | `kbtm-score-0.2.0` |
 | Canonical `as_of` in every example | `2026-09-12` |
 | **Binding source of every number** | `schemas/scoring.config.json` |
 | Output document | `schemas/match-result.schema.json` |
@@ -15,7 +15,7 @@ bounded protocol that governs the one place a model may move a number.
 
 > **The config wins, always.** Weights, tolerances, rule names, failure-message templates, the
 > rerank limits and the threshold below are copies of `schemas/scoring.config.json` at
-> `score_version kbtm-score-0.1.0`, reproduced so an operator can read the pipeline without opening
+> `score_version kbtm-score-0.2.0`, reproduced so an operator can read the pipeline without opening
 > JSON. The scripts read the config at run time. If this page and the config disagree, **the config
 > is right and this page is a bug**.
 

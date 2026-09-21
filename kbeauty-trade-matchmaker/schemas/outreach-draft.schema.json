@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tradewith.example/kbeauty-trade-matchmaker/v0.1.0/outreach-draft.schema.json",
+  "title": "Outreach draft (parsed)",
+  "description": "The structure scripts/validate_output.py --schema outreach-draft reads out of a rendered references/output-format.md 10.4 draft (templates/buyer_outreach.md, templates/seller_outreach.md), and the JSON draft shape adapters/tradewith_adapter.py queues for review. A Markdown draft is parsed into this shape before it is checked; a JSON draft is checked as given, and its draft_markdown, when present, is parsed and checked as well. The schema covers shape only; the cross-field rules (DRAFT-01..DRAFT-12, INV-09, INV-31, INV-34, R10.4.6) are enforced by validate_output.validate_outreach_draft. Korean gloss: 아웃리치 초안의 파싱 구조.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "side",
+    "channel_type",
+    "channel_value",
+    "language",
+    "subject",
+    "body",
+    "personalization_facts"
+  ],
+  "properties": {
+    "format": {
+      "type": "string",
+      "description": "markdown when parsed from a rendered draft, json when given as the adapter's JSON draft.",
+      "enum": ["markdown", "json"]
+    },
+    "entity_id": {
+      "type": "string",
+      "description": "buyer_id / seller_id of the target (JSON drafts).",
+      "minLength": 1
+    },
+    "company_name": {
+      "type": "string",
+      "description": "Line 1 of the envelope: Outreach Draft — {{side}} — {{company_name}}.",
+      "minLength": 1
+    },
+    "side": {
+      "type": "string",
+      "enum": ["Buyer", "Seller"]
+    },
+    "status": {
+      "const": "READY_FOR_REVIEW"
+    },
+    "auto_send": {
+      "const": false
+    },
+    "manual_approval_required": {
+      "const": true
+    },
+    "approval": {
+      "const": "required (human)"
+    },
+    "channel_type": {
+      "type": "string",
+      "description": "Company-level channel vocabulary of BUILD-CONTRACT 3.6.",
+      "enum": ["partnership_form", "wholesale_form", "form", "contact_page", "corporate_email", "phone", "linkedin", "messenger", "other"]
+    },
+    "channel_value": {
+      "type": "string",
+      "minLength": 1
+    },
+    "language": {
+      "type": "string",
+      "minLength": 1
+    },
+    "subject": {
+      "type": "string",
+      "minLength": 1
+    },
+    "body": {
+      "type": "string",
+      "minLength": 1
+    },
+    "personalization_facts": {
+      "type": "array",
+      "description": "One entry per `- {{fact}} — [{{source_url}}] (observed {{observed_date}})` line. A JSON draft may name the evidence_id each fact rests on.",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["fact", "source_url"],
+        "properties": {
+          "fact": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_url": {
+            "type": "string",
+            "pattern": "^https?://[^\\s]+$"
+          },
+          "observed_date": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+          },
+          "evidence_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "compliance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "jurisdiction": {
+          "type": "string",
+          "minLength": 1
+        },
+        "direct_marketing_review": {
+          "type": "string",
+          "enum": ["required", "not_required", "unknown"]
+        },
+        "ad_label_required": {
+          "type": "string",
+          "enum": ["yes", "no", "unknown"]
+        },
+        "personal_data_used": {
+          "const": "none (company-level channel only)"
+        },
+        "claims_verified": {
+          "type": "string",
+          "enum": ["yes", "blocked"]
+        }
+      }
+    },
+    "reviewer_checklist": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "legal_notices": {
+      "type": "array",
+      "description": "The lines under the Required legal notices heading, as rendered.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "next_action": {
+      "const": "Next action: human review, then APPROVED_FOR_OUTREACH in the application layer"
+    },
+    "rfq_id": {
+      "type": "string"
+    },
+    "rfq_status": {
+      "type": "string"
+    },
+    "rfq_as_of": {
+      "type": "string"
+    },
+    "draft_markdown": {
+      "type": "string"
+    }
+  }
+}

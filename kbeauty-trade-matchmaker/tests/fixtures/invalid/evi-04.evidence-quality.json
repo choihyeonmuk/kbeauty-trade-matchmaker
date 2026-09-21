@@ -1,0 +1,15 @@
+{
+  "rule": "EVI-04",
+  "description": "The record turns stale but keeps evidence_quality 94 (the stale penalty is -25).",
+  "base": "buyers_uae:BUY-gulfglow-example",
+  "schema": "buyer",
+  "mutations": [
+    {
+      "op": "set",
+      "path": [
+        "stale"
+      ],
+      "value": true
+    }
+  ]
+}

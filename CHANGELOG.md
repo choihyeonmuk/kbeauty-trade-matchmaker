@@ -6,6 +6,76 @@ Every feature update to this package gets an entry here, and a short version of 
 
 The package carries three independent versions (see "Versions" in the README). Each entry says which of them moved.
 
+## v0.4.0 (2026-09-21)
+
+`skill_version` 0.3.0 → **0.4.0** · `schema_version` 0.1.0 (unchanged) · `score_version` `kbtm-score-0.1.0` → **`kbtm-score-0.2.0`**
+
+**This release can change a score.** Eight audit fixes landed in the scorers and one golden fixture no longer
+reproduces byte for byte (kantoimport: `evidence_quality` 64 → 74, confidence 0.41 → 0.47, score 36 → 37), so by
+the package's own bump rule the rubric version moves. Scores stored under `kbtm-score-0.1.0` are stale by
+definition: re-score the stored raw records before comparing them with new runs. `diff_runs.py` refuses to
+compare the two versions. One new document type (`outreach-draft`) changes no existing shape, so
+`schema_version` stays.
+
+### New: draft validation (`validate_output.py --schema outreach-draft`)
+
+- `validate_output.py --input draft.md --schema outreach-draft --record <scored run> --strict` checks a Mode 4
+  draft against `schemas/outreach-draft.schema.json` and rules `DRAFT-01` … `DRAFT-12` (listed in
+  `references/output-format.md` 10.4.1):
+  - the 10.4 envelope, its headings and their order, and an unticked reviewer checklist
+  - a subject of 60 characters or fewer, and the subject prefix a notice block mandates (`KR.corporate_email`)
+  - every `Personalization facts` line cites a URL that is the `source_url` of an evidence item on the target,
+    with the same observed date, and not only stale evidence
+  - the target is on the scored run, `qualified: true`, not excluded, and of the right side
+  - the channel is one of the target's own company-level `contact_channels`
+  - no fake opt-out, no unrendered `{{token}}` or `[[ev:` marker
+  - the compliance flags are what `compliance.config.json` resolves for the jurisdiction and channel
+- It does **not** judge trade terms or wording. A value typed into the recorded-profile block is the reviewer
+  checklist's job, not the validator's.
+- `schemas/compliance.config.json` is the jurisdiction × channel lookup behind the last rule. It carries the
+  same keys, statuses and blocks as `templates/legal_notices.md`, and a test fails when they drift apart. It
+  includes the India, Indonesia and Türkiye rows that v0.2.0 added to `compliance-notes.md`.
+
+### New: evidence rules under `--invariants`
+
+- `EVI-01` … `EVI-06`: source tier against source type, official domain, the confidence cap on inferred
+  evidence, evidence quality, confidence, and stale age. Each has a failing fixture in `tests/fixtures/invalid/`,
+  and `tests/fixtures/valid/` holds honest records the policy allows, each with a control that must fail.
+
+### Fixed: audit findings in the scorers (`AR-01` … `AR-08`)
+
+- `AR-01` `--config` now reaches confidence and evidence quality.
+- `AR-02` MOQ unit synonyms (`pcs`, `pieces`, `EA`, `개`, `unit`) are all `units`, so they no longer switch
+  `HF-03` off through a false unit mismatch.
+- `AR-03` a category that normalises to nothing (a vertical marker, an unmapped slug) counts as absent and
+  never rejects a seller.
+- `AR-04` country names normalise to alpha-2.
+- `AR-05` a document that fails its own validation never lands on `--output`. It is written beside it as
+  `*.invalid.json`, so a chained command cannot pick it up.
+- `AR-06` an uncited certification costs at least what a tier-4 one does.
+- `AR-07` a reciprocal conflict (two items cross-linked by `conflicts_with`) is one conflict, not two. This is
+  the fix that moves the golden score above.
+- `AR-08` Korean legal forms glued to a name (`주식회사한빛코스메틱`) and spacing variants dedupe. They run
+  alongside the v0.2.0 legal-form vocabularies.
+
+### Fixed: `NA` is a code, not a stand-in for unknown
+
+- INV-02 rejected `NA` everywhere, including the North America token of `seller.export_regions` and the ISO
+  alpha-2 of Namibia, so a seller that states it exports to North America could not be recorded at all. The exact
+  upper-case token is now accepted in code-valued fields and in the evidence value that mirrors them. Found on a
+  live Mode 2 run.
+
+### Changed: MCP server and failed scorers
+
+- Because of `AR-05`, a scorer that exits 1 leaves `output_path` unwritten. The server reports the
+  `*.invalid.json` sibling instead, and refuses an `output_path` whose sibling already exists, so "never
+  overwrites a file" still holds.
+
+### Tests
+
+- 536 → 748 cases. Two v0.3.0 goldens were regenerated for the score change (`diff.buyers.uae.asof`,
+  `export.sellers.csv`); every other golden reproduces with only the version strings changed.
+
 ## v0.3.0 (2026-09-19)
 
 `skill_version` 0.2.0 → **0.3.0** · `schema_version` 0.1.0 (unchanged) · `score_version` `kbtm-score-0.1.0` (unchanged)

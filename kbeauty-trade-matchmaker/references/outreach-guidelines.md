@@ -116,8 +116,12 @@ evidence id and must not be dressed up as specific.
 
 Mechanics:
 
-1. Build the draft only from a **scored** record (`score_version != "unscored"`). Drafting from a raw
-   discovery record cannot satisfy R10.4.2.
+1. Build the draft only from a **scored, qualified** target: a `score_buyer.py` / `score_seller.py`
+   record with `qualified: true`, or a `score_match.py` candidate with `hard_filter.passed: true` and
+   `qualified: true` (`score_version != "unscored"` in both cases). Drafting from a raw discovery
+   record cannot satisfy R10.4.2. The scorers never write `status`: `QUALIFIED` and
+   `MATCH_CANDIDATE` are lifecycle states a human or the adapter sets afterwards, so they are not the
+   gate for drafting.
 2. For each intended personalization sentence, name the `evidence_id` that supports it **before**
    writing the sentence. No id ⇒ no sentence.
 3. Write the sentence at **no more than** the strength of the quote (`references/evidence-policy.md`
@@ -263,7 +267,7 @@ Rules:
 | "Since your MOQ is around 1,000 units…" | `moq` was `"unknown"`; the number was guessed. | "Your site does not state an OEM minimum order quantity — could you confirm the band?" |
 | "Your ISO 22716 certification means…" | No `certifications` evidence item names the scheme. | "If the plant holds ISO 22716, that clears the most common requirement in this category." |
 | "You already export to the UAE." | `export_markets` did not contain `AE`. | "Your export page names Saudi Arabia, Kuwait, Singapore and Japan — the UAE would be adjacent to markets you already serve." |
-| "As the exclusive distributor for Korea in your territory…" | Exclusivity is contractual and unobservable. | *(delete — v0.1.0 asserts nothing about exclusivity)* |
+| "As the exclusive distributor for Korea in your territory…" | Exclusivity is contractual and unobservable. | *(delete — v0.1.1 asserts nothing about exclusivity)* |
 | "Your OEM service can handle private label." | `oem_odm` and `private_label` are independent flags. | "Your site describes OEM projects; could you confirm whether private-label programmes are also available?" |
 | "You are FDA approved." | Cosmetics are not FDA-approved. | "If the facility carries a US FDA establishment registration, that covers the MoCRA question for US-bound requests." |
 

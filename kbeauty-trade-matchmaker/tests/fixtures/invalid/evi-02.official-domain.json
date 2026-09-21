@@ -1,0 +1,17 @@
+{
+  "rule": "EVI-02",
+  "description": "An official_site item read on a domain that is not the company's.",
+  "base": "buyers_uae:BUY-gulfglow-example",
+  "schema": "buyer",
+  "mutations": [
+    {
+      "op": "set",
+      "path": [
+        "evidence",
+        0,
+        "source_url"
+      ],
+      "value": "https://unrelated-directory.example/gulfglow"
+    }
+  ]
+}

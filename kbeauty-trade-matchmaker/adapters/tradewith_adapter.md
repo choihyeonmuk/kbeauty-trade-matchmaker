@@ -99,7 +99,7 @@ a plain-English name and under its endpoint-shaped alias; both spellings are the
 |---|---|---|---|
 | `GET /rfqs/:id` | `get_rfq(rfq_id)` | `get-rfq --id 134` | one `rfq` document |
 | `GET /sellers?filters=` | `list_sellers(filters)` | `list-sellers` | list of `seller` documents |
-| `POST /research/leads` | `post_research_leads(records)` | `save-leads` (`post-research-leads`) | `[{"id", "status"}]` |
+| `POST /research/leads` | `post_research_leads(records, overwrite=False)` | `save-leads` (`post-research-leads`) `[--overwrite]` | `[{"id", "status", "result"}]` |
 | `POST /matches` | `post_matches(match_result)` | `save-matches` (`post-matches`) | `{"id"}` |
 | `POST /outreach-drafts` | `post_outreach_drafts(drafts)` | `save-outreach-drafts` (`post-outreach-drafts`) | `[{"id", "status"}]` |
 | `PATCH /leads/:id/status` | `patch_lead_status(lead_id, status)` | `update-lead-status` (`patch-lead-status`) | `{"id", "status"}` |
@@ -158,8 +158,22 @@ refuses on failure (BUILD-CONTRACT.md 13.3 rule a). The chain is:
 3. **Refusal.** If neither validator can be used, the adapter refuses to read or write rather than
    persist something unchecked.
 
-A batch is all-or-nothing: `save-leads` validates every record before writing the first one, so a
-partial write cannot leave the data directory half-updated.
+Validation is all-or-nothing: `save-leads` validates every record before writing the first one, so a
+schema or invariant failure cannot leave the data directory half-updated. A record whose `status` is
+`QUALIFIED`, `MATCH_CANDIDATE` or `READY_FOR_REVIEW` must be scored with `qualified: true` (§3.4).
+
+**Re-running `save-leads` never silently downgrades a stored lead** (file backend). Each record is
+compared with `leads/<id>.json` and reported per id in `result`:
+
+| `result` | When | Written? |
+|---|---|---|
+| `created` | no stored lead | yes |
+| `unchanged` | identical to the stored lead | no |
+| `updated` | differs, and is not a downgrade (or `--overwrite` was passed) | yes |
+| `refused` | would replace a scored lead with an `unscored` one, or move `status` backwards in the 9.1 order — without `--overwrite`; or the stored lead is in an application-layer state (`--overwrite` does not apply) | no; `reason` says why |
+
+The other records in the batch are still written. The CLI prints every row and exits `1` when any
+row is `refused`.
 
 Reads are validated too, but warn by default rather than fail, so one malformed stored record does
 not take a whole run down. `--strict` promotes those warnings to errors.
@@ -186,20 +200,48 @@ Enforced per draft:
   everywhere (INV-11, INV-31).
 - Every `personalization_facts[]` entry needs a `fact` and an absolute `source_url` a reviewer can
   click (PRD OUT-02).
-- When `draft_markdown` is supplied, line 2 must be exactly `Status: READY_FOR_REVIEW` and line 3
-  exactly `Auto-send: false` (BUILD-CONTRACT.md R10.4.1).
+- `draft_markdown`, the rendered 10.4 draft, is required: line 2 must be exactly
+  `Status: READY_FOR_REVIEW` and line 3 exactly `Auto-send: false` (BUILD-CONTRACT.md R10.4.1).
+- **The draft must pass `validate_outreach_draft()`** from `scripts/validate_output.py` (loaded by
+  file path, so an installed copy always uses its own validator; if it cannot be loaded, nothing is
+  queued). When the file backend holds the target — `leads/<entity_id>.json`, or a stored match run
+  for the cited RFQ — and the cited RFQ, they are passed as the record, so `DRAFT-09` (scored,
+  qualified, hard filter passed) and `DRAFT-05` (facts match evidence) apply too. Any
+  error-severity issue — no personalization fact, a missing `(광고)`, a missing or altered legal
+  notice, a leftover `{{token}}` or `[[ev:]]`, and the rest of output-format 10.4 — is a refusal
+  that lists every issue. Warnings (`DRAFT-12` body length, the `INV-31` name-shape heuristics)
+  print to stderr and do not block.
 - Any dispatch- or credential-shaped key (`recipients`, `to`, `cc`, `bcc`, `reply_to`,
   `schedule_at`, `send_at`, `transport`, `smtp_host`, `webhook_url`, `token`, `bearer`,
   `password`, `api_key`, …) is a refusal. The scan is **recursive**: a key nested inside a
   sub-object or an array element (`delivery.transport`, `auth_block.token`) is the same
   instruction and gets the same refusal, and the error names the JSON path of every hit.
-- A **live-demand claim** in `subject`, `body` or `draft_markdown` — "currently looking",
-  "a buyer is waiting", "limited slots", `현재 … 찾는 바이어`, `마감 임박`, … — is a refusal
-  unless the draft carries `rfq_id`, an `rfq_status` of `qualified` / `matching` /
-  `proposal_open`, and an `rfq_as_of` date, **and** states that status and that date in the
-  text a reviewer reads (INV-34, R10.4.3, PRD 11.1, PRD test T05). The phrase list is
-  illustrative, not exhaustive: it is a floor under the reviewer, never a licence for a
-  demand claim it happens not to match.
+- A **live-demand claim** or an **RFQ citation** in the subject or body (the JSON fields and the
+  rendered draft) — "currently looking", "a distributor asked about your brand", "only 3 slots",
+  `해당 바이어가 관심이 있습니다`, `문의가 왔습니다`, `RFQ #134`, … or any `rfq_*` field — is a
+  refusal unless every one of these holds (INV-34, R10.4.3, PRD 11.1, PRD test T05):
+  - the run has an **explicit** as-of date: `--as-of` on the CLI, `as_of=` to `get_adapter()`
+    (or to `_normalize_draft()` without an adapter). A draft that carries an `rfq_*` field or cites
+    `RFQ #…` is refused without one, because an RFQ's age measured against
+    `scoring.config.json as_of_default` (a frozen date) would let a stale RFQ through;
+  - the draft carries `rfq_id` (matching every `RFQ #…` in the text), an `rfq_status` of
+    `qualified` / `matching` / `proposal_open`, and an `rfq_as_of` date;
+  - the text states that status and that date, and states no other, non-open status;
+  - `rfq_as_of` is not after the run's `--as-of` and not more than `max_rfq_age_days` before it
+    (`scoring.config.json output.max_rfq_age_days`, default 30): an old status is stale demand;
+  - `get_rfq(rfq_id)` on the same backend finds the RFQ, in an open status equal to
+    `rfq_status`, with `as_of` equal to `rfq_as_of` — the caller's fields are claims, the stored
+    RFQ is the fact;
+  - for every stored match run of that RFQ (file backend `matches/`), the target seller is not in
+    `excluded[]` and its `hard_filter.passed` is `true`.
+
+  The phrase list (`live_demand_matches`), the status/date readers and the open states are
+  imported from `scripts/validate_output.py`, so the adapter and the validator hold one list. It
+  targets a third party said to want the recipient, so the sender's own search ("We are currently
+  looking for UAE distributors") is not refused, and a dated "you are actively looking for …"
+  sentence is accepted without an RFQ when a Personalization fact backs its date (a stored lead's
+  `sourcing_signals` item when the file backend holds the lead; see output-format 10.4.1 `INV-34`). It is a floor under
+  the reviewer, never a licence for a demand claim it happens not to match.
 
 `draft_id` defaults to `OD-<entity_id>-<channel_type>`, so re-running the same draft overwrites
 rather than piling up duplicates.
@@ -214,7 +256,12 @@ INV-09, INV-37) — before it makes any request, on either backend.
 On the file backend the adapter also knows the lead's current state, so it enforces the
 BUILD-CONTRACT.md 9.1 transition table: forward skips such as `VERIFIED → MATCH_CANDIDATE` are
 refused, the listed backward edges are allowed, re-asserting the current state is a no-op, and a
-record already in an application-layer state is left alone.
+record already in an application-layer state is left alone. `QUALIFIED`, `MATCH_CANDIDATE` and
+`READY_FOR_REVIEW` are refused for a lead that is `unscored` or does not carry `qualified: true`
+(INV-37, SKILL.md Mode 4): a raw or below-threshold record stops at `VERIFIED`.
+
+The `http` backend cannot read a lead, so it applies only the target-state check; the transition
+table and the scored-and-qualified rule are the server's to enforce (§5.6).
 
 ### 3.5 Adapter responses are evidence
 
@@ -274,6 +321,7 @@ company's **public** behaviour (BUILD-CONTRACT.md 4.7).
   `leads/<buyer_id|seller_id>.json`, `matches/<match_run_id>.json`,
   `outreach-drafts/<draft_id>.json` (BUILD-CONTRACT.md 3.5).
 - **Writes are last-write-wins on the id**, so re-running the same inputs is byte-stable (INV-13).
+  The exception is `leads/`: `save-leads` refuses a downgrade unless `--overwrite` is passed (§3.2).
 - Files are UTF-8, `indent=2`, `ensure_ascii=False`, one trailing newline — readable in a diff and
   reviewable in a pull request.
 - Directories are created on first write. Reading a section that does not exist yet returns an
@@ -345,11 +393,14 @@ Internal seller candidates.
 
 Store external discovery results.
 
-- **Request**: `{"as_of": "YYYY-MM-DD", "schema_version": "0.1.0", "records": [ … ]}` where each
-  record is a full `buyer` or `seller` document. The client has already validated every record
-  against the schema and the invariants; validate again server-side anyway.
+- **Request**: `{"as_of": "YYYY-MM-DD", "schema_version": "0.1.0", "overwrite": false, "records": [ … ]}`
+  where each record is a full `buyer` or `seller` document. The client has already validated every
+  record against the schema and the invariants; validate again server-side anyway.
 - **201 body**: `{"results": [{"id": "<buyer_id|seller_id>", "status": "<entity_status>"}, …]}`,
   one row per submitted record, in the submitted order.
+- **Refuse downgrades unless `overwrite` is true**: replacing a scored lead with an `unscored` one,
+  or moving `status` backwards. Never replace a lead in `APPROVED_FOR_OUTREACH` or later. The client
+  cannot read your stored leads, so this rule is yours to enforce (the file backend's version is §3.2).
 - **Dedupe on `canonical_domain`**, per PRD 13.2. The client sends `canonical_domain`,
   `normalized_name`, `alias_domains[]` and `merged_from[]` already computed; merging on your side
   should keep the surviving id and append absorbed ids to `merged_from`.
@@ -381,7 +432,9 @@ Queue drafts for human review.
 - **Request**: `{"as_of": "…", "auto_send": false, "manual_approval_required": true,
   "drafts": [ … ]}`. Each draft carries `draft_id`, `entity_id`, optional `rfq_id`, `side`,
   `channel_type`, `channel_value`, `language`, `subject`, `body`, `personalization_facts[]`,
-  optional `draft_markdown`, and the three fixed flags of §3.3.
+  `draft_markdown`, optional `rfq_status` / `rfq_as_of`, and the three fixed flags of §3.3.
+- Before posting, the client reads each cited RFQ through `GET /rfqs/:id` (§3.3), so that endpoint
+  must be reachable whenever a draft cites an RFQ.
 - **201 body**: `{"results": [{"id": "<draft_id>", "status": "READY_FOR_REVIEW"}, …]}`.
 - **This endpoint must not dispatch anything.** It is a review-queue write. If your platform later
   gains a send capability, it must be a **separate endpoint behind a separate human approval**, and
@@ -399,7 +452,9 @@ Move a lead through the operational state machine.
 - **Request**: `{"status": "<entity_status>"}`.
 - **200 body**: `{"id": "<lead_id>", "status": "<entity_status>"}`.
 - The skill only ever sends `DISCOVERED`, `VERIFIED`, `QUALIFIED`, `MATCH_CANDIDATE`,
-  `READY_FOR_REVIEW` or `CLOSED`. Enforce the PRD 8 transition table server-side as well, and own
+  `READY_FOR_REVIEW` or `CLOSED`. Enforce the PRD 8 transition table server-side — and refuse
+  `QUALIFIED` / `MATCH_CANDIDATE` / `READY_FOR_REVIEW` for a lead that is unscored or not
+  `qualified: true`, because this client cannot read the lead to check (§3.4) — and own
   `APPROVED_FOR_OUTREACH` and everything after it yourself — that edge is the human approval gate
   and must never be reachable from an automated client.
 
@@ -440,6 +495,10 @@ Move a lead through the operational state machine.
 | `ERROR: transition VERIFIED -> MATCH_CANDIDATE is not a skill-performed edge` | A forward skip in the state machine | Go through `QUALIFIED` (BUILD-CONTRACT.md 9.1) |
 | `ERROR: refusing to write status APPROVED_FOR_OUTREACH` | Working as designed | A human approves in TradeWith; the skill's job ended at `READY_FOR_REVIEW` |
 | `ERROR: refusing N outreach drafts in one call` | Above the bulk guardrail | Split the run; the cap is a PRD 11.1 safety limit, not a performance limit |
+| `ERROR: refusing status QUALIFIED for lead …: it is unscored` / `qualified is False` | The lead was never scored, or scored below threshold | Score it (`score_buyer.py` / `score_seller.py`) and save the scored record; a non-qualified lead stays at `VERIFIED` |
+| `ERROR: N record(s) refused and left as stored` from `save-leads` | The run would downgrade a stored lead (see each row's `reason`) | Save the scored output instead, or pass `--overwrite` if replacing it is intended |
+| `ERROR: draft[i] (…) failed outreach-draft validation and was not queued` | `validate_outreach_draft` found an error (listed below the line) | Fix the draft; `python3 scripts/validate_output.py --input draft.md --schema outreach-draft --record <record>` shows the same issues |
+| `ERROR: draft[i] … is stale demand` / `… but RFQ 134 is 'closed'` | The cited RFQ is older than `max_rfq_age_days`, or its stored status/date differs from the draft | Re-read the RFQ with `get-rfq` and redraft with its current status and `as_of`, or drop the demand claim |
 | `ERROR: rfq_id '…' is not a valid identifier` | Path separators or `..` in an id | Pass the bare id (`134`, `BUY-acme-com`) |
 
 ---

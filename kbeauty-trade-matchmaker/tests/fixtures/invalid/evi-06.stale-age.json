@@ -1,0 +1,18 @@
+{
+  "rule": "EVI-06",
+  "description": "A 2019 source nobody flagged stale: a warning, a failure under --strict. The item is not a material claim, so evidence_quality is unchanged.",
+  "base": "buyers_uae:BUY-gulfglow-example",
+  "schema": "buyer",
+  "mutations": [
+    {
+      "op": "set",
+      "path": [
+        "evidence",
+        8,
+        "source_date"
+      ],
+      "value": "2019-01-01"
+    }
+  ],
+  "strict": true
+}

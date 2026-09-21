@@ -435,7 +435,7 @@ HALAL is nowhere on the site → `certifications` stays as read and "HALAL certi
 Summary
 - Query: sunscreen / OEM/ODM / MOQ <= 3,000 / ISO22716
 - Candidates found: 24 · Qualified (>=70): 8
-- As of: 2026-09-12 · Score version: kbtm-score-0.1.0
+- As of: 2026-09-12 · Score version: kbtm-score-0.2.0
 
 Top Candidates
 1. Hanbit Cosmetic Co., Ltd. — 91/100 — HIGH

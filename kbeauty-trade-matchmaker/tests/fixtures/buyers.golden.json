@@ -1502,7 +1502,7 @@
       "canonical_domain": "palefade.example",
       "country": "GB",
       "company_type": "importer",
-      "status": "VERIFIED",
+      "status": "DISCOVERED",
       "qualification_score": 0,
       "confidence": 0,
       "evidence": [

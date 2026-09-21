@@ -3,7 +3,7 @@
   "run": {
     "script": "score_buyer.py",
     "as_of": "2026-09-12",
-    "score_version": "kbtm-score-0.1.0",
+    "score_version": "kbtm-score-0.2.0",
     "threshold": 70,
     "threshold_mode": "fixed",
     "hard_filter_rules_applied": []
@@ -304,16 +304,16 @@
       ]
     },
     "BUY-kantoimport-example": {
-      "qualification_score": 36,
+      "qualification_score": 37,
       "qualified": false,
-      "confidence": 0.41,
+      "confidence": 0.47,
       "dimension_scores": {
         "kbeauty_fit": 11,
         "b2b_role": 73,
         "sourcing_intent": 31,
         "market_relevance": 0,
         "reachability": 50,
-        "evidence_quality": 64
+        "evidence_quality": 74
       },
       "unknown_criteria": [
         "B-CR2",

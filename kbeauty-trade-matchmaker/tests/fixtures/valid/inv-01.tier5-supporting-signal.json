@@ -1,0 +1,23 @@
+{
+  "rule": "INV-01",
+  "policy": "evidence-policy 8 row 9",
+  "description": "The only korean_products_signal evidence is a tier-5 'Top 10 K-Beauty importers' blog. The item is kept as a supporting signal and the field stays unknown, because the field needs a tier 1-3 source. Scored by score_buyer.py, so evidence_quality and confidence are recomputed.",
+  "base": "buyers_golden:BUY-gulfglow-example",
+  "scorer": "score_buyer.py",
+  "query": "query-buyer-uae-kbeauty.json",
+  "mutations": [
+    {"op": "set", "path": ["korean_products_signal"], "value": "unknown"},
+    {"op": "set", "path": ["evidence", 2, "source_url"], "value": "https://kbeautyblog.example/top-10-uae-importers"},
+    {"op": "set", "path": ["evidence", 2, "source_domain"], "value": "kbeautyblog.example"},
+    {"op": "set", "path": ["evidence", 2, "source_type"], "value": "third_party"},
+    {"op": "set", "path": ["evidence", 2, "source_tier"], "value": 5},
+    {"op": "set", "path": ["evidence", 2, "is_official"], "value": false},
+    {"op": "set", "path": ["evidence", 2, "confidence"], "value": 0.2},
+    {"op": "set", "path": ["evidence", 2, "quote_or_summary"], "value": "Blog listicle names Gulf Glow among the top 10 K-Beauty importers in the UAE."}
+  ],
+  "control": {
+    "description": "the same blog item claimed as a tier-3 source",
+    "rule": "INV-01",
+    "mutations": [{"op": "set", "path": ["evidence", 2, "source_tier"], "value": 3}]
+  }
+}
