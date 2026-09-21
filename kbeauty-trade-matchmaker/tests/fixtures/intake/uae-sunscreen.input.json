@@ -1,0 +1,22 @@
+{
+  "schema_version": "0.1.0",
+  "rfq_id": "DRAFT-UAE-01",
+  "buyer_id": null,
+  "message": {
+    "text": "Hi, we are a distributor in Dubai. Looking for SPF50+ sunscreen, no white cast, private label. Around 5,000 pcs for the first order, MOQ must be 3000 pcs or lower. Need ISO 22716 and halal would be nice. Target 2.5 per unit. Shipping to the GCC.",
+    "language": "en",
+    "channel": "chat"
+  },
+  "fields": {
+    "destination_country": { "value": "AE", "quote": "distributor in Dubai", "inferred": true },
+    "destination_region": { "value": "GCC", "quote": "Shipping to the GCC" },
+    "product_category": { "value": "sunscreen", "quote": "SPF50+ sunscreen" },
+    "product_description": { "value": "SPF50+ sunscreen, no white cast", "quote": "SPF50+ sunscreen, no white cast" },
+    "quantity": { "value": 5000, "unit": "pcs", "quote": "Around 5,000 pcs" },
+    "max_moq": { "value": 3000, "unit": "pcs", "quote": "MOQ must be 3000 pcs or lower" },
+    "target_price": { "value": { "max": 2.5 }, "quote": "Target 2.5 per unit" },
+    "commercial_model": { "value": "private_label", "quote": "private label" },
+    "required_certifications": { "value": ["ISO 22716"], "quote": "Need ISO 22716" },
+    "preferred_certifications": { "value": ["halal"], "quote": "halal would be nice" }
+  }
+}

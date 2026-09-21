@@ -887,6 +887,9 @@ SCHEMA_NAMES = (
     # import and no scorer reads it (references/data-contract.md section 9.4).
     "tradewith-bulk-buyers",
     "outreach-draft",
+    # An INTAKE document: scripts/intake_rfq.py emits it from a buyer's free-text message.
+    # It carries the RFQ and the questions to ask back, and no scorer reads it.
+    "rfq-intake",
 )
 
 _DATE_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")

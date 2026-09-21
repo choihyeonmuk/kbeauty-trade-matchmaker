@@ -959,6 +959,64 @@ written; only a disk error during the write can leave a partial file.
 
 ---
 
+### 9.7 `rfq-intake` — from a buyer's message to an RFQ
+
+`scripts/intake_rfq.py` sits in front of Mode 3. The agent reads a free-text request and writes the
+**input**; the script checks it and emits the **report** (`schemas/rfq-intake.schema.json`). It scores
+nothing, no scorer reads it, and it cannot move `score_version`.
+
+**Input** (agent-written):
+
+```json
+{
+  "schema_version": "0.1.0",
+  "rfq_id": "DRAFT-UAE-01",
+  "buyer_id": null,
+  "message": { "text": "…the buyer's words, verbatim…", "language": "en", "channel": "chat" },
+  "fields": {
+    "destination_country": { "value": "AE", "quote": "distributor in Dubai", "inferred": true },
+    "destination_region":  { "value": "GCC", "quote": "Shipping to the GCC" },
+    "quantity":            { "value": 5000, "unit": "pcs", "quote": "Around 5,000 pcs" },
+    "required_certifications": { "value": ["ISO 22716"], "quote": "Need ISO 22716" }
+  }
+}
+```
+
+`fields` may carry only: `destination_country`, `destination_region`, `product_category`,
+`product_categories_extra`, `product_description`, `product_forms`, `quantity`, `max_moq`, `target_price`,
+`commercial_model`, `required_certifications`, `preferred_certifications`, `timeline`,
+`max_lead_time_days`, `required_seller_countries`, `excluded_seller_countries`. `status`, scores and
+`evidence` are the script's to set (`draft`, `unscored`, `0`, `[]`); offering them is exit 1. `quote` is a
+string or a list of strings; `unit` exists on `quantity` and `max_moq` only.
+
+**Rules the script enforces**
+
+| Rule | Behaviour |
+|---|---|
+| Quote must be in the message | Compared after NFKC, casefold and whitespace collapse. One absent quote refuses the whole input: exit 1, nothing written |
+| A quote is a phrase | 2..200 characters, and not cut out of the middle of an ASCII word ("on" inside "toner"). Korean is exempt from the word test because particles attach |
+| A stated number is the number in its quote | `quantity`, `max_moq`, `target_price`, `max_lead_time_days`: the value's digits must occur in the quote (`50000` is not "5,000 pcs"); beside a number word (천, 만, k, thousand, ribu…) trailing zeros are not expected. `inferred: true` skips this and is confirmed with the buyer instead. Amounts are finite and at most 10^12 |
+| No personal data | A quote, description, region word or `buyer_id` carrying an address or telephone shape is exit 1 (INV-31). The report does not copy `message.text`; it keeps `length`, `sha256` and the quotes. A personal *name* inside a quote cannot be detected here: quote the requirement, not the greeting |
+| Region is not a country | A region word offered as `destination_country` is exit 1. In `destination_region` it becomes a note and, when no country is known, a `region_not_country` question. Nothing expands it (BUILD-CONTRACT 8.7) |
+| Region word | `destination_region.value` is at most 80 characters and must occur inside its own quote |
+| Number without a unit | `quantity` → `"unknown"`, `max_moq` → `null`, the figure kept in a note, `unit_unstated` asked. `unit: "unknown"` or an empty token is unstated too; any other unit must be in the package vocabulary or be a currency code. "5천" may be pieces or money; the script does not choose |
+| Two units | `moq_unit` denominates both fields, so `quantity` is held and `unit_mismatch` asked |
+| Price without a currency | `target_price` → `"unknown"`, `currency_unstated` asked |
+| No commercial model | `"either"`, the schema's no-constraint value, with a note and a `missing` question |
+| No product category | `missing_required`, which is **blocking**: `rfq` is `null`, `ready_for_matching` is `false`, `readiness` is absent |
+| Empty list | Refused, except `required_certifications: []` ("no certificate needed"), which is accepted and shown back as `confirm_inferred` |
+| Unknown vocabulary | A category or certification outside the package vocabulary is kept verbatim (INV-33) and asked about |
+| `inferred: true` | Accepted, and a `confirm_inferred` question shows the buyer the quote and the reading |
+
+**Report.** `questions[]` is ordered by reason — `missing_required`, `region_not_country`,
+`unit_unstated`, `unit_mismatch`, `moq_exceeds_quantity`, `currency_unstated`, `timeline_in_past`,
+`unmapped_category`, `unmapped_certification`, `confirm_inferred`, `missing` — then by field, and
+numbered `Q-01`…; each carries `text_en` and `text_ko`. `readiness` is `score_match.py`'s own readiness
+function applied to the emitted RFQ, so it is the figure Mode 3 prints; `buyer_id` counts towards it and
+is the operator's link to make, so it is a note, not a question. Every stated field's quote is kept on the
+RFQ under `extensions.intake`. The RFQ is validated against `rfq.schema.json` before the report is
+written.
+
 ## 10. State machine
 
 UPPERCASE `entity_status` applies to buyer and seller records and to a seller inside a match run.

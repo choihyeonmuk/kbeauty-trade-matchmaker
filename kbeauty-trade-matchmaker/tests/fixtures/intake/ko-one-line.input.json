@@ -1,0 +1,17 @@
+{
+  "schema_version": "0.1.0",
+  "rfq_id": "DRAFT-KO-01",
+  "buyer_id": null,
+  "message": {
+    "text": "인도네시아에 들여갈 마스크팩 5천 찾습니다. 할랄 필수고 12월 전에 받아야 해요.",
+    "language": "ko",
+    "channel": "chat"
+  },
+  "fields": {
+    "destination_country": { "value": "인도네시아", "quote": "인도네시아에 들여갈" },
+    "product_category": { "value": "마스크팩", "quote": "마스크팩" },
+    "quantity": { "value": 5000, "quote": "5천" },
+    "required_certifications": { "value": ["할랄"], "quote": "할랄 필수" },
+    "timeline": { "value": "2026-11-30", "quote": "12월 전에", "inferred": true }
+  }
+}

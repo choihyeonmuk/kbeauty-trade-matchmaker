@@ -1,0 +1,95 @@
+{
+  "report_kind": "rfq-intake",
+  "schema_version": "0.1.0",
+  "skill_version": "0.4.0",
+  "as_of": "2026-09-21",
+  "rfq_id": "DRAFT-BLOCK-01",
+  "message": {
+    "language": "en",
+    "channel": "chat",
+    "length": 64,
+    "sha256": "9dc708820963a51598fae0b0ba262d5bca141e0e6c1d60417f869818040e0d10"
+  },
+  "ready_for_matching": false,
+  "stated_fields": [
+    "destination_region"
+  ],
+  "rfq": null,
+  "questions": [
+    {
+      "question_id": "Q-01",
+      "reason": "missing_required",
+      "field": "product_category",
+      "blocking": true,
+      "text_en": "Which product do you need? Without a product category the request cannot be matched.",
+      "text_ko": "어떤 제품이 필요하신가요? 제품 카테고리 없이는 매칭할 수 없습니다."
+    },
+    {
+      "question_id": "Q-02",
+      "reason": "region_not_country",
+      "field": "destination_country",
+      "blocking": false,
+      "text_en": "You wrote \"into Europe\". Which country will the goods be delivered to?",
+      "text_ko": "이렇게 쓰셨습니다: \"into Europe\". 물품이 실제로 도착할 국가는 어디인가요?"
+    },
+    {
+      "question_id": "Q-03",
+      "reason": "missing",
+      "field": "product_description",
+      "blocking": false,
+      "text_en": "Please tell us the product description.",
+      "text_ko": "제품 설명: 알려 주세요."
+    },
+    {
+      "question_id": "Q-04",
+      "reason": "missing",
+      "field": "quantity",
+      "blocking": false,
+      "text_en": "Please tell us the order quantity.",
+      "text_ko": "주문 수량: 알려 주세요."
+    },
+    {
+      "question_id": "Q-05",
+      "reason": "missing",
+      "field": "max_moq",
+      "blocking": false,
+      "text_en": "Please tell us the highest acceptable MOQ.",
+      "text_ko": "수용 가능한 최대 MOQ: 알려 주세요."
+    },
+    {
+      "question_id": "Q-06",
+      "reason": "missing",
+      "field": "target_price",
+      "blocking": false,
+      "text_en": "Please tell us the target unit price.",
+      "text_ko": "목표 단가: 알려 주세요."
+    },
+    {
+      "question_id": "Q-07",
+      "reason": "missing",
+      "field": "commercial_model",
+      "blocking": false,
+      "text_en": "Please tell us the commercial model (branded / private label / OEM-ODM).",
+      "text_ko": "거래 방식 (브랜드 완제품 / PB / OEM·ODM): 알려 주세요."
+    },
+    {
+      "question_id": "Q-08",
+      "reason": "missing",
+      "field": "timeline",
+      "blocking": false,
+      "text_en": "Please tell us the delivery deadline.",
+      "text_ko": "납기: 알려 주세요."
+    },
+    {
+      "question_id": "Q-09",
+      "reason": "missing",
+      "field": "required_certifications",
+      "blocking": false,
+      "text_en": "Please tell us the required certifications.",
+      "text_ko": "필수 인증: 알려 주세요."
+    }
+  ],
+  "notes": [
+    "buyer named the region \"Europe\"; not expanded into countries"
+  ]
+}

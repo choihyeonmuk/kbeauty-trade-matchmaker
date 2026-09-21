@@ -1,0 +1,141 @@
+{
+  "report_kind": "rfq-intake",
+  "schema_version": "0.1.0",
+  "skill_version": "0.4.0",
+  "as_of": "2026-09-21",
+  "rfq_id": "DRAFT-KO-01",
+  "message": {
+    "language": "ko",
+    "channel": "chat",
+    "length": 46,
+    "sha256": "dc27eb2e0ea1315f9884e7b440378b0e90ea29d29ea49e39914ec753e9fc911b"
+  },
+  "ready_for_matching": true,
+  "stated_fields": [
+    "destination_country",
+    "product_category",
+    "quantity",
+    "timeline",
+    "required_certifications"
+  ],
+  "rfq": {
+    "schema_version": "0.1.0",
+    "score_version": "unscored",
+    "rfq_id": "DRAFT-KO-01",
+    "buyer_id": null,
+    "destination_country": "ID",
+    "product_category": "mask_sheet",
+    "quantity": "unknown",
+    "max_moq": null,
+    "target_price": "unknown",
+    "commercial_model": "either",
+    "required_certifications": [
+      "HALAL"
+    ],
+    "timeline": "2026-11-30",
+    "status": "draft",
+    "qualification_score": 0,
+    "confidence": 0,
+    "unknown_penalty_applied": [],
+    "evidence": [],
+    "as_of": "2026-09-21",
+    "notes": [
+      "Built by intake_rfq.py from a buyer message; every stated field is quoted under extensions.intake.",
+      "quantity was written as \"5천\" with no unit; held until the buyer states one",
+      "commercial model not stated; set to \"either\", which constrains nothing"
+    ],
+    "extensions": {
+      "intake": {
+        "destination_country": {
+          "quote": "인도네시아에 들여갈",
+          "inferred": false
+        },
+        "product_category": {
+          "quote": "마스크팩",
+          "inferred": false
+        },
+        "quantity": {
+          "quote": "5천",
+          "inferred": false
+        },
+        "timeline": {
+          "quote": "12월 전에",
+          "inferred": true
+        },
+        "required_certifications": {
+          "quote": "할랄 필수",
+          "inferred": false
+        }
+      }
+    }
+  },
+  "questions": [
+    {
+      "question_id": "Q-01",
+      "reason": "unit_unstated",
+      "field": "quantity",
+      "blocking": false,
+      "text_en": "You wrote \"5천\" for the order quantity. Is that a number of pieces, sets, or an amount of money?",
+      "text_ko": "주문 수량 항목에 이렇게 쓰셨습니다: \"5천\". 개수인가요, 세트 수인가요, 금액인가요?"
+    },
+    {
+      "question_id": "Q-02",
+      "reason": "confirm_inferred",
+      "field": "timeline",
+      "blocking": false,
+      "text_en": "From \"12월 전에\" we read the delivery deadline as 2026-11-30. Is that right?",
+      "text_ko": "\"12월 전에\" → 납기: 2026-11-30. 이렇게 읽었는데 맞나요?"
+    },
+    {
+      "question_id": "Q-03",
+      "reason": "missing",
+      "field": "product_description",
+      "blocking": false,
+      "text_en": "Please tell us the product description.",
+      "text_ko": "제품 설명: 알려 주세요."
+    },
+    {
+      "question_id": "Q-04",
+      "reason": "missing",
+      "field": "max_moq",
+      "blocking": false,
+      "text_en": "Please tell us the highest acceptable MOQ.",
+      "text_ko": "수용 가능한 최대 MOQ: 알려 주세요."
+    },
+    {
+      "question_id": "Q-05",
+      "reason": "missing",
+      "field": "target_price",
+      "blocking": false,
+      "text_en": "Please tell us the target unit price.",
+      "text_ko": "목표 단가: 알려 주세요."
+    },
+    {
+      "question_id": "Q-06",
+      "reason": "missing",
+      "field": "commercial_model",
+      "blocking": false,
+      "text_en": "Please tell us the commercial model (branded / private label / OEM-ODM).",
+      "text_ko": "거래 방식 (브랜드 완제품 / PB / OEM·ODM): 알려 주세요."
+    }
+  ],
+  "notes": [
+    "quantity was written as \"5천\" with no unit; held until the buyer states one",
+    "commercial model not stated; set to \"either\", which constrains nothing",
+    "buyer_id is null; link the RFQ to a buyer record to complete readiness"
+  ],
+  "readiness": {
+    "qualification_score": 50,
+    "readiness_detail": {
+      "filled": 5,
+      "total": 10,
+      "missing_fields": [
+        "buyer_id",
+        "max_moq",
+        "product_description",
+        "quantity",
+        "target_price"
+      ]
+    }
+  }
+}

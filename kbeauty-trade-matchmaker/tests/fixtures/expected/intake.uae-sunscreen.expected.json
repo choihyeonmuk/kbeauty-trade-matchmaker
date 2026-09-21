@@ -1,0 +1,145 @@
+{
+  "report_kind": "rfq-intake",
+  "schema_version": "0.1.0",
+  "skill_version": "0.4.0",
+  "as_of": "2026-09-21",
+  "rfq_id": "DRAFT-UAE-01",
+  "message": {
+    "language": "en",
+    "channel": "chat",
+    "length": 245,
+    "sha256": "17cf3787e5998c1ec41838181e84c871dc71a89236a7c259c5b131327d46f8f0"
+  },
+  "ready_for_matching": true,
+  "stated_fields": [
+    "destination_country",
+    "destination_region",
+    "product_category",
+    "product_description",
+    "quantity",
+    "max_moq",
+    "target_price",
+    "commercial_model",
+    "required_certifications",
+    "preferred_certifications"
+  ],
+  "rfq": {
+    "schema_version": "0.1.0",
+    "score_version": "unscored",
+    "rfq_id": "DRAFT-UAE-01",
+    "buyer_id": null,
+    "destination_country": "AE",
+    "product_category": "sunscreen",
+    "product_description": "SPF50+ sunscreen, no white cast",
+    "quantity": 5000,
+    "max_moq": 3000,
+    "moq_unit": "units",
+    "target_price": "unknown",
+    "commercial_model": "private_label",
+    "required_certifications": [
+      "ISO22716"
+    ],
+    "preferred_certifications": [
+      "HALAL"
+    ],
+    "timeline": "unknown",
+    "status": "draft",
+    "qualification_score": 0,
+    "confidence": 0,
+    "unknown_penalty_applied": [],
+    "evidence": [],
+    "as_of": "2026-09-21",
+    "notes": [
+      "Built by intake_rfq.py from a buyer message; every stated field is quoted under extensions.intake.",
+      "buyer named the region \"GCC\"; not expanded into countries",
+      "target price was written as \"Target 2.5 per unit\" with no currency; held"
+    ],
+    "extensions": {
+      "intake": {
+        "destination_country": {
+          "quote": "distributor in Dubai",
+          "inferred": true
+        },
+        "destination_region": {
+          "quote": "Shipping to the GCC",
+          "inferred": false
+        },
+        "product_category": {
+          "quote": "SPF50+ sunscreen",
+          "inferred": false
+        },
+        "product_description": {
+          "quote": "SPF50+ sunscreen, no white cast",
+          "inferred": false
+        },
+        "quantity": {
+          "quote": "Around 5,000 pcs",
+          "inferred": false
+        },
+        "max_moq": {
+          "quote": "MOQ must be 3000 pcs or lower",
+          "inferred": false
+        },
+        "target_price": {
+          "quote": "Target 2.5 per unit",
+          "inferred": false
+        },
+        "commercial_model": {
+          "quote": "private label",
+          "inferred": false
+        },
+        "required_certifications": {
+          "quote": "Need ISO 22716",
+          "inferred": false
+        },
+        "preferred_certifications": {
+          "quote": "halal would be nice",
+          "inferred": false
+        }
+      }
+    }
+  },
+  "questions": [
+    {
+      "question_id": "Q-01",
+      "reason": "currency_unstated",
+      "field": "target_price",
+      "blocking": false,
+      "text_en": "You wrote \"Target 2.5 per unit\" for the target unit price. In which currency?",
+      "text_ko": "목표 단가 항목에 이렇게 쓰셨습니다: \"Target 2.5 per unit\". 어느 통화 기준인가요?"
+    },
+    {
+      "question_id": "Q-02",
+      "reason": "confirm_inferred",
+      "field": "destination_country",
+      "blocking": false,
+      "text_en": "From \"distributor in Dubai\" we read the destination country as AE. Is that right?",
+      "text_ko": "\"distributor in Dubai\" → 도착 국가: AE. 이렇게 읽었는데 맞나요?"
+    },
+    {
+      "question_id": "Q-03",
+      "reason": "missing",
+      "field": "timeline",
+      "blocking": false,
+      "text_en": "Please tell us the delivery deadline.",
+      "text_ko": "납기: 알려 주세요."
+    }
+  ],
+  "notes": [
+    "buyer named the region \"GCC\"; not expanded into countries",
+    "target price was written as \"Target 2.5 per unit\" with no currency; held",
+    "buyer_id is null; link the RFQ to a buyer record to complete readiness"
+  ],
+  "readiness": {
+    "qualification_score": 70,
+    "readiness_detail": {
+      "filled": 7,
+      "total": 10,
+      "missing_fields": [
+        "buyer_id",
+        "target_price",
+        "timeline"
+      ]
+    }
+  }
+}

@@ -41,6 +41,9 @@ KINDS = (
     # An EXPORT document (scripts/export_leads.py --format tradewith-json): the TradeWith
     # bulk-import request body. It carries no score, so only the generic invariants apply.
     "tradewith-bulk-buyers",
+    # An INTAKE document (scripts/intake_rfq.py): the RFQ built from a buyer message and
+    # the questions to ask back. It carries no score, so only the generic invariants apply.
+    "rfq-intake",
 )
 
 # BUILD-CONTRACT 7.5: the closed keyword subset _common.validate implements. A keyword
@@ -157,6 +160,8 @@ def _detect_kind(document):
         return "run-diff"
     if document.get("report_kind") == "recheck-queue":
         return "recheck-queue"
+    if document.get("report_kind") == "rfq-intake":
+        return "rfq-intake"
     if "match_run_id" in document or "no_match" in document:
         return "match-result"
     if "entity" in document and "records" in document:

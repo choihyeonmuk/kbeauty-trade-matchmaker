@@ -6,6 +6,31 @@ Every feature update to this package gets an entry here, and a short version of 
 
 The package carries three independent versions (see "Versions" in the README). Each entry says which of them moved.
 
+## Unreleased
+
+No version has moved yet. This adds one script and one document type and changes no scorer, so at release it is
+a `skill_version` MINOR and leaves `schema_version` and `score_version` where they are.
+
+### New: RFQ intake (`intake_rfq.py`)
+
+- Mode 3 needed an RFQ document; a buyer sends one line in a chat window. The agent now writes an `rfq-intake`
+  input — each field with the verbatim `quote` it was read from — and `scripts/intake_rfq.py` checks it:
+  - a quote that is not in the message refuses the whole input (exit 1, nothing written), so a value the buyer
+    never wrote cannot enter the RFQ
+  - a stated number must be the number in its quote (`50000` is not "5,000 pcs"), and a quote is a phrase: not
+    a letter, not a slice of a word, not the whole message
+  - a region word never becomes a country code, a number with no unit is held instead of being read as units,
+    a price with no currency is held, and a value the agent inferred is shown back to the buyer
+  - what is missing or ambiguous comes back as `questions[]`, in a fixed order, in English and Korean
+  - no product category means no RFQ at all (`ready_for_matching: false`)
+- The emitted RFQ is `status: draft`, `score_version: unscored`, keeps every quote under `extensions.intake`, and
+  is validated against `rfq.schema.json`; the readiness figure is `score_match.py`'s own function, so it is the
+  number Mode 3 prints. The report does not copy the message: it keeps its length, its SHA-256 and the quotes
+  (2..200 characters each, refused when they carry an address or telephone shape).
+- `schemas/rfq-intake.schema.json`, `validate_output.py --schema rfq-intake` (and `auto`), the tool server's
+  `validate_output` enum, `references/data-contract.md` §9.7, `tests/cases.md` §18. Tests: 748 → 796.
+- Not yet: a `intake_rfq` tool on the optional MCP server, and README updates (they land with the release).
+
 ## v0.4.0 (2026-09-21)
 
 `skill_version` 0.3.0 → **0.4.0** · `schema_version` 0.1.0 (unchanged) · `score_version` `kbtm-score-0.1.0` → **`kbtm-score-0.2.0`**
