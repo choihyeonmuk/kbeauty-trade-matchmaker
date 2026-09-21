@@ -6,10 +6,12 @@ Every feature update to this package gets an entry here, and a short version of 
 
 The package carries three independent versions (see "Versions" in the README). Each entry says which of them moved.
 
-## Unreleased
+## v0.5.0 (2026-09-21)
 
-No version has moved yet. This adds one script and one document type and changes no scorer, so at release it is
-a `skill_version` MINOR and leaves `schema_version` and `score_version` where they are.
+`skill_version` 0.4.0 → **0.5.0** · `schema_version` 0.1.0 (unchanged) · `score_version` `kbtm-score-0.2.0` (unchanged)
+
+**No score changes.** One script and one document type are new; no scorer, weight or existing schema moved, and
+every scored golden is byte-identical apart from `skill_version`.
 
 ### New: RFQ intake (`intake_rfq.py`)
 
@@ -29,7 +31,8 @@ a `skill_version` MINOR and leaves `schema_version` and `score_version` where th
   (2..200 characters each, refused when they carry an address or telephone shape).
 - `schemas/rfq-intake.schema.json`, `validate_output.py --schema rfq-intake` (and `auto`), the tool server's
   `validate_output` enum, `references/data-contract.md` §9.7, `tests/cases.md` §18. Tests: 748 → 796.
-- Not yet: a `intake_rfq` tool on the optional MCP server, and README updates (they land with the release).
+- Not yet: an `intake_rfq` tool on the optional MCP server. The server's `validate_output` tool does accept an
+  `rfq-intake` document.
 
 ## v0.4.0 (2026-09-21)
 

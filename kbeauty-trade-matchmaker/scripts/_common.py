@@ -32,7 +32,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PACKAGE_ROOT = os.path.dirname(SCRIPT_DIR)
 SCHEMA_DIR = os.path.join(PACKAGE_ROOT, "schemas")
 
-SKILL_VERSION = "0.4.0"
+SKILL_VERSION = "0.5.0"
 SCHEMA_VERSION = "0.1.0"
 UNKNOWN = "unknown"
 

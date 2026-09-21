@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "kbeauty-trade-matchmaker",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Discovers, verifies, scores and matches K-Beauty trade counterparties: overseas buyers, distributors and importers; Korean cosmetics sellers and OEM/ODM manufacturers; RFQ-to-seller matching; and evidence-backed outreach drafts. Evidence-first with deterministic scoring scripts. Ends at READY_FOR_REVIEW and never sends a message.",
   "author": {
     "name": "choihyeonmuk",

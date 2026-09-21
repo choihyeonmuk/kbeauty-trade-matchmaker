@@ -10,23 +10,21 @@ Aynı klasör **Claude Code** ve **OpenAI Codex** üzerinde hiçbir değişiklik
 
 > İş akışına genel bakış: keşfet, doğrula, eşleştir ve son incelemeyi insana bırak.
 
-> **Durum: v0.4.0.** Pipeline, kurgusal fixture'lar üzerinde 748 vakaya karşı test edilmiş ve canlı web üzerinde bir kez denenmiştir. Puanlama rubriği **henüz gerçek sonuçlara karşı doğrulanmamıştır**: puanlar tekrarlanabilir ve izlenebilirdir, ancak öngörü gücü henüz bilinmemektedir. v0.2.0 bunu ölçmeye yarayan araçları eklemiştir ([Puanları doğrulama](#puanları-doğrulama)), ancak henüz etiketlenmiş bir örneklem yoktur. RFQ Matching ve Outreach Draft modları canlı veri üzerinde çalıştırılmamıştır. Bir puana güvenmeden önce [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) dosyasını okuyun.
+> **Durum: v0.5.0.** Pipeline, kurgusal fixture'lar üzerinde 796 vakaya karşı test edilmiş ve canlı web üzerinde bir kez denenmiştir. Puanlama rubriği **henüz gerçek sonuçlara karşı doğrulanmamıştır**: puanlar tekrarlanabilir ve izlenebilirdir, ancak öngörü gücü henüz bilinmemektedir. v0.2.0 bunu ölçmeye yarayan araçları eklemiştir ([Puanları doğrulama](#puanları-doğrulama)), ancak henüz etiketlenmiş bir örneklem yoktur. RFQ Matching ve Outreach Draft modları canlı veri üzerinde çalıştırılmamıştır. Bir puana güvenmeden önce [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) dosyasını okuyun.
 
 ---
 
 ## Yenilikler
 
-**v0.4.0 (2026-09-21).** Rubrik `kbtm-score-0.2.0` sürümüne geçer. Sekiz denetim düzeltmesi eklendi ve bunlardan biri bir golden fixture'ın puanını değiştiriyor; bu nedenle `kbtm-score-0.1.0` altında saklanan puanlar yeni çalıştırmalarla karşılaştırılmadan önce yeniden puanlanmalıdır.
+**v0.5.0 (2026-09-21).** RFQ intake: bir alıcının sohbet mesajından, Mode 3'ün eşleştirebileceği bir RFQ'ya. Hiçbir puan değişmez; rubrik `kbtm-score-0.2.0` olarak kalır.
 
-- **Taslak doğrulama.** `validate_output.py --schema outreach-draft --record <puanlanmış çalıştırma>` bir Mode 4 taslağını denetler: envelope ve sırası, her kişiselleştirme bilgisinin puanlanmış kayıttaki bir sayfayı aynı gözlem tarihiyle göstermesi, hedefin qualified olması ve kanalın o şirketin kanallarından biri olması, sahte bir opt-out ya da işlenmemiş bir token kalmaması, compliance işaretlerinin ülke ve kanalla örtüşmesi. Ticari koşulları ya da ifadeleri değerlendirmez; bunları yine bir insan gözden geçirir.
-- **Compliance tablosu.** `schemas/compliance.config.json`, taslakların karşılaştırıldığı ülke × kanal tablosunu içerir; Hindistan, Endonezya ve Türkiye dahildir.
-- **Evidence kuralları.** `--invariants` artık EVI-01…06'yı çalıştırır: source tier ile source type uyumu, resmî alan adı, çıkarıma dayalı evidence için confidence üst sınırı, evidence quality, confidence ve stale süresi.
-- **Puanı değiştirebilen denetim düzeltmeleri.** Karşılıklı bir çelişki iki kez değil bir kez sayılır. Kaynak gösterilmeyen bir sertifika, en az dizinden alıntılanan kadar puan kaybettirir. MOQ birim eşanlamlıları (`pcs`, `EA`, `개`) artık MOQ hard filter'ını devre dışı bırakmaz. Hiçbir şeye eşlenmeyen bir kategori satıcıyı elemez. `--config` artık confidence ve evidence quality'ye ulaşır. Ülke adları alpha-2'ye normalize edilir. Ada bitişik yazılmış Kore şirket türleri (`주식회사한빛`) dedupe edilir.
-- **Geçersiz bir belge asla `--output`'a yazılmaz.** Yanına `*.invalid.json` olarak yazılır; zincirleme bir komut onu alamaz. MCP sunucusu bu dosyayı bildirir ve bu dosyası zaten var olan bir `output_path`'i reddeder.
-- **`NA` bir koddur.** INV-02 artık `export_regions` içindeki Kuzey Amerika'yı ya da bir ülke alanındaki Namibya'yı reddetmez.
-- Testler: 536 → 748 vaka.
+- **`intake_rfq.py`.** Agent mesajı okur ve her alanı, okunduğu kelimesi kelimesine alıntıyla (quote) birlikte yazar. Script, mesajda bulunmayan bir alıntıyı ve kendi alıntısındaki sayı olmayan, açıkça belirtilmiş bir sayıyı reddeder (`50000`, "5,000 pcs" değildir).
+- **Tahmin edilmez, bekletilir.** Bir bölge sözcüğü ("GCC") asla ülke koduna dönüşmez. Birimi olmayan bir sayı ("5천") ve para birimi olmayan bir fiyat unknown olarak bekletilir. Agent'ın çıkarım yaptığı bir değer ("Dubai" → `AE`) kabul edilir ve doğrulaması için alıcıya geri gösterilir.
+- **Geri sorulacak sorular.** Eksik ya da belirsiz olan her şey, sabit sıralı bir liste olarak İngilizce ve Korece döner. Ürün kategorisi yoksa hiç RFQ üretilmez.
+- **Ortaya çıkan.** `rfq.schema.json`'a göre doğrulanan, `draft` ve `unscored` bir RFQ; her alıntı `extensions.intake` altında saklanır. Readiness değeri `score_match.py`'nin kendi fonksiyonundan gelir, yani Mode 3'ün yazdırdığı sayıdır. Rapor mesajı kopyalamaz: yalnızca uzunluğunu, SHA-256'sını ve alıntıları tutar. Bir alıntının içindeki kişi adı tespit edilemez; selamlamayı değil gereksinimi alıntılamak agent'ın işidir.
+- Testler: 748 → 796 vaka.
 
-v0.3.0, run diff'i, yeniden kontrol kuyruğunu, lead export'u, MCP tool sunucusunu ve plugin'leri eklemiştir. v0.2.0, [puan doğrulama araçlarını](#puanları-doğrulama) ve Hindistan, Endonezya ve Türkiye için [pazar paketlerini](#pazar-paketleri) eklemiştir. Her sürümün tam notları: [CHANGELOG.md](CHANGELOG.md) (değişiklik günlüğü yalnızca İngilizcedir).
+v0.4.0, rubriği `kbtm-score-0.2.0` sürümüne taşımış (sekiz denetim düzeltmesi, biri bir golden puanı değiştiriyor) ve taslak doğrulamayı, uyum lookup tablosunu ve EVI-01…06 kanıt kurallarını eklemiştir. v0.3.0, run diff'i, yeniden kontrol kuyruğunu, lead export'u, MCP tool sunucusunu ve plugin'leri eklemiştir. v0.2.0, [puan doğrulama araçlarını](#puanları-doğrulama) ve Hindistan, Endonezya ve Türkiye için [pazar paketlerini](#pazar-paketleri) eklemiştir. Her sürümün tam notları: [CHANGELOG.md](CHANGELOG.md) (değişiklik günlüğü yalnızca İngilizcedir).
 
 ---
 
@@ -169,6 +167,7 @@ kbeauty-trade-matchmaker/
 │   ├── tradewith-bulk-buyers.schema.json  # TradeWith bulk-import body; no contact fields (v0.3.0)
 │   ├── outreach-draft.schema.json  # The Mode 4 draft envelope the validator checks (v0.4.0)
 │   ├── compliance.config.json    # Jurisdiction x channel lookup for the draft compliance block (v0.4.0)
+│   ├── rfq-intake.schema.json    # The intake report: RFQ plus the questions to ask back (v0.5.0)
 │   └── scoring.config.json       # Every weight, threshold and penalty lives in this one file
 ├── scripts/                      # Standard library only. No network, no credentials
 │   ├── _common.py                # Config, rounding, normalisation, tri-state helpers, schema validator
@@ -182,6 +181,7 @@ kbeauty-trade-matchmaker/
 │   ├── acceptance_report.py      # Review sheets + scored runs -> Human Acceptance Rate report (v0.2.0)
 │   ├── diff_runs.py              # Two scored runs -> what changed between them (v0.3.0)
 │   ├── stale_evidence.py         # Stored records -> evidence to re-read, most urgent first (v0.3.0)
+│   ├── intake_rfq.py             # A buyer's chat message -> RFQ + questions to ask back (v0.5.0)
 │   ├── export_leads.py           # Scored run -> CSV or TradeWith import file; never sends (v0.3.0)
 │   └── mcp_server.py             # Optional stdio MCP server over the scripts above (v0.3.0)
 ├── templates/
@@ -507,7 +507,7 @@ python3 tests/run_tests.py -v    # One line per case, not just failures
 
 Test çalıştırıcısı yalnızca standart kütüphaneyi kullanır, fixture'ları kendi konumuna göre bulur, her script'e `--as-of 2026-09-12` parametresini iletir ve çıktıyı beklenen fixture'larla **bayt bayt** karşılaştırır. Fixture vakalarından önce şemaların kendisini kontrol eder: ayrıştırılabildiklerini, her `$ref` referansının çözümlendiğini, desteklenmeyen bir anahtar sözcük kullanılmadığını, paylaşılan `$defs` tanımlarının dosyalar arasında tutarlı olduğunu ve gömülü sürümlerin `scoring.config.json` ile eşleştiğini.
 
-`plugins` aşaması repository düzeyindeki manifest'leri ve derleyiciyi okur; bu nedenle toplam 748 vaka sayısı bir repository checkout'u için geçerlidir. Kurulu bir kopya üç SKIP bildirir (`plugins` aşaması, bir MCP vakası ve repository kökündeki README denetimi). Bu aşama sürüm derleyicisini geçici bir git repository'sinde çalıştırır; bu nedenle commit edilmemiş çalışmalar sonucu etkilemez.
+`plugins` aşaması repository düzeyindeki manifest'leri ve derleyiciyi okur; bu nedenle toplam 796 vaka sayısı bir repository checkout'u için geçerlidir. Kurulu bir kopya üç SKIP bildirir (`plugins` aşaması, bir MCP vakası ve repository kökündeki README denetimi). Bu aşama sürüm derleyicisini geçici bir git repository'sinde çalıştırır; bu nedenle commit edilmemiş çalışmalar sonucu etkilemez.
 
 Script'ler doğrudan da çalıştırılabilir. JSON `stdout`'a, tüm tanılama mesajları ise `stderr`'e gider; bu nedenle pipe kullanımı güvenlidir.
 
@@ -571,7 +571,7 @@ Altı soru hâlâ açıktır. Her birinin bu uygulamada bir varsayılanı vardı
 
 | Sürüm | Değer | Neyi tanımlar | Nerede bulunur |
 |---|---|---|---|
-| `skill_version` | `0.4.0` | Paket: prompt'lar, referanslar, script'ler, şablonlar, testler | `SKILL.md` gövdesi, `match-result.skill_version`, her iki plugin manifest'i |
+| `skill_version` | `0.5.0` | Paket: prompt'lar, referanslar, script'ler, şablonlar, testler | `SKILL.md` gövdesi, `match-result.skill_version`, her iki plugin manifest'i |
 | `schema_version` | `0.1.0` | Yapı sözleşmesi: alan adları, enum'lar, zorunlu alan listeleri | Her belge, `schemas/*.json` |
 | `score_version` | `kbtm-score-0.2.0` | Rubrik: ağırlıklar, kriterler, sinyaller, cezalar, eşikler, kesin filtreler | `scoring.config.json`, puanlanmış her belge |
 

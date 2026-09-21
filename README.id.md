@@ -10,23 +10,21 @@ Folder yang sama berjalan tanpa modifikasi di **Claude Code** dan **OpenAI Codex
 
 > Gambaran alur kerja: temukan, verifikasi, cocokkan, dan tetap libatkan manusia dalam peninjauan.
 
-> **Status: v0.4.0.** Pipeline ini telah diuji terhadap 748 kasus pada fixture fiktif dan telah diujicobakan satu kali terhadap web langsung. Rubrik penilaian **belum divalidasi terhadap hasil nyata**: skor dapat direproduksi dan ditelusuri, tetapi belum diketahui daya prediksinya. v0.2.0 telah menambahkan perangkat untuk mengukur hal tersebut ([Memvalidasi skor](#memvalidasi-skor)), tetapi sampel berlabel belum ada. RFQ Matching dan Outreach Draft belum dijalankan pada data langsung. Bacalah [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) sebelum memercayai sebuah skor.
+> **Status: v0.5.0.** Pipeline ini telah diuji terhadap 796 kasus pada fixture fiktif dan telah diujicobakan satu kali terhadap web langsung. Rubrik penilaian **belum divalidasi terhadap hasil nyata**: skor dapat direproduksi dan ditelusuri, tetapi belum diketahui daya prediksinya. v0.2.0 telah menambahkan perangkat untuk mengukur hal tersebut ([Memvalidasi skor](#memvalidasi-skor)), tetapi sampel berlabel belum ada. RFQ Matching dan Outreach Draft belum dijalankan pada data langsung. Bacalah [`calibration-notes.md`](kbeauty-trade-matchmaker/references/calibration-notes.md) sebelum memercayai sebuah skor.
 
 ---
 
 ## Yang baru
 
-**v0.4.0 (2026-09-21).** Rubrik naik ke `kbtm-score-0.2.0`. Delapan perbaikan hasil audit masuk dan salah satunya mengubah skor sebuah golden fixture, sehingga skor yang tersimpan di bawah `kbtm-score-0.1.0` perlu dinilai ulang sebelum dibandingkan dengan run baru.
+**v0.5.0 (2026-09-21).** RFQ intake: dari pesan chat seorang buyer menjadi RFQ yang dapat dicocokkan oleh Mode 3. Tidak ada skor yang berubah; rubrik tetap `kbtm-score-0.2.0`.
 
-- **Validasi draf.** `validate_output.py --schema outreach-draft --record <run yang sudah dinilai>` memeriksa draf Mode 4: envelope dan urutannya, bahwa setiap fakta personalisasi mengutip halaman pada record yang dinilai dengan tanggal observasi yang sama, bahwa target berstatus qualified dan kanalnya adalah salah satu kanal perusahaan itu, bahwa tidak ada opt-out palsu atau token yang belum dirender, dan bahwa flag compliance cocok dengan yurisdiksi dan kanal. Ia tidak menilai syarat dagang atau pilihan kata; itu tetap ditinjau manusia.
-- **Tabel compliance.** `schemas/compliance.config.json` memuat tabel yurisdiksi × kanal yang menjadi acuan pemeriksaan draf, termasuk India, Indonesia, dan Türkiye.
-- **Aturan evidence.** `--invariants` kini menjalankan EVI-01…06: source tier terhadap source type, domain resmi, batas confidence untuk evidence hasil inferensi, evidence quality, confidence, dan usia stale.
-- **Perbaikan audit yang dapat menggeser skor.** Konflik timbal balik dihitung satu kali, bukan dua. Sertifikasi tanpa kutipan dikurangi setidaknya sebesar sertifikasi yang dikutip dari direktori. Sinonim satuan MOQ (`pcs`, `EA`, `개`) tidak lagi mematikan hard filter MOQ. Kategori yang tidak terpetakan ke mana pun tidak pernah menolak penjual. `--config` kini menjangkau confidence dan evidence quality. Nama negara dinormalkan ke alpha-2. Bentuk badan hukum Korea yang menempel pada nama (`주식회사한빛`) ter-dedupe.
-- **Dokumen yang tidak valid tidak pernah ditulis ke `--output`.** Ia ditulis di sampingnya sebagai `*.invalid.json`, sehingga perintah berantai tidak dapat mengambilnya. Server MCP melaporkan file itu dan menolak `output_path` yang file sampingnya sudah ada.
-- **`NA` adalah kode.** INV-02 tidak lagi menolak Amerika Utara di `export_regions` atau Namibia di field negara.
-- Pengujian: 536 → 748 kasus.
+- **`intake_rfq.py`.** Agent membaca pesan dan menuliskan setiap field beserta kutipan kata demi kata yang menjadi sumbernya. Skrip menolak kutipan yang tidak ada di dalam pesan, dan menolak angka yang dinyatakan tetapi bukan angka dalam kutipannya (`50000` bukan "5,000 pcs").
+- **Ditahan, bukan ditebak.** Kata wilayah ("GCC") tidak pernah menjadi kode negara. Angka tanpa satuan ("5천") dan harga tanpa mata uang ditahan sebagai unknown. Nilai yang disimpulkan agent ("Dubai" → `AE`) diterima dan ditunjukkan kembali kepada buyer untuk dikonfirmasi.
+- **Pertanyaan untuk ditanyakan kembali.** Hal yang belum ada atau ambigu dikembalikan sebagai daftar berurutan dalam bahasa Inggris dan Korea. Tanpa kategori produk, RFQ tidak dibuat sama sekali.
+- **Hasilnya.** RFQ berstatus `draft` dan `unscored` yang lolos validasi `rfq.schema.json` dan menyimpan setiap kutipan di bawah `extensions.intake`. Angka readiness berasal dari fungsi `score_match.py` sendiri, sehingga sama dengan angka yang dicetak Mode 3. Laporan tidak menyalin pesan: hanya panjangnya, SHA-256-nya, dan kutipannya yang disimpan. Nama orang di dalam kutipan tidak dapat dideteksi; mengutip kebutuhan, bukan salam pembuka, adalah tugas agent.
+- Pengujian: 748 → 796 kasus.
 
-v0.3.0 telah menambahkan run diff, antrean pemeriksaan ulang, ekspor lead, server tool MCP, dan plugin. v0.2.0 telah menambahkan [perangkat validasi skor](#memvalidasi-skor) dan [paket pasar](#paket-pasar) untuk India, Indonesia, dan Türkiye. Catatan lengkap untuk setiap rilis: [CHANGELOG.md](CHANGELOG.md) (changelog hanya tersedia dalam bahasa Inggris).
+v0.4.0 telah menaikkan rubrik ke `kbtm-score-0.2.0` (delapan perbaikan hasil audit, salah satunya mengubah skor golden) serta menambahkan validasi draf, tabel lookup kepatuhan, dan aturan bukti EVI-01…06. v0.3.0 telah menambahkan run diff, antrean pemeriksaan ulang, ekspor lead, server tool MCP, dan plugin. v0.2.0 telah menambahkan [perangkat validasi skor](#memvalidasi-skor) dan [paket pasar](#paket-pasar) untuk India, Indonesia, dan Türkiye. Catatan lengkap untuk setiap rilis: [CHANGELOG.md](CHANGELOG.md) (changelog hanya tersedia dalam bahasa Inggris).
 
 ---
 
@@ -169,6 +167,7 @@ kbeauty-trade-matchmaker/
 │   ├── tradewith-bulk-buyers.schema.json  # TradeWith bulk-import body; no contact fields (v0.3.0)
 │   ├── outreach-draft.schema.json  # The Mode 4 draft envelope the validator checks (v0.4.0)
 │   ├── compliance.config.json    # Jurisdiction x channel lookup for the draft compliance block (v0.4.0)
+│   ├── rfq-intake.schema.json    # The intake report: RFQ plus the questions to ask back (v0.5.0)
 │   └── scoring.config.json       # Every weight, threshold and penalty lives in this one file
 ├── scripts/                      # Standard library only. No network, no credentials
 │   ├── _common.py                # Config, rounding, normalisation, tri-state helpers, schema validator
@@ -182,6 +181,7 @@ kbeauty-trade-matchmaker/
 │   ├── acceptance_report.py      # Review sheets + scored runs -> Human Acceptance Rate report (v0.2.0)
 │   ├── diff_runs.py              # Two scored runs -> what changed between them (v0.3.0)
 │   ├── stale_evidence.py         # Stored records -> evidence to re-read, most urgent first (v0.3.0)
+│   ├── intake_rfq.py             # A buyer's chat message -> RFQ + questions to ask back (v0.5.0)
 │   ├── export_leads.py           # Scored run -> CSV or TradeWith import file; never sends (v0.3.0)
 │   └── mcp_server.py             # Optional stdio MCP server over the scripts above (v0.3.0)
 ├── templates/
@@ -507,7 +507,7 @@ python3 tests/run_tests.py -v    # One line per case, not just failures
 
 Runner hanya menggunakan standard library, menemukan fixture secara relatif terhadap lokasinya sendiri, meneruskan `--as-of 2026-09-12` ke setiap skrip, dan membandingkan output dengan fixture yang diharapkan **byte demi byte**. Sebelum kasus-kasus fixture, runner memeriksa skema itu sendiri: bahwa skema dapat di-parse, bahwa setiap `$ref` dapat di-resolve, bahwa tidak ada keyword yang tidak didukung, bahwa `$defs` bersama konsisten di seluruh file, dan bahwa versi yang tertanam sesuai dengan `scoring.config.json`.
 
-Fase `plugins` membaca manifest dan builder di tingkat repositori, sehingga jumlah penuh 748 berlaku untuk checkout repositori; salinan yang terinstal melaporkan tiga SKIP (fase `plugins`, satu kasus MCP, dan pemeriksaan README di akar repositori). Fase ini menjalankan builder rilis di repositori git sekali pakai, sehingga pekerjaan yang belum di-commit tidak memengaruhi hasilnya.
+Fase `plugins` membaca manifest dan builder di tingkat repositori, sehingga jumlah penuh 796 berlaku untuk checkout repositori; salinan yang terinstal melaporkan tiga SKIP (fase `plugins`, satu kasus MCP, dan pemeriksaan README di akar repositori). Fase ini menjalankan builder rilis di repositori git sekali pakai, sehingga pekerjaan yang belum di-commit tidak memengaruhi hasilnya.
 
 Skrip juga dapat dijalankan secara langsung. JSON dikirim ke `stdout` dan setiap diagnostik ke `stderr`, sehingga penggunaan pipe aman.
 
@@ -571,7 +571,7 @@ Enam pertanyaan masih terbuka. Masing-masing memiliki nilai default dalam implem
 
 | Versi | Nilai | Menjelaskan | Lokasi |
 |---|---|---|---|
-| `skill_version` | `0.4.0` | Paket: prompt, referensi, skrip, template, pengujian | Badan `SKILL.md`, `match-result.skill_version`, kedua manifest plugin |
+| `skill_version` | `0.5.0` | Paket: prompt, referensi, skrip, template, pengujian | Badan `SKILL.md`, `match-result.skill_version`, kedua manifest plugin |
 | `schema_version` | `0.1.0` | Kontrak bentuk: nama field, enum, daftar field wajib | Setiap dokumen, `schemas/*.json` |
 | `score_version` | `kbtm-score-0.2.0` | Rubrik: bobot, kriteria, sinyal, penalti, ambang, hard filter | `scoring.config.json`, setiap dokumen yang dinilai |
 
